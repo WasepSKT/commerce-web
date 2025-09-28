@@ -66,20 +66,41 @@ export function getProvincesFromCache(): string[] {
   return m ? Object.keys(m) : [];
 }
 
+function findKeyInsensitive(obj: Record<string, unknown> | undefined, key: string): string | undefined {
+  if (!obj) return undefined;
+  const norm = key.trim().toLowerCase();
+  return Object.keys(obj).find(k => k.trim().toLowerCase() === norm);
+}
+
 export function getCitiesFromCache(province: string): string[] {
   const m = fromCache();
   if (!m) return [];
-  return m[province] ? Object.keys(m[province]) : [];
+  const provKey = findKeyInsensitive(m, province);
+  if (!provKey) return [];
+  return Object.keys(m[provKey]);
 }
 
 export function getDistrictsFromCache(province: string, city: string): string[] {
   const m = fromCache();
   if (!m) return [];
-  return m[province] && m[province][city] ? Object.keys(m[province][city]) : [];
+  const provKey = findKeyInsensitive(m, province);
+  if (!provKey) return [];
+  const cities = m[provKey] as Record<string, Record<string, Subdistrict[]>>;
+  const cityKey = findKeyInsensitive(cities, city);
+  if (!cityKey) return [];
+  return Object.keys(cities[cityKey]);
 }
 
 export function getSubdistrictsFromCache(province: string, city: string, district: string): Subdistrict[] {
   const m = fromCache();
   if (!m) return [];
-  return m[province] && m[province][city] && m[province][city][district] ? m[province][city][district] : [];
+  const provKey = findKeyInsensitive(m, province);
+  if (!provKey) return [];
+  const cities = m[provKey] as Record<string, Record<string, Subdistrict[]>>;
+  const cityKey = findKeyInsensitive(cities, city);
+  if (!cityKey) return [];
+  const districts = cities[cityKey] as Record<string, Subdistrict[]>;
+  const distKey = findKeyInsensitive(districts, district);
+  if (!distKey) return [];
+  return districts[distKey];
 }
