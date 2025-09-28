@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -37,6 +37,7 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ active, onChange, children }: AdminLayoutProps) {
   const { signOut, profile } = useAuth();
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -50,7 +51,6 @@ export function AdminLayout({ active, onChange, children }: AdminLayoutProps) {
         navigate('/');
       }
     };
-
     return (
       <div className="w-full">
         <AlertDialog>
@@ -117,54 +117,53 @@ export function AdminLayout({ active, onChange, children }: AdminLayoutProps) {
                   {/* User dropdown */}
                   <div>
                     <DropdownMenu>
-                      <DropdownMenu.Trigger asChild>
-                        <button className="inline-flex items-center rounded-full bg-muted/40 p-1">
+                      <DropdownMenuTrigger asChild>
+                        <button className="inline-flex items-center rounded-full bg-muted/40 p-1 cursor-pointer hover:opacity-95">
                           <User className="h-5 w-5" />
                         </button>
-                      </DropdownMenu.Trigger>
-                      <DropdownMenu.Content align="end" className="w-56">
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
                         <div className="flex items-center justify-start gap-2 p-2">
                           <div className="flex flex-col space-y-1 leading-none">
                             <p className="font-medium text-sm">{profile?.full_name || profile?.email}</p>
                             <p className="text-xs text-muted-foreground">{profile?.email}</p>
                           </div>
                         </div>
-                        <DropdownMenu.Separator />
-                        <DropdownMenu.Item asChild>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild>
                           <a href="/admin/settings" className="flex items-center"><Settings className="mr-2 h-4 w-4" />Pengaturan</a>
-                        </DropdownMenu.Item>
-                        <DropdownMenu.Item asChild>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
                           <a href="/admin/users" className="flex items-center"><User className="mr-2 h-4 w-4" />Pengguna</a>
-                        </DropdownMenu.Item>
-                        <DropdownMenu.Separator />
-                        <DropdownMenu.Item>
-                          <AlertDialog>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Keluar dari akun?</AlertDialogTitle>
-                              </AlertDialogHeader>
-                              <AlertDialogDescription>Apakah Anda yakin ingin logout? Anda akan dialihkan ke halaman utama.</AlertDialogDescription>
-                              <div className="mt-4 flex justify-end gap-2">
-                                <AlertDialogCancel className="mr-2">Batal</AlertDialogCancel>
-                                <AlertDialogAction onClick={async () => {
-                                  const { error } = await signOut();
-                                  if (error) {
-                                    toast({ variant: 'destructive', title: 'Gagal logout', description: String(error.message || error) });
-                                  } else {
-                                    toast({ title: 'Anda telah logout' });
-                                    navigate('/');
-                                  }
-                                }} className="bg-destructive text-destructive-foreground">Keluar</AlertDialogAction>
-                              </div>
-                            </AlertDialogContent>
-                            <span className="text-destructive flex items-center">
-                              <LogOut className="mr-2 h-4 w-4" />
-                              Keluar
-                            </span>
-                          </AlertDialog>
-                        </DropdownMenu.Item>
-                      </DropdownMenu.Content>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="cursor-pointer" onSelect={() => setLogoutOpen(true)}>
+                          <span className="flex items-center"><LogOut className="mr-2 h-4 w-4" />Keluar</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
                     </DropdownMenu>
+
+                    {/* Logout confirmation dialog controlled by state */}
+                    <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Keluar dari akun?</AlertDialogTitle>
+                        </AlertDialogHeader>
+                        <AlertDialogDescription>Apakah Anda yakin ingin logout? Anda akan dialihkan ke halaman utama.</AlertDialogDescription>
+                        <div className="mt-4 flex justify-end gap-2">
+                          <AlertDialogCancel className="mr-2">Batal</AlertDialogCancel>
+                          <AlertDialogAction onClick={async () => {
+                            const { error } = await signOut();
+                            if (error) {
+                              toast({ variant: 'destructive', title: 'Gagal logout', description: String(error.message || error) });
+                            } else {
+                              toast({ title: 'Anda telah logout' });
+                              navigate('/');
+                            }
+                          }} className="bg-destructive text-destructive-foreground">Keluar</AlertDialogAction>
+                        </div>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </div>
