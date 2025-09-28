@@ -7,6 +7,7 @@ import useCart from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import EmptyState from '@/components/ui/EmptyState';
 
 interface Product {
   id: string;
@@ -144,8 +145,13 @@ export default function CartPage() {
         </div>
 
         {lineItems.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Keranjang Anda kosong.</p>
+          <div className="py-12">
+            <EmptyState
+              title="Keranjang kosong"
+              description="Tambahkan produk ke keranjang untuk memulai belanja."
+              lottieSrc="https://lottie.host/6ebe5320-be98-4e5d-90b5-a9f5d2f186fd/ez07wuijAR.lottie"
+              cta={{ label: 'Lanjut Belanja', onClick: () => { navigate('/products'); } }}
+            />
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
