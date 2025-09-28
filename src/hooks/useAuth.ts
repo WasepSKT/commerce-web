@@ -190,7 +190,9 @@ export function useAuth() {
   }, []);
 
   const signInWithGoogle = async () => {
-    const redirectUrl = `${window.location.origin}/`;
+    // Prefer an explicit Vite env var (set this in Vercel) so deployed apps
+    // won't accidentally use a local origin. Fallback to runtime origin.
+    const redirectUrl = (import.meta.env.VITE_APP_URL as string | undefined) ?? `${window.location.origin}/`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
