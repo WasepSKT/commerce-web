@@ -35,7 +35,8 @@ type LeafletStatic = {
   marker: (coords: [number, number], opts?: { draggable?: boolean }) => MarkerLike;
   Control: { extend: (obj: unknown) => unknown };
   DomUtil: {
-    create: (tag: string, className?: string) => HTMLElement;
+    // allow passing an optional container (third argument) like Leaflet's API
+    create: (tag: string, className?: string, container?: HTMLElement) => HTMLElement;
   };
   DomEvent: {
     disableClickPropagation: (el: HTMLElement) => void;
@@ -215,8 +216,8 @@ export default function ProfilePage() {
         map.setView([lat, lng], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map as any);
-        marker = L.marker([lat, lng], { draggable: true }).addTo(map as any);
+  }).addTo(map as MapLike);
+  marker = L.marker([lat, lng], { draggable: true }).addTo(map as MapLike);
         marker.on('dragend', function () {
           const p = marker!.getLatLng();
           setLatitude(String(p.lat));
@@ -252,7 +253,7 @@ export default function ProfilePage() {
           });
           // `L.Control.extend` returns a plain object shape; cast to a
           // constructor so we can instantiate it in TypeScript.
-          const LocateCtor = (LocateControl as unknown) as { new(): any };
+          const LocateCtor = (LocateControl as unknown) as { new(): unknown };
           if (map.addControl) map.addControl(new LocateCtor());
         } catch (e) {
           // ignore if L not available or extend fails
@@ -270,7 +271,7 @@ export default function ProfilePage() {
               return container;
             }
           });
-          const CoordCtor = (CoordControl as unknown) as { new(): any };
+          const CoordCtor = (CoordControl as unknown) as { new(): unknown };
           if (map.addControl) map.addControl(new CoordCtor());
         } catch (e) {
           // ignore if fails
@@ -299,7 +300,7 @@ export default function ProfilePage() {
       try {
         const ref = getWin()._profile_map_ref;
         if (ref?.map) {
-          ref.map.remove && ref.map.remove();
+          ref.map.remove?.();
           getWin()._profile_map_ref = {};
         }
       } catch (e) {
