@@ -74,7 +74,7 @@ export default function ProfilePage() {
     });
   };
 
-  /* eslint-disable @typescript-eslint/no-explicit-any */
+  
   // Map picker modal state
   const [showMapPicker, setShowMapPicker] = useState(false);
   // ensure a place to keep map refs
