@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,6 +7,7 @@ import { Layout } from '@/components/Layout';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, ShoppingCart, Star, Shield, Truck, Package } from 'lucide-react';
+import useCart from '@/hooks/useCart';
 
 interface Product {
   id: string;
@@ -23,15 +24,10 @@ export default function ProductDetail() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
+  const { add } = useCart();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (id) {
-      fetchProduct(id);
-    }
-  }, [id]);
-
-  const fetchProduct = async (productId: string) => {
+  const fetchProduct = useCallback(async (productId: string) => {
     try {
       const { data, error } = await supabase
         .from('products')
@@ -52,8 +48,11 @@ export default function ProductDetail() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
+  useEffect(() => {
+    if (id) void fetchProduct(id);
+  }, [id, fetchProduct]);
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -65,9 +64,9 @@ export default function ProductDetail() {
   const handleAddToCart = () => {
     if (!product) return;
 
-    const message = `Halo, saya ingin memesan:\n\n${product.name}\nJumlah: ${quantity}\nHarga: ${formatPrice(product.price * quantity)}\n\nMohon konfirmasi pesanan ini. Terima kasih!`;
-    const whatsappUrl = `https://wa.me/6281234567890?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+    // Add to local cart and show toast
+    add(product.id, quantity);
+    toast({ title: 'Produk ditambahkan', description: `${product.name} x${quantity} telah ditambahkan ke keranjang.` });
   };
 
   if (loading) {
@@ -144,7 +143,7 @@ export default function ProductDetail() {
                 </div>
               )}
             </div>
-            
+
             {/* Product Features */}
             <div className="grid grid-cols-3 gap-4">
               <Card className="text-center p-3">
@@ -169,7 +168,7 @@ export default function ProductDetail() {
                 {product.category}
               </Badge>
               <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
-              
+
               <div className="flex items-center space-x-2 mb-4">
                 <div className="flex items-center">
                   {[...Array(5)].map((_, i) => (
@@ -231,7 +230,7 @@ export default function ProductDetail() {
                     <ShoppingCart className="mr-2 h-5 w-5" />
                     Pesan via WhatsApp - {formatPrice(product.price * quantity)}
                   </Button>
-                  
+
                   <p className="text-xs text-center text-muted-foreground">
                     Klik untuk melanjutkan pemesanan melalui WhatsApp
                   </p>

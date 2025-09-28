@@ -6,32 +6,97 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import ProductList from "./pages/ProductList";
 import ProductDetail from "./pages/ProductDetail";
+import CartPage from './pages/Cart';
+import ProfilePage from './pages/Profile';
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminProductsPage from "./pages/admin/Products";
+import AdminUsersPage from "./pages/admin/Users";
+import AdminKampanyePage from "./pages/admin/Kampanye";
+import ReferralsPage from "./pages/admin/Referrals";
+import ReferralSettingsPage from "./pages/admin/ReferralSettings";
+import AdminRoute from "./components/admin/AdminRoute";
 import NotFound from "./pages/NotFound";
+import Loading from "@/components/ui/Loading";
+import { useAuth } from "@/hooks/useAuth";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/products" element={<ProductList />} />
-          <Route path="/product/:id" element={<ProductDetail />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+export default function App() {
+  const { loading } = useAuth();
 
-export default App;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+
+        {/* Global loader while auth is initializing. Always mount Loading so it can enforce minVisibleMs */}
+        <Loading fullscreen active={loading} minVisibleMs={2000} />
+
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/products" element={<ProductList />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/products"
+              element={
+                <AdminRoute>
+                  <AdminProductsPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <AdminRoute>
+                  <AdminUsersPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/kampanye"
+              element={
+                <AdminRoute>
+                  <AdminKampanyePage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/referrals"
+              element={
+                <AdminRoute>
+                  <ReferralsPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/referrals/settings"
+              element={
+                <AdminRoute>
+                  <ReferralSettingsPage />
+                </AdminRoute>
+              }
+            />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}

@@ -1,9 +1,20 @@
 import { ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 import { ShoppingCart, User, LogOut, Settings, Package } from 'lucide-react';
+import useCart from '@/hooks/useCart';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,17 +29,16 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const { profile, signOut, isAuthenticated } = useAuth();
+  const { totalItems } = useCart();
   const location = useLocation();
-
-  const handleSignOut = async () => {
-    await signOut();
-  };
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-        <div className="container mx-auto px-4">
+        <div className="w-full px-4">
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2">
@@ -42,17 +52,15 @@ export function Layout({ children }: LayoutProps) {
             <nav className="hidden md:flex items-center space-x-6">
               <Link
                 to="/"
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  location.pathname === '/' ? 'text-primary' : 'text-muted-foreground'
-                }`}
+                className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/' ? 'text-primary' : 'text-muted-foreground'
+                  }`}
               >
                 Beranda
               </Link>
               <Link
                 to="/products"
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  location.pathname === '/products' ? 'text-primary' : 'text-muted-foreground'
-                }`}
+                className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/products' ? 'text-primary' : 'text-muted-foreground'
+                  }`}
               >
                 Produk
               </Link>
@@ -67,6 +75,15 @@ export function Layout({ children }: LayoutProps) {
                       Admin
                     </Badge>
                   )}
+                  {/* cart indicator */}
+                  <Link to="/cart" className="mr-2">
+                    <div className="relative inline-flex">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full">
+                        <ShoppingCart className="h-4 w-4" />
+                      </Button>
+                      <span className="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full bg-primary text-xs text-primary-foreground w-5 h-5">{totalItems}</span>
+                    </div>
+                  </Link>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full">
@@ -81,24 +98,59 @@ export function Layout({ children }: LayoutProps) {
                         </div>
                       </div>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link to="/dashboard" className="flex items-center">
-                          <User className="mr-2 h-4 w-4" />
-                          Dashboard
-                        </Link>
-                      </DropdownMenuItem>
-                      {profile?.role === 'admin' && (
+                      {profile?.role === 'admin' ? (
                         <DropdownMenuItem asChild>
                           <Link to="/admin" className="flex items-center">
                             <Settings className="mr-2 h-4 w-4" />
                             Admin Panel
                           </Link>
                         </DropdownMenuItem>
+                      ) : (
+                        <>
+                          <DropdownMenuItem asChild>
+                            <Link to="/dashboard" className="flex items-center">
+                              <User className="mr-2 h-4 w-4" />
+                              Dashboard
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link to="/profile" className="flex items-center">
+                              <Settings className="mr-2 h-4 w-4" />
+                              Profil
+                            </Link>
+                          </DropdownMenuItem>
+                        </>
                       )}
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Keluar
+                      <DropdownMenuItem asChild>
+                        <AlertDialog>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Keluar dari akun?</AlertDialogTitle>
+                            </AlertDialogHeader>
+                            <AlertDialogDescription>Apakah Anda yakin ingin logout? Anda akan dialihkan ke halaman utama.</AlertDialogDescription>
+                            <div className="mt-4 flex justify-end gap-2">
+                              <AlertDialogCancel className="mr-2">Batal</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={async () => {
+                                  const { error } = await signOut();
+                                  if (error) {
+                                    toast({ variant: 'destructive', title: 'Gagal logout', description: String(error.message || error) });
+                                  } else {
+                                    toast({ title: 'Anda telah logout' });
+                                    navigate('/');
+                                  }
+                                }}
+                              >
+                                Keluar
+                              </AlertDialogAction>
+                            </div>
+                          </AlertDialogContent>
+                          <span className="text-destructive flex items-center">
+                            <LogOut className="mr-2 h-4 w-4" />
+                            Keluar
+                          </span>
+                        </AlertDialog>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -120,7 +172,7 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Footer */}
       <footer className="border-t bg-card">
-        <div className="container mx-auto px-4 py-8">
+        <div className="w-full px-4 py-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
               <h3 className="font-semibold mb-4">Regal Paw</h3>

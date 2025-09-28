@@ -142,6 +142,7 @@ export type Database = {
           id: string
           referral_code: string
           referred_by: string | null
+          reward_points: number
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
           user_id: string
@@ -152,6 +153,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           referral_code?: string
+          reward_points?: number
           referred_by?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
@@ -163,6 +165,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           referral_code?: string
+          reward_points?: number
           referred_by?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
@@ -177,6 +180,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      referral_settings: {
+        Row: {
+          id: string
+          name: string
+          active: boolean
+          reward_type: 'points' | 'coupon' | 'credit'
+          reward_value: number | null
+          max_per_referrer: number | null
+          expiration_days: number | null
+          min_purchase_amount: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name?: string
+          active?: boolean
+          reward_type?: 'points' | 'coupon' | 'credit'
+          reward_value?: number | null
+          max_per_referrer?: number | null
+          expiration_days?: number | null
+          min_purchase_amount?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          active?: boolean
+          reward_type?: 'points' | 'coupon' | 'credit'
+          reward_value?: number | null
+          max_per_referrer?: number | null
+          expiration_days?: number | null
+          min_purchase_amount?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       referrals: {
         Row: {

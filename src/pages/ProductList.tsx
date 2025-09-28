@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ProductCard } from '@/components/ProductCard';
 import { useToast } from '@/hooks/use-toast';
+import useCart from '@/hooks/useCart';
 import { supabase } from '@/integrations/supabase/client';
 import { Search, Filter } from 'lucide-react';
 import { Layout } from '@/components/Layout';
@@ -23,16 +24,12 @@ export default function ProductList() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [cart, setCart] = useState<{[key: string]: number}>({});
+  const { map: cart, add, totalItems } = useCart();
   const { toast } = useToast();
 
   const categories = ['all', 'Dry Food', 'Wet Food', 'Kitten Food'];
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('products')
@@ -52,13 +49,15 @@ export default function ProductList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => { void fetchProducts(); }, [fetchProducts]);
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.description?.toLowerCase().includes(searchQuery.toLowerCase());
+      product.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
-    
+
     return matchesSearch && matchesCategory;
   });
 
@@ -73,10 +72,7 @@ export default function ProductList() {
       return;
     }
 
-    setCart(prev => ({
-      ...prev,
-      [product.id]: currentQuantity + 1
-    }));
+    add(product.id, 1);
 
     toast({
       title: "Produk ditambahkan",
@@ -84,9 +80,7 @@ export default function ProductList() {
     });
   };
 
-  const getTotalItems = () => {
-    return Object.values(cart).reduce((sum, quantity) => sum + quantity, 0);
-  };
+  const getTotalItems = () => totalItems;
 
   const proceedToCheckout = () => {
     if (getTotalItems() === 0) {
@@ -197,9 +191,9 @@ export default function ProductList() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredProducts.map(product => (
-              <ProductCard 
-                key={product.id} 
-                product={product} 
+              <ProductCard
+                key={product.id}
+                product={product}
                 onAddToCart={addToCart}
               />
             ))}

@@ -65,6 +65,12 @@ All colors MUST be HSL.
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
 
@@ -108,4 +114,89 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Admin sidebar tweaks: prefer sidebar design tokens for consistency.
+   Keep a subtle accent for active links but remove heavy gradient header used only in admin.
+*/
+.admin-sidebar .sidebar-link--active,
+.admin-sidebar .sidebar-link--active[data-active="true"] {
+  /* Restore primary brand color for active admin links to match previous design */
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+.admin-sidebar .sidebar-link--active svg,
+.admin-sidebar .sidebar-link--active[data-active="true"] svg {
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+/* Admin header should match sidebar header styling but without a brand gradient to keep
+   the layout consistent with the main header. Use the sidebar background and subtle border. */
+.admin-sidebar [data-sidebar="header"] {
+  padding: 0.5rem 0.5rem;
+  border-radius: 0.375rem;
+  background-color: hsl(var(--sidebar-background));
+  color: hsl(var(--sidebar-foreground));
+  margin-bottom: 0.5rem;
+  border: 1px solid hsl(var(--sidebar-border));
+}
+
+.admin-sidebar [data-sidebar="header"] h3,
+.admin-sidebar [data-sidebar="header"] p {
+  color: hsl(var(--sidebar-foreground));
+}
+
+/* Loading fade utility used by the fullscreen loader overlay */
+.loading-fade {
+  transition: opacity 220ms ease;
+  opacity: 0;
+}
+
+.loading-fade.show {
+  opacity: 1;
+}
+
+/* Global spinner keyframes and loading classes (base-practice aligned) */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 9999;
+  pointer-events: auto;
+}
+
+.loading-box {
+  width: 7rem;
+  height: 7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.loading-spinner-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.15);
+  border-top-color: hsl(var(--primary));
+  animation: spin 1s linear infinite;
 }

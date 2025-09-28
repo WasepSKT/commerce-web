@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,10 +9,11 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function Auth() {
-  const { isAuthenticated, signInWithGoogle } = useAuth();
+  const { isAuthenticated, signInWithGoogle, profile } = useAuth();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const [referralCode, setReferralCode] = useState('');
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
 
   useEffect(() => {
     // Check if there's a referral code in URL
@@ -23,8 +24,9 @@ export default function Auth() {
   }, [searchParams]);
 
   const handleGoogleSignIn = async () => {
+    setLoadingGoogle(true);
     const { error } = await signInWithGoogle();
-    
+    setLoadingGoogle(false);
     if (error) {
       toast({
         variant: "destructive",
@@ -42,122 +44,122 @@ export default function Auth() {
   }, [referralCode]);
 
   // Handle referral after successful signup
-  useEffect(() => {
-    if (isAuthenticated) {
-      const pendingRef = localStorage.getItem('pendingReferralCode');
-      if (pendingRef) {
-        // Process referral
-        handleReferral(pendingRef);
-        localStorage.removeItem('pendingReferralCode');
-      }
-    }
-  }, [isAuthenticated]);
-
-  const handleReferral = async (refCode: string) => {
+  const handleReferral = useCallback(async (refCode: string) => {
     try {
-      // Find the referrer
+      // Find the referrer (still needs DB)
       const { data: referrer } = await supabase
         .from('profiles')
         .select('id')
         .eq('referral_code', refCode)
         .single();
 
-      if (referrer) {
-        // Get current user profile
-        const { data: currentProfile } = await supabase
-          .from('profiles')
-          .select('id, user_id')
-          .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-          .single();
+      if (!referrer) return;
 
-        if (currentProfile) {
-          // Update current user's referred_by
-          await supabase
+      // Prefer the cached profile from useAuth to avoid an extra DB read.
+      // If it's not available yet, fall back to querying the profiles table once.
+      let currentProfileId: string | null = profile?.id ?? null;
+      if (!currentProfileId) {
+        const userResp = await supabase.auth.getUser();
+        const userId = userResp.data.user?.id;
+        if (userId) {
+          const { data: currentProfile } = await supabase
             .from('profiles')
-            .update({ referred_by: referrer.id })
-            .eq('id', currentProfile.id);
-
-          // Create referral record
-          await supabase
-            .from('referrals')
-            .insert({
-              referrer_id: referrer.id,
-              referred_id: currentProfile.id,
-              referral_code: refCode,
-              reward_points: 10 // Default reward points
-            });
-
-          toast({
-            title: "Referral berhasil!",
-            description: "Anda telah terdaftar menggunakan kode referral.",
-          });
+            .select('id')
+            .eq('user_id', userId)
+            .single();
+          currentProfileId = currentProfile?.id ?? null;
         }
       }
+
+      if (!currentProfileId) return;
+
+      // Update current user's referred_by and create referral record
+      await supabase
+        .from('profiles')
+        .update({ referred_by: referrer.id })
+        .eq('id', currentProfileId);
+
+      await supabase
+        .from('referrals')
+        .insert({
+          referrer_id: referrer.id,
+          referred_id: currentProfileId,
+          referral_code: refCode,
+          reward_points: 10, // Default reward points
+        });
+
+      toast({
+        title: 'Referral berhasil!',
+        description: 'Anda telah terdaftar menggunakan kode referral.',
+      });
     } catch (error) {
       console.error('Error processing referral:', error);
     }
-  };
+  }, [toast, profile]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const pendingRef = localStorage.getItem('pendingReferralCode');
+      if (pendingRef) {
+        // Process referral
+        void handleReferral(pendingRef);
+        localStorage.removeItem('pendingReferralCode');
+      }
+    }
+  }, [isAuthenticated, handleReferral]);
 
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Selamat Datang di Regal Paw</CardTitle>
-          <CardDescription>
+    <div className="min-h-screen bg-gradient-to-br from-[hsl(var(--brand-cream))] via-[hsl(var(--brand-orange-light))] to-[hsl(var(--brand-orange))] flex items-center justify-center p-4">
+      <Card className="w-full max-w-md shadow-xl border-0">
+        <CardHeader className="text-center pb-0">
+          <CardTitle className="text-3xl font-bold text-blue-900">Regal Paw</CardTitle>
+          <CardDescription className="text-base mt-2 text-gray-600">
             Masuk untuk mulai berbelanja makanan kucing berkualitas
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6 pt-2">
           {referralCode && (
-            <div className="p-3 bg-accent/50 rounded-lg text-center">
-              <p className="text-sm text-accent-foreground">
+            <div className="p-3 bg-orange-100 rounded-lg text-center border border-orange-200">
+              <p className="text-sm text-orange-700">
                 🎉 Anda diundang dengan kode: <strong>{referralCode}</strong>
               </p>
             </div>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="referral">Kode Referral (Opsional)</Label>
+            <Label htmlFor="referral" className="text-blue-900">Kode Referral (Opsional)</Label>
             <Input
               id="referral"
               placeholder="Masukkan kode referral"
               value={referralCode}
               onChange={(e) => setReferralCode(e.target.value)}
+              className="focus:ring-blue-400"
             />
           </div>
 
-          <Button 
-            onClick={handleGoogleSignIn} 
-            className="w-full"
+          <Button
+            onClick={handleGoogleSignIn}
+            className="w-full flex items-center justify-center gap-2 bg-white border border-gray-300 hover:bg-blue-50 text-gray-700 font-semibold shadow-sm py-2"
             size="lg"
+            disabled={loadingGoogle}
           >
-            <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-              <path
-                fill="currentColor"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="currentColor"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="currentColor"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-              />
-              <path
-                fill="currentColor"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-              />
-            </svg>
-            Lanjutkan dengan Google
+            {loadingGoogle ? (
+              <svg className="animate-spin h-5 w-5 mr-2 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+            ) : (
+              <svg className="h-5 w-5 mr-2" viewBox="0 0 48 48"><g><path fill="#4285F4" d="M24 9.5c3.54 0 6.73 1.23 9.24 3.25l6.91-6.91C36.53 2.36 30.64 0 24 0 14.64 0 6.27 5.64 2.18 14.07l8.06 6.27C12.99 14.09 18.01 9.5 24 9.5z" /><path fill="#34A853" d="M46.09 24.59c0-1.64-.15-3.22-.43-4.75H24v9.02h12.41c-.53 2.86-2.13 5.28-4.53 6.91l7.09 5.52C43.73 37.36 46.09 31.41 46.09 24.59z" /><path fill="#FBBC05" d="M10.24 28.34c-.62-1.86-.98-3.84-.98-5.84s.36-3.98.98-5.84l-8.06-6.27C.73 14.64 0 19.13 0 24s.73 9.36 2.18 13.07l8.06-6.27z" /><path fill="#EA4335" d="M24 46c6.64 0 12.53-2.36 16.91-6.34l-7.09-5.52c-2.01 1.35-4.57 2.16-7.32 2.16-5.99 0-11.01-4.59-13.76-10.84l-8.06 6.27C6.27 42.36 14.64 48 24 48z" /></g></svg>
+            )}
+            {loadingGoogle ? 'Memproses...' : 'Lanjutkan dengan Google'}
           </Button>
 
-          <p className="text-xs text-center text-muted-foreground">
-            Dengan masuk, Anda menyetujui syarat dan ketentuan kami.
+          <p className="text-xs text-center text-muted-foreground mt-2">
+            Dengan masuk, Anda menyetujui <a href="/terms" className="underline text-blue-700">syarat dan ketentuan</a> kami.
           </p>
         </CardContent>
       </Card>

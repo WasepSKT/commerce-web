@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Copy, Gift, ShoppingBag, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import Loading from '@/components/ui/Loading';
 
 interface Order {
   id: string;
@@ -40,13 +41,7 @@ export default function Dashboard() {
   });
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (isAuthenticated && profile) {
-      fetchDashboardData();
-    }
-  }, [isAuthenticated, profile]);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       // Fetch user orders
       const { data: ordersData } = await supabase
@@ -77,7 +72,13 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     }
-  };
+  }, [profile]);
+
+  useEffect(() => {
+    if (isAuthenticated && profile) {
+      void fetchDashboardData();
+    }
+  }, [isAuthenticated, profile, fetchDashboardData]);
 
   const copyReferralCode = () => {
     if (profile?.referral_code) {
@@ -110,8 +111,10 @@ export default function Dashboard() {
     return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
   };
 
+  // App-level loader already handles full-screen auth hydration.
+  // Render a compact inline placeholder here while loading to avoid overlay duplication.
   if (loading) {
-    return <Layout><div className="container mx-auto px-4 py-8">Loading...</div></Layout>;
+    return <div className="min-h-[50vh] flex items-center justify-center">{/* inline placeholder */}</div>;
   }
 
   if (!isAuthenticated) {
@@ -199,7 +202,7 @@ export default function Dashboard() {
                   </Button>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <h4 className="font-medium">Referral Anda ({stats.totalReferrals})</h4>
                 {referrals.length === 0 ? (
