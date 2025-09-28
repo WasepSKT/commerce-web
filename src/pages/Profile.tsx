@@ -10,6 +10,42 @@ import { MapPin, Crosshair } from 'lucide-react';
 import { useAuth, UpdateProfileResult, UserProfile } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
+// Lightweight internal types to avoid using `any` when interacting with the
+// Leaflet global loaded from CDN. We only type the small surface used here.
+type MapLike = {
+  setView: (center: [number, number], zoom?: number) => void;
+  getZoom?: () => number;
+  remove?: () => void;
+  on: (event: string, handler: (e: { latlng: { lat: number; lng: number } }) => void) => void;
+  addControl?: (ctrl: unknown) => void;
+};
+
+type MarkerLike = {
+  setLatLng: (coords: [number, number]) => void;
+  getLatLng: () => { lat: number; lng: number };
+  on: (event: string, handler: () => void) => void;
+  addTo: (m: MapLike) => MarkerLike;
+};
+
+type ProfileMapRef = { map?: MapLike; marker?: MarkerLike };
+
+type LeafletStatic = {
+  map: (containerId: string | HTMLElement) => MapLike;
+  tileLayer: (url: string, opts?: { attribution?: string }) => { addTo: (m: MapLike) => void };
+  marker: (coords: [number, number], opts?: { draggable?: boolean }) => MarkerLike;
+  Control: { extend: (obj: unknown) => unknown };
+  DomUtil: {
+    create: (tag: string, className?: string) => HTMLElement;
+  };
+  DomEvent: {
+    disableClickPropagation: (el: HTMLElement) => void;
+    on: (el: HTMLElement | Element, event: string, handler: (e: Event) => void) => void;
+    stop: (e: Event) => void;
+  };
+};
+
+const getWin = () => window as unknown as (Window & { _profile_map_ref?: ProfileMapRef; L?: LeafletStatic });
+
 export default function ProfilePage() {
   const { profile, updateProfile } = useAuth();
   const { toast } = useToast();
@@ -78,11 +114,11 @@ export default function ProfilePage() {
   // Map picker modal state
   const [showMapPicker, setShowMapPicker] = useState(false);
   // ensure a place to keep map refs
-  if (!(window as any)._profile_map_ref) (window as any)._profile_map_ref = {};
+  if (!getWin()._profile_map_ref) getWin()._profile_map_ref = {};
 
   // Dynamically load Leaflet CSS and JS from CDN when opening map picker
   async function ensureLeafletLoaded() {
-    if ((window as any).L) return;
+    if (getWin().L) return;
     // load CSS
     const cssHref = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
     if (!document.querySelector(`link[href="${cssHref}"]`)) {
@@ -93,7 +129,7 @@ export default function ProfilePage() {
     }
     // load script
     await new Promise<void>((resolve, reject) => {
-      if ((window as any).L) return resolve();
+      if (getWin().L) return resolve();
       const s = document.createElement('script');
       s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
       s.async = true;
@@ -115,17 +151,18 @@ export default function ProfilePage() {
       setLatitude(String(lat));
       setLongitude(String(lng));
       // interact with the global map ref (may not exist in SSR)
-      const ref: any = (window as any)._profile_map_ref;
+      const ref = getWin()._profile_map_ref;
       try {
         if (ref?.map) {
           const m = ref.map;
           if (ref.marker) {
             ref.marker.setLatLng([lat, lng]);
           } else {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            ref.marker = (window as any).L.marker([lat, lng], { draggable: true }).addTo(m);
+            // create marker using Leaflet static typings
+            const L = getWin().L!;
+            ref.marker = L.marker([lat, lng], { draggable: true }).addTo(m);
             ref.marker.on('dragend', function () {
-              const p = ref.marker.getLatLng();
+              const p = ref.marker!.getLatLng();
               setLatitude(String(p.lat));
               setLongitude(String(p.lng));
             });
@@ -143,8 +180,8 @@ export default function ProfilePage() {
 
   useEffect(() => {
     let mounted = true;
-    const containerId = 'profile-map-picker';
-    const ref = (window as any)._profile_map_ref as { map?: any; marker?: any } | undefined;
+  const containerId = 'profile-map-picker';
+  const ref = getWin()._profile_map_ref as ProfileMapRef | undefined;
 
     // If map already initialized and coordinates changed, update marker/view
     if (showMapPicker && ref?.map) {
@@ -164,23 +201,24 @@ export default function ProfilePage() {
     }
 
     if (!showMapPicker) return;
-    let map: any;
-    let marker: any;
+    let map: MapLike | undefined;
+    let marker: MarkerLike | undefined;
     (async () => {
       try {
         await ensureLeafletLoaded();
         if (!mounted) return;
-        const L = (window as any).L;
+        const L = getWin().L!;
         // initialize map
         const lat = latitude ? Number(latitude) : -6.200000;
         const lng = longitude ? Number(longitude) : 106.816666;
-        map = L.map(containerId).setView([lat, lng], 13);
+        map = L.map(containerId) as unknown as MapLike;
+        map.setView([lat, lng], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
-        marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+        }).addTo(map as any);
+        marker = L.marker([lat, lng], { draggable: true }).addTo(map as any);
         marker.on('dragend', function () {
-          const p = marker.getLatLng();
+          const p = marker!.getLatLng();
           setLatitude(String(p.lat));
           setLongitude(String(p.lng));
         });
@@ -190,7 +228,7 @@ export default function ProfilePage() {
             options: { position: 'topleft' },
             onAdd: function () {
               const container = L.DomUtil.create('div', 'leaflet-bar');
-              const btn = L.DomUtil.create('a', '', container);
+              const btn = L.DomUtil.create('a', '', container) as HTMLAnchorElement;
               btn.href = '#';
               btn.title = 'Gunakan lokasi saat ini';
               btn.style.marginTop = '40px';
@@ -204,15 +242,18 @@ export default function ProfilePage() {
               btn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)';
               btn.setAttribute('aria-label', 'Gunakan lokasi saat ini');
               btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4 12h4"/><path d="M16 12h4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>';
-              L.DomEvent.disableClickPropagation(container);
-              L.DomEvent.on(btn, 'click', (e: any) => {
+              L.DomEvent.disableClickPropagation(container as HTMLElement);
+              L.DomEvent.on(btn, 'click', (e: Event) => {
                 L.DomEvent.stop(e);
                 centerToCurrentLocation();
               });
               return container;
             }
           });
-          map.addControl(new LocateControl());
+          // `L.Control.extend` returns a plain object shape; cast to a
+          // constructor so we can instantiate it in TypeScript.
+          const LocateCtor = (LocateControl as unknown) as { new(): any };
+          if (map.addControl) map.addControl(new LocateCtor());
         } catch (e) {
           // ignore if L not available or extend fails
         }
@@ -229,11 +270,12 @@ export default function ProfilePage() {
               return container;
             }
           });
-          map.addControl(new CoordControl());
+          const CoordCtor = (CoordControl as unknown) as { new(): any };
+          if (map.addControl) map.addControl(new CoordCtor());
         } catch (e) {
           // ignore if fails
         }
-        map.on('click', function (e: any) {
+        map.on('click', function (e: { latlng: { lat: number; lng: number } }) {
           const { lat, lng } = e.latlng;
           if (!marker) marker = L.marker([lat, lng], { draggable: true }).addTo(map);
           else marker.setLatLng([lat, lng]);
@@ -246,7 +288,7 @@ export default function ProfilePage() {
           if (lngEl) lngEl.textContent = lng.toFixed(6);
         });
         // store refs for cleanup if needed
-        (window as any)._profile_map_ref = { map, marker };
+        getWin()._profile_map_ref = { map, marker };
       } catch (e) {
         console.debug('Leaflet load failed', e);
       }
@@ -255,10 +297,10 @@ export default function ProfilePage() {
     return () => {
       mounted = false;
       try {
-        const ref = (window as any)._profile_map_ref;
+        const ref = getWin()._profile_map_ref;
         if (ref?.map) {
-          ref.map.remove();
-          (window as any)._profile_map_ref = {};
+          ref.map.remove && ref.map.remove();
+          getWin()._profile_map_ref = {};
         }
       } catch (e) {
         // ignore
@@ -272,8 +314,6 @@ export default function ProfilePage() {
     setShowMapPicker(false);
     toast({ title: 'Lokasi diperbarui' });
   };
-  /* eslint-enable @typescript-eslint/no-explicit-any */
-
   /* duplicate centerToCurrentLocation removed; use the useCallback version above */
 
   const [loadingLocations, setLoadingLocations] = useState(false);
