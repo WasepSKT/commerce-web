@@ -74,7 +74,7 @@ export default function AddressSelectors({ province, setProvince, city, setCity,
     <>
       <div>
         <label className="text-sm font-medium">Provinsi</label>
-        <select className="input w-full" disabled={loadingLocations} value={province} onChange={(e) => { setProvince(e.target.value); }}>
+        <select className="input w-full" disabled={loadingLocations} value={province} onChange={(e) => { const v = e.target.value.trim(); console.debug('Province selected:', v); setProvince(v); }}>
           <option value="">{loadingLocations ? 'Memuat...' : 'Pilih Provinsi'}</option>
           {provinces.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
@@ -82,7 +82,7 @@ export default function AddressSelectors({ province, setProvince, city, setCity,
 
       <div>
         <label className="text-sm font-medium">Kabupaten / Kota</label>
-        <select className="input w-full" disabled={!province || loadingLocations} value={city} onChange={(e) => { setCity(e.target.value); }}>
+        <select className="input w-full" disabled={!province || loadingLocations} value={city} onChange={(e) => { const v = e.target.value.trim(); console.debug('City selected:', v); setCity(v); }}>
           <option value="">{province ? (cities.length ? 'Pilih Kota' : 'Tidak ada kota') : 'Pilih provinsi dulu'}</option>
           {cities.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
@@ -90,7 +90,7 @@ export default function AddressSelectors({ province, setProvince, city, setCity,
 
       <div>
         <label className="text-sm font-medium">Kecamatan</label>
-        <select className="input w-full" disabled={!city || loadingLocations} value={district} onChange={(e) => { setDistrict(e.target.value); }}>
+        <select className="input w-full" disabled={!city || loadingLocations} value={district} onChange={(e) => { const v = e.target.value.trim(); console.debug('District selected:', v); setDistrict(v); }}>
           <option value="">{city ? (districts.length ? 'Pilih Kecamatan' : 'Tidak ada kecamatan') : 'Pilih kota dulu'}</option>
           {districts.map(d => <option key={d} value={d}>{d}</option>)}
         </select>
@@ -99,9 +99,10 @@ export default function AddressSelectors({ province, setProvince, city, setCity,
       <div>
         <label className="text-sm font-medium">Desa / Kelurahan</label>
         <select className="input w-full" disabled={!district || loadingLocations} value={subdistrict} onChange={(e) => {
-          const val = e.target.value;
+          const val = e.target.value.trim();
+          console.debug('Subdistrict selected:', val);
           setSubdistrict(val);
-          const found = subdistricts.find(s => s.name === val);
+          const found = subdistricts.find(s => s.name.trim() === val);
           if (found) setPostalCode(found.postal);
         }}>
           <option value="">{district ? (subdistricts.length ? 'Pilih Desa / Kelurahan' : 'Tidak ada desa') : 'Pilih kecamatan dulu'}</option>
