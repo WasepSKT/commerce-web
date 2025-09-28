@@ -30,9 +30,21 @@ export default function AddressSelectors({ province, setProvince, city, setCity,
         if (!mounted) return;
         const provs = getProvincesFromCache();
         setProvinces(provs);
-        if (province) setCities(getCitiesFromCache(province));
-        if (province && city) setDistricts(getDistrictsFromCache(province, city));
-        if (province && city && district) setSubdistricts(getSubdistrictsFromCache(province, city, district));
+
+        // if the profile already has a province/city/district selected, try to keep
+        // child lists and preserve selections when they match cache (trim + case-insensitive)
+        if (province) {
+          const citiesFromCache = getCitiesFromCache(province);
+          setCities(citiesFromCache);
+          if (city) {
+            const districtsFromCache = getDistrictsFromCache(province, city);
+            setDistricts(districtsFromCache);
+          }
+          if (province && city && district) {
+            const subs = getSubdistrictsFromCache(province, city, district);
+            setSubdistricts(subs);
+          }
+        }
       } catch (e) {
         console.debug('Failed to load kodepos', e);
       } finally {
@@ -45,20 +57,32 @@ export default function AddressSelectors({ province, setProvince, city, setCity,
   }, [setProvinces, setCities, setDistricts, setSubdistricts]);
 
   useEffect(() => {
-    setCities(province ? getCitiesFromCache(province) : []);
-    setDistricts([]);
-    setSubdistricts([]);
-    setCity('');
-    setDistrict('');
-    setPostalCode('');
-  }, [province, setCity, setDistrict, setSubdistricts, setDistricts, setPostalCode]);
+    const citiesFromCache = province ? getCitiesFromCache(province) : [];
+    setCities(citiesFromCache);
+
+    // if the current city still exists in the newly loaded cities, keep it,
+    // otherwise clear downstream selections
+    const keepCity = city && citiesFromCache.some(c => c.trim().toLowerCase() === city.trim().toLowerCase());
+    if (!keepCity) {
+      setCity('');
+      setDistricts([]);
+      setSubdistricts([]);
+      setDistrict('');
+      setPostalCode('');
+    }
+  }, [province, city, setCity, setDistrict, setSubdistricts, setDistricts, setPostalCode]);
 
   useEffect(() => {
-    setDistricts((province && city) ? getDistrictsFromCache(province, city) : []);
-    setSubdistricts([]);
-    setDistrict('');
-    setPostalCode('');
-  }, [city, province, setDistrict, setSubdistricts, setPostalCode]);
+    const districtsFromCache = (province && city) ? getDistrictsFromCache(province, city) : [];
+    setDistricts(districtsFromCache);
+
+    const keepDistrict = district && districtsFromCache.some(d => d.trim().toLowerCase() === district.trim().toLowerCase());
+    if (!keepDistrict) {
+      setDistrict('');
+      setSubdistricts([]);
+      setPostalCode('');
+    }
+  }, [city, province, district, setDistrict, setSubdistricts, setPostalCode]);
 
   useEffect(() => {
     const subs = (province && city && district) ? getSubdistrictsFromCache(province, city, district) : [];

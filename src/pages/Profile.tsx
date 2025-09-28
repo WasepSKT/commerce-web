@@ -54,6 +54,7 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [full_name, setFullName] = useState(profile?.full_name ?? '');
   const [phone, setPhone] = useState(profile?.phone ?? '');
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [province, setProvince] = useState(profile?.province ?? '');
   const [city, setCity] = useState(profile?.city ?? '');
   const [district, setDistrict] = useState(profile?.district ?? '');
@@ -65,19 +66,28 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setFullName(profile?.full_name ?? '');
-    setPhone(profile?.phone ?? '');
-    setProvince(profile?.province ?? '');
-    setCity(profile?.city ?? '');
-    setDistrict(profile?.district ?? '');
-    setPostalCode(profile?.postal_code ?? '');
-    setAddress(profile?.address ?? '');
+    const trim = (v?: string) => (v ?? '').trim();
+    setFullName(trim(profile?.full_name));
+    setPhone(trim(profile?.phone));
+    setProvince(trim(profile?.province));
+    setCity(trim(profile?.city));
+    setDistrict(trim(profile?.district));
+    setSubdistrict(trim(profile?.subdistrict));
+    setPostalCode(trim(profile?.postal_code));
+    setAddress(trim(profile?.address));
     setLatitude(profile?.latitude?.toString() ?? '');
     setLongitude(profile?.longitude?.toString() ?? '');
   }, [profile]);
 
   const handleSave = async () => {
     if (!updateProfile) return;
+    // final validation before save
+    const normalized = normalizePhone(phone);
+    if (phone && !isValidIndoPhone(normalized)) {
+      setPhoneError('Nomor telepon tidak valid');
+      return;
+    }
+    setPhoneError(null);
     setSaving(true);
     const updates = {
       full_name: full_name || null,
@@ -122,6 +132,16 @@ export default function ProfilePage() {
     }, (err) => {
       toast({ variant: 'destructive', title: 'Gagal mendapatkan lokasi', description: err.message });
     });
+  };
+
+  // phone validation helpers: normalize common separators and allow 0... or +62...
+  const normalizePhone = (v: string) => v.replace(/[\s-().]/g, '');
+  const isValidIndoPhone = (v: string) => {
+    if (!v) return true; // empty allowed (optional)
+    // allow leading +62 or leading 0, followed by 8-13 digits
+    if (/^\+62[0-9]{8,13}$/.test(v)) return true;
+    if (/^0[0-9]{8,13}$/.test(v)) return true;
+    return false;
   };
 
 
@@ -182,7 +202,12 @@ export default function ProfilePage() {
 
               <div>
                 <label className="text-sm font-medium">Nomor HP / WhatsApp</label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="contoh: 081234567890" />
+                <Input value={phone} onChange={(e) => {
+                  setPhone(e.target.value);
+                  const norm = normalizePhone(e.target.value);
+                  setPhoneError(isValidIndoPhone(norm) ? null : 'Nomor telepon tidak valid');
+                }} placeholder="contoh: 081234567890" />
+                {phoneError ? <p className="mt-1 text-sm text-destructive">{phoneError}</p> : null}
               </div>
 
               <div className="md:col-span-2">
@@ -220,7 +245,7 @@ export default function ProfilePage() {
                 <div className="flex flex-col sm:flex-row md:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
                   <Button className="w-full sm:w-auto" onClick={fillCurrentLocation} variant="outline"><MapPin className="mr-2 h-4 w-4" />Gunakan Lokasi</Button>
                   <Button className="w-full sm:w-auto" onClick={() => setShowMapPicker(true)} variant="outline"><MapPin className="mr-2 h-4 w-4" />Pilih Lokasi di Peta</Button>
-                  <Button className="w-full sm:w-auto" onClick={handleSave} disabled={saving}>
+                  <Button className="w-full sm:w-auto" onClick={handleSave} disabled={saving || Boolean(phoneError)}>
                     {saving ? 'Menyimpan...' : 'Simpan Profil'}
                   </Button>
                 </div>
