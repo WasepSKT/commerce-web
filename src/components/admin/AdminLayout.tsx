@@ -131,10 +131,10 @@ export function AdminLayout({ active, onChange, children }: AdminLayoutProps) {
                         </div>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem asChild>
-                          <a href="/admin/settings" className="flex items-center"><Settings className="mr-2 h-4 w-4" />Pengaturan</a>
+                          <a href="/admin/settings" className="flex items-center cursor-pointer"><Settings className="mr-2 h-4 w-4" />Pengaturan</a>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
-                          <a href="/admin/users" className="flex items-center"><User className="mr-2 h-4 w-4" />Pengguna</a>
+                          <a href="/admin/users" className="flex items-center cursor-pointer"><User className="mr-2 h-4 w-4" />Pengguna</a>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="cursor-pointer" onSelect={() => setLogoutOpen(true)}>

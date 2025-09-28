@@ -85,11 +85,11 @@ export function Layout({ children }: LayoutProps) {
                     </div>
                   </Link>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full">
-                        <User className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full cursor-pointer hover:opacity-90">
+                          <User className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
                       <div className="flex items-center justify-start gap-2 p-2">
                         <div className="flex flex-col space-y-1 leading-none">
