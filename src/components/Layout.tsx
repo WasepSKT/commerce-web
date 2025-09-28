@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const { profile, signOut, isAuthenticated } = useAuth();
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const { totalItems } = useCart();
   const location = useLocation();
   const navigate = useNavigate();
@@ -85,11 +86,11 @@ export function Layout({ children }: LayoutProps) {
                     </div>
                   </Link>
                   <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full cursor-pointer hover:opacity-90">
-                          <User className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full cursor-pointer hover:opacity-90">
+                        <User className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
                       <div className="flex items-center justify-start gap-2 p-2">
                         <div className="flex flex-col space-y-1 leading-none">
@@ -122,36 +123,34 @@ export function Layout({ children }: LayoutProps) {
                         </>
                       )}
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <AlertDialog>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Keluar dari akun?</AlertDialogTitle>
-                            </AlertDialogHeader>
-                            <AlertDialogDescription>Apakah Anda yakin ingin logout? Anda akan dialihkan ke halaman utama.</AlertDialogDescription>
-                            <div className="mt-4 flex justify-end gap-2">
-                              <AlertDialogCancel className="mr-2">Batal</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={async () => {
-                                  const { error } = await signOut();
-                                  if (error) {
-                                    toast({ variant: 'destructive', title: 'Gagal logout', description: String(error.message || error) });
-                                  } else {
-                                    toast({ title: 'Anda telah logout' });
-                                    navigate('/');
-                                  }
-                                }}
-                              >
-                                Keluar
-                              </AlertDialogAction>
-                            </div>
-                          </AlertDialogContent>
-                          <span className="text-destructive flex items-center">
-                            <LogOut className="mr-2 h-4 w-4" />
-                            Keluar
-                          </span>
-                        </AlertDialog>
+                      <DropdownMenuItem className="cursor-pointer" onSelect={() => setLogoutOpen(true)}>
+                        <span className="flex items-center"><LogOut className="mr-2 h-4 w-4" />Keluar</span>
                       </DropdownMenuItem>
+                      <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Keluar dari akun?</AlertDialogTitle>
+                          </AlertDialogHeader>
+                          <AlertDialogDescription>Apakah Anda yakin ingin logout? Anda akan dialihkan ke halaman utama.</AlertDialogDescription>
+                          <div className="mt-4 flex justify-end gap-2">
+                            <AlertDialogCancel className="mr-2">Batal</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={async () => {
+                                const { error } = await signOut();
+                                if (error) {
+                                  const errMsg = (error as unknown as { message?: string })?.message ?? String(error);
+                                  toast({ variant: 'destructive', title: 'Gagal logout', description: errMsg });
+                                } else {
+                                  toast({ title: 'Anda telah logout' });
+                                  navigate('/');
+                                }
+                              }}
+                            >
+                              Keluar
+                            </AlertDialogAction>
+                          </div>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </>
