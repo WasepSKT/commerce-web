@@ -94,7 +94,18 @@ export default function ProfilePage() {
     if ('error' in res && res.error) {
       toast({ variant: 'destructive', title: 'Gagal menyimpan', description: String(res.error) });
     } else {
-      toast({ title: 'Profil diperbarui' });
+      // if backend stripped some fields due to schema mismatch, inform the user
+      const hasSkipped = (v: unknown): v is { skipped: string[] } => {
+        if (typeof v !== 'object' || v === null) return false;
+        const r = v as Record<string, unknown>;
+        return Array.isArray(r.skipped) && r.skipped.every((s) => typeof s === 'string');
+      };
+      if (hasSkipped(res) && res.skipped.length) {
+        // Use default toast variant (component supports 'default' and 'destructive')
+        toast({ title: 'Beberapa field tidak disimpan', description: `Field: ${res.skipped.join(', ')} tidak ditemukan di server dan diabaikan.` });
+      } else {
+        toast({ title: 'Profil diperbarui' });
+      }
     }
   };
   const fillCurrentLocation = () => {

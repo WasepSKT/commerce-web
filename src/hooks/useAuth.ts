@@ -25,7 +25,7 @@ export interface UserProfile {
 }
 
 export type UpdateProfileResult =
-  | { data: UserProfile }
+  | { data: UserProfile; skipped?: string[] }
   | { error: unknown };
 
 // ----- Module-level singleton store -----
@@ -217,19 +217,63 @@ export function useAuth() {
       const payload: Record<string, unknown> = {};
       for (const k of allowed) {
         if (k in updates) {
-          // @ts-expect-error dynamic key
-          payload[k] = updates[k];
+          // assign using string index and cast to unknown to satisfy TS
+          payload[k as string] = updates[k] as unknown;
         }
       }
 
       if (Object.keys(payload).length === 0) return { error: 'no-valid-fields' };
 
-      const { data, error } = await supabase.from('profiles').update(payload).eq('id', store.profile.id).select('*').single();
-      if (error) return { error };
-      store.profile = data as UserProfile;
-      localStorage.setItem('userProfile', JSON.stringify(store.profile));
-      notify();
-      return { data: store.profile };
+      // Try to update. If PostgREST returns a PGRST204 about a missing column
+      // in the schema cache, remove that column from the payload and retry.
+  let attempt = 0;
+      const maxAttempts = 3;
+      let lastError: unknown = null;
+      let resultData: unknown = null;
+  const skippedCols: string[] = [];
+
+      const hasMessage = (v: unknown): v is { message: string } => {
+        if (typeof v !== 'object' || v === null) return false;
+        const r = v as Record<string, unknown>;
+        return typeof r.message === 'string';
+      };
+
+  while (attempt < maxAttempts) {
+        attempt++;
+        const { data, error } = await supabase.from('profiles').update(payload).eq('id', store.profile.id).select('*').single();
+        if (!error) {
+          resultData = data;
+          break;
+        }
+        lastError = error;
+
+        // Defensive: detect PostgREST schema-cache missing column error message and strip the column
+        // safe narrowing: support objects with a message property or fallback to string
+        let msg: string;
+        if (hasMessage(error)) msg = error.message;
+        else msg = String(error);
+        const missingColMatch = String(msg).match(/Could not find the '([^']+)' column of 'profiles'/i);
+        if (missingColMatch && missingColMatch[1]) {
+          const colName = missingColMatch[1];
+          if (colName in payload) {
+            // remove the offending key, record it and retry
+            delete payload[colName];
+            skippedCols.push(colName);
+            // continue loop to retry
+            continue;
+          }
+        }
+
+        // Not a recoverable missing-column error we can handle; break and return the error
+        break;
+      }
+
+  if (resultData == null) return { error: lastError ?? 'update-failed' };
+
+  store.profile = resultData as UserProfile;
+  localStorage.setItem('userProfile', JSON.stringify(store.profile));
+  notify();
+  return { data: store.profile, skipped: skippedCols.length ? skippedCols : undefined };
     } catch (err) {
       return { error: err };
     }
