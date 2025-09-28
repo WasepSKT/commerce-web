@@ -111,7 +111,7 @@ export default function ProfilePage() {
     });
   };
 
-  
+
   // Map picker modal state
   const [showMapPicker, setShowMapPicker] = useState(false);
   // ensure a place to keep map refs
@@ -181,8 +181,8 @@ export default function ProfilePage() {
 
   useEffect(() => {
     let mounted = true;
-  const containerId = 'profile-map-picker';
-  const ref = getWin()._profile_map_ref as ProfileMapRef | undefined;
+    const containerId = 'profile-map-picker';
+    const ref = getWin()._profile_map_ref as ProfileMapRef | undefined;
 
     // If map already initialized and coordinates changed, update marker/view
     if (showMapPicker && ref?.map) {
@@ -216,8 +216,8 @@ export default function ProfilePage() {
         map.setView([lat, lng], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map as MapLike);
-  marker = L.marker([lat, lng], { draggable: true }).addTo(map as MapLike);
+        }).addTo(map as MapLike);
+        marker = L.marker([lat, lng], { draggable: true }).addTo(map as MapLike);
         marker.on('dragend', function () {
           const p = marker!.getLatLng();
           setLatitude(String(p.lat));
