@@ -4,8 +4,10 @@ import type { Database } from './types';
 
 // Prefer build-time env vars so production keys are injected at build/deploy time.
 // Ensure these are set on Vercel (or your hosting) and NOT committed to source.
-const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string) ?? "https://eyafpojtwwgdmimlnxrw.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string) ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5YWZwb2p0d3dnZG1pbWxueHJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4NjE1MzAsImV4cCI6MjA3NDQzNzUzMH0.9yPE7pBqn2ecDoDmH95TB6BawSLGWRN4MbAJuW0KtG8";
+// Do NOT include secret keys in source. We intentionally do not provide a
+// secret fallback here to avoid leaking credentials.
+const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string) ?? '';
+const SUPABASE_PUBLISHABLE_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string) ?? '';
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
@@ -27,3 +29,11 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     detectSessionInUrl: true,
   }
 });
+
+// Warn in development if env vars are missing so developers notice and set them
+// locally (but do not commit secrets to the repository).
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  console.warn('[supabase] Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY.\n' +
+    'Set these in your .env.local or hosting provider environment variables.\n' +
+    'Do NOT commit real keys to source control.');
+}
