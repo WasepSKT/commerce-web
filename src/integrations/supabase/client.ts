@@ -2,16 +2,28 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://eyafpojtwwgdmimlnxrw.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5YWZwb2p0d3dnZG1pbWxueHJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4NjE1MzAsImV4cCI6MjA3NDQzNzUzMH0.9yPE7pBqn2ecDoDmH95TB6BawSLGWRN4MbAJuW0KtG8";
+// Prefer build-time env vars so production keys are injected at build/deploy time.
+// Ensure these are set on Vercel (or your hosting) and NOT committed to source.
+const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string) ?? "https://eyafpojtwwgdmimlnxrw.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string) ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5YWZwb2p0d3dnZG1pbWxueHJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg4NjE1MzAsImV4cCI6MjA3NDQzNzUzMH0.9yPE7pBqn2ecDoDmH95TB6BawSLGWRN4MbAJuW0KtG8";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
+    // Use localStorage to persist the session in the browser. This stores the
+    // access token + refresh token (encrypted by Supabase) so the user stays
+    // signed-in across reloads.
     storage: localStorage,
+    // Persist session across tabs / reloads
     persistSession: true,
+    // Automatically refresh the access token using the refresh token when it
+    // expires. This keeps the user authenticated without prompting for login.
     autoRefreshToken: true,
+    // Detect and parse the auth session in URL fragments after OAuth redirects.
+    // This is useful if you use `supabase.auth.signInWithOAuth` which returns
+    // the session in the URL on redirect.
+    detectSessionInUrl: true,
   }
 });
