@@ -128,6 +128,28 @@ export default function ProfilePage() {
   // Map picker modal state (component encapsulates map logic)
   const [showMapPicker, setShowMapPicker] = useState(false);
 
+  // Stable callbacks passed to AddressSelectors to avoid recreating functions each render
+  const handleSetProvince = useCallback((v: string) => {
+    setProvince(v);
+    setCity('');
+    setDistrict('');
+    setSubdistrict('');
+    setPostalCode('');
+  }, []);
+
+  const handleSetCity = useCallback((v: string) => {
+    setCity(v);
+    setDistrict('');
+    setSubdistrict('');
+    setPostalCode('');
+  }, []);
+
+  const handleSetDistrict = useCallback((v: string) => {
+    setDistrict(v);
+    setSubdistrict('');
+    setPostalCode('');
+  }, []);
+
   const confirmMapSelection = () => {
     setShowMapPicker(false);
     toast({ title: 'Lokasi diperbarui' });
@@ -170,11 +192,11 @@ export default function ProfilePage() {
 
               <AddressSelectors
                 province={province}
-                setProvince={(v) => { setProvince(v); setCity(''); setDistrict(''); setSubdistrict(''); setPostalCode(''); }}
+                setProvince={handleSetProvince}
                 city={city}
-                setCity={(v) => { setCity(v); setDistrict(''); setSubdistrict(''); setPostalCode(''); }}
+                setCity={handleSetCity}
                 district={district}
-                setDistrict={(v) => { setDistrict(v); setSubdistrict(''); setPostalCode(''); }}
+                setDistrict={handleSetDistrict}
                 subdistrict={subdistrict}
                 setSubdistrict={setSubdistrict}
                 postalCode={postalCode}
