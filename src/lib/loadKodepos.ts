@@ -40,11 +40,17 @@ export async function loadKodepos(): Promise<NormLocations> {
 
   const norm: NormLocations = {};
   for (const item of list as Array<KodeposRow>) {
-    const province = (item.province || item.provinsi || 'Unknown') as string;
-    const city = (item.city || item.kabupaten || item.kota || 'Unknown City') as string;
-    const district = (item.district || item.kecamatan || 'Unknown District') as string;
-    const sub = (item.subdistrict || item.desa || item.kelurahan || '') as string;
+    // normalize keys by trimming whitespace
+    const provinceRaw = (item.province || item.provinsi || 'Unknown') as string;
+    const cityRaw = (item.city || item.kabupaten || item.kota || 'Unknown City') as string;
+    const districtRaw = (item.district || item.kecamatan || 'Unknown District') as string;
+    const subRaw = (item.subdistrict || item.desa || item.kelurahan || '') as string;
     const postal = (item.postal_code || item.kodepos || '') as string;
+
+    const province = provinceRaw.trim();
+    const city = cityRaw.trim();
+    const district = districtRaw.trim();
+    const sub = subRaw.trim();
 
     if (!norm[province]) norm[province] = {};
     if (!norm[province][city]) norm[province][city] = {};
