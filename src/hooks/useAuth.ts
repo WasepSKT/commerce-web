@@ -210,7 +210,21 @@ export function useAuth() {
   const updateProfile = async (updates: Partial<UserProfile>): Promise<UpdateProfileResult> => {
     if (!store.profile) return { error: 'not-authenticated' };
     try {
-      const { data, error } = await supabase.from('profiles').update(updates).eq('id', store.profile.id).select('*').single();
+      // Whitelist allowed columns to avoid sending unknown fields to PostgREST
+      const allowed: Array<keyof UserProfile> = [
+        'full_name', 'phone', 'province', 'city', 'district', 'subdistrict', 'postal_code', 'address', 'latitude', 'longitude'
+      ];
+      const payload: Record<string, unknown> = {};
+      for (const k of allowed) {
+        if (k in updates) {
+          // @ts-expect-error dynamic key
+          payload[k] = updates[k];
+        }
+      }
+
+      if (Object.keys(payload).length === 0) return { error: 'no-valid-fields' };
+
+      const { data, error } = await supabase.from('profiles').update(payload).eq('id', store.profile.id).select('*').single();
       if (error) return { error };
       store.profile = data as UserProfile;
       localStorage.setItem('userProfile', JSON.stringify(store.profile));
