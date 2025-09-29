@@ -7,7 +7,7 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { Search, User, AlertTriangle, Settings, LogOut } from 'lucide-react';
+import { User, AlertTriangle, Settings, LogOut } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,

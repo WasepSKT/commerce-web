@@ -49,11 +49,16 @@ export default function CartPage() {
     }
   }, [toast]);
 
+  // Only refetch product metadata when the set of product IDs changes.
+  // This prevents re-fetching when only quantities change.
+  const idsKey = useMemo(() => items.map(i => i.id).sort().join(','), [items]);
+
   useEffect(() => {
-    const ids = items.map(i => i.id);
+    const ids = idsKey ? idsKey.split(',').filter(Boolean) : [];
     setLoading(true);
     void fetchProducts(ids);
-  }, [items, fetchProducts]);
+    // depend on idsKey (stable representation of id set) and fetchProducts
+  }, [idsKey, fetchProducts]);
 
   const lineItems = useMemo(() => {
     return items
