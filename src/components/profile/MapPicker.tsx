@@ -139,12 +139,11 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
               const btn = L.DomUtil.create('a', '', container) as HTMLAnchorElement;
               btn.href = '#';
               btn.title = 'Gunakan lokasi saat ini';
-              btn.style.marginTop = '40px';
               btn.style.display = 'flex';
               btn.style.alignItems = 'center';
               btn.style.justifyContent = 'center';
-              btn.style.width = '36px';
-              btn.style.height = '36px';
+              btn.style.width = '32px';
+              btn.style.height = '32px';
               btn.style.background = 'white';
               btn.style.borderRadius = '6px';
               btn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)';

@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { ProductCard } from '@/components/ProductCard';
+import FeaturedCarousel from '@/components/FeaturedCarousel';
 import { Layout } from '@/components/Layout';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowRight, Star, Shield, Truck } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { FaLeaf, FaShieldAlt, FaStar, FaTruck, FaShoppingCart } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
+import heroImg from '@/assets/img/heroimg.svg';
+import ProductShowcase from '@/components/ProductShowcase';
 
 interface Product {
   id: string;
@@ -47,114 +49,114 @@ const Index = () => {
   return (
     <Layout>
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary/10 via-background to-accent/10 py-16">
+      <section className="py-16">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
-              <Badge variant="secondary" className="w-fit">
-                🐱 Makanan Kucing Premium
-              </Badge>
-              <h1 className="text-4xl lg:text-6xl font-bold leading-tight">
-                Nutrisi Terbaik untuk{' '}
-                <span className="text-primary">Kucing Kesayangan</span>
+              <h1 className="text-4xl lg:text-5xl font-extrabold text-center md:text-left text-[#7A1316] leading-tight">
+                Nutrisi Terbaik untuk
+                <div className="text-4xl lg:text-5xl font-extrabold">Kucing kesayangan</div>
               </h1>
-              <p className="text-xl text-muted-foreground leading-relaxed">
-                Temukan koleksi makanan kucing berkualitas tinggi yang diformulasikan khusus 
-                untuk kesehatan dan kebahagiaan kucing Anda.
+              <p className="text-base text-muted-foreground text-center md:text-left">
+                Berikan yang terbaik untuk kucing Anda dengan makanan premium berkualitas tinggi, dipercaya oleh ribuan pemilik kucing di Indonesia.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button size="lg" className="text-lg" asChild>
-                  <Link to="/products">
-                    Belanja Sekarang
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Link>
-                </Button>
-                <Button size="lg" variant="outline" className="text-lg">
-                  Pelajari Lebih Lanjut
-                </Button>
-              </div>
-            </div>
-            <div className="relative">
-              <img
-                src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&h=400&fit=crop"
-                alt="Happy Cat"
-                className="rounded-2xl shadow-2xl"
-              />
-              <div className="absolute -bottom-4 -left-4 bg-card p-4 rounded-lg shadow-lg">
-                <div className="flex items-center space-x-2">
-                  <Star className="h-5 w-5 text-yellow-400 fill-current" />
-                  <span className="font-semibold">4.9/5</span>
-                  <span className="text-sm text-muted-foreground">dari 1000+ review</span>
+              <div className="flex justify-start sm:justify-start md:justify-start lg:justify-start">
+                <div className="sm:flex sm:justify-start md:justify-start lg:justify-start w-full sm:w-auto md:w-auto lg:w-auto">
+                  <div className="flex justify-center sm:justify-start w-full sm:w-auto">
+                    <Button asChild size="lg" className="rounded-full px-5 py-2" style={{ backgroundColor: '#7A1316', color: '#F8DF7C' }}>
+                      <Link to="/products">
+                        <span className="inline-flex items-center gap-2"><FaShoppingCart className="h-4 w-4" />Belanja Sekarang</span>
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               </div>
+            </div>
+            <div className="flex justify-center lg:justify-end">
+              <img src={heroImg} alt="Hero" className="w-[520px] h-auto rounded-[90px] shadow-2xl object-cover" />
             </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="py-16 bg-card">
+      <section
+        className="py-16"
+        style={{ background: 'linear-gradient(180deg, #FFF8E0 0%, hsl(var(--background)) 100%)' }}
+      >
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Mengapa Memilih Regal Paw?</h2>
+            <h2 className="text-3xl font-bold mb-4 text-[#7A1316]">Mengapa Regal Paw?</h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Kami berkomitmen memberikan yang terbaik untuk kucing Anda dengan layanan dan produk berkualitas tinggi.
+              Kami berkomitmen memberikan nutrisi terbaik untuk kucing kesayangan Anda,
+              dengan standar kualitas internasional.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="text-center p-6">
-              <CardContent className="space-y-4">
-                <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                  <Shield className="h-6 w-6 text-primary" />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* Card 1 */}
+            <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-shadow">
+              <div className="flex flex-col items-center">
+                <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
+                  <FaLeaf className="h-6 w-6 text-[#F8DF7C]" />
                 </div>
-                <h3 className="text-xl font-semibold">Kualitas Terjamin</h3>
-                <p className="text-muted-foreground">
-                  Semua produk telah melewati standar kualitas internasional dan aman untuk kucing Anda.
+                <h3 className="text-lg font-semibold text-[#7A1316] mb-2">100% Natural</h3>
+                <p className="text-sm text-muted-foreground text-center">
+                  Terbuat dari bahan-bahan alami pilihan tanpa pengawet buatan atau pewarna kimia
                 </p>
-              </CardContent>
-            </Card>
-            <Card className="text-center p-6">
-              <CardContent className="space-y-4">
-                <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                  <Truck className="h-6 w-6 text-primary" />
+              </div>
+            </div>
+
+            {/* Card 2 */}
+            <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-shadow">
+              <div className="flex flex-col items-center">
+                <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
+                  <FaShieldAlt className="h-6 w-6 text-[#F8DF7C]" />
                 </div>
-                <h3 className="text-xl font-semibold">Pengiriman Cepat</h3>
-                <p className="text-muted-foreground">
+                <h3 className="text-lg font-semibold text-[#7A1316] mb-2">Kualitas Premium</h3>
+                <p className="text-sm text-muted-foreground text-center">
+                  Diproduksi dengan standar internasional dan telah mendapat sertifikasi dari AAFCO
+                </p>
+              </div>
+            </div>
+
+            {/* Card 3 */}
+            <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-shadow">
+              <div className="flex flex-col items-center">
+                <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
+                  <FaStar className="h-6 w-6 text-[#F8DF7C]" />
+                </div>
+                <h3 className="text-lg font-semibold text-[#7A1316] mb-2">Nutrisi Lengkap</h3>
+                <p className="text-sm text-muted-foreground text-center">
+                  Mengandung protein, vitamin, dan mineral yang dibutuhkan kucing untuk tumbuh sehat
+                </p>
+              </div>
+            </div>
+
+            {/* Card 4 */}
+            <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-shadow">
+              <div className="flex flex-col items-center">
+                <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
+                  <FaTruck className="h-6 w-6 text-[#F8DF7C]" />
+                </div>
+                <h3 className="text-lg font-semibold text-[#7A1316] mb-2">Pengiriman Cepat</h3>
+                <p className="text-sm text-muted-foreground text-center">
                   Pengiriman ke seluruh Indonesia dengan sistem tracking dan kemasan yang aman.
                 </p>
-              </CardContent>
-            </Card>
-            <Card className="text-center p-6">
-              <CardContent className="space-y-4">
-                <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                  <Star className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold">Harga Terjangkau</h3>
-                <p className="text-muted-foreground">
-                  Dapatkan produk premium dengan harga yang kompetitif dan berbagai promo menarik.
-                </p>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </div>
+      </section>
+
+      {/* Product Showcase (carousel) */}
+      <section className="py-16">
+        <ProductShowcase />
       </section>
 
       {/* Featured Products */}
       <section className="py-16">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between mb-12">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Produk Unggulan</h2>
-              <p className="text-muted-foreground">Koleksi makanan kucing terpopuler dan terlaris</p>
-            </div>
-            <Button variant="outline" asChild>
-              <Link to="/products">
-                Lihat Semua
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[...Array(8)].map((_, i) => (
@@ -167,11 +169,7 @@ const Index = () => {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {featuredProducts.map(product => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
+            <FeaturedCarousel products={featuredProducts} />
           )}
         </div>
       </section>
@@ -183,7 +181,7 @@ const Index = () => {
             Siap Memberikan yang Terbaik untuk Kucing Anda?
           </h2>
           <p className="text-primary-foreground/80 text-lg mb-8 max-w-2xl mx-auto">
-            Bergabunglah dengan ribuan pemilik kucing yang telah mempercayai Regal Paw untuk 
+            Bergabunglah dengan ribuan pemilik kucing yang telah mempercayai Regal Paw untuk
             nutrisi terbaik kucing kesayangan mereka.
           </p>
           <Button size="lg" variant="secondary" className="text-lg" asChild>

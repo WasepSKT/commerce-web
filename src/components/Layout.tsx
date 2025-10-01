@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react';
+import logoImg from '/regalpaw.png';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -39,12 +40,12 @@ export function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-        <div className="w-full px-4">
+        <div className="container px-4">
           <div className="grid grid-cols-3 items-center h-16">
             {/* Logo (left) */}
             <div className="flex items-center">
               <Link to="/" className="flex items-center space-x-2">
-                <img src="/regalpaw.png" alt="Regal Paw" className="h-10 w-auto" />
+                <img src={logoImg} alt="Regal Paw" className="h-10 w-auto" />
               </Link>
             </div>
 
@@ -161,7 +162,7 @@ export function Layout({ children }: LayoutProps) {
                 </>
               ) : (
                 <div className="hidden md:flex items-center space-x-3">
-                  <Button asChild size="sm" className="rounded-full px-4 py-2" style={{ backgroundColor: '#7A1316', color: '#F8DF7C' }}>
+                  <Button asChild size="sm" className="rounded-full px-4 py-4" style={{ backgroundColor: '#7A1316', color: '#F8DF7C' }}>
                     <Link to="/auth/login">Login</Link>
                   </Button>
                   <Button asChild size="sm" className="rounded-full px-4 py-2" style={{ backgroundColor: '#7A1316', color: '#F8DF7C' }}>

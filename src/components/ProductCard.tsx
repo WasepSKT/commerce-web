@@ -31,66 +31,57 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const isOutOfStock = product.stock_quantity === 0;
 
   return (
-    <Card className="group overflow-hidden transition-all duration-200 hover:shadow-lg hover:shadow-primary/5">
-      <CardHeader className="p-0">
-        <div className="relative overflow-hidden">
-          <img
-            src={product.image_url}
-            alt={product.name}
-            className="h-48 w-full object-cover transition-transform duration-200 group-hover:scale-105"
-            onError={(e) => {
-              e.currentTarget.src = 'https://images.unsplash.com/photo-1548681528-6a5c45b66b42?w=400';
-            }}
-          />
-          {isOutOfStock && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-              <Badge variant="destructive" className="text-sm">
-                Stok Habis
-              </Badge>
-            </div>
-          )}
-          <Badge 
-            variant="secondary" 
-            className="absolute top-2 left-2 text-xs"
-          >
-            {product.category}
-          </Badge>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="p-4">
-        <h3 className="font-semibold text-lg mb-2 line-clamp-2">{product.name}</h3>
-        <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
-          {product.description}
-        </p>
-        <div className="flex items-center justify-between">
-          <span className="text-2xl font-bold text-primary">
-            {formatPrice(product.price)}
-          </span>
-          <span className="text-sm text-muted-foreground">
-            Stok: {product.stock_quantity}
-          </span>
-        </div>
-      </CardContent>
-      
-      <CardFooter className="p-4 pt-0 flex gap-2">
-        <Button variant="outline" size="sm" className="flex-1" asChild>
-          <Link to={`/product/${product.id}`}>
-            <Eye className="w-4 h-4 mr-1" />
-            Detail
-          </Link>
-        </Button>
-        {!isOutOfStock && onAddToCart && (
-          <Button 
-            size="sm" 
-            className="flex-1"
-            onClick={() => onAddToCart(product)}
-          >
-            <ShoppingCart className="w-4 h-4 mr-1" />
-            Tambah
-          </Button>
+    <Card className="group rounded-2xl overflow-hidden shadow-card bg-white">
+      {/* Header: full-width image */}
+      <div className="relative bg-white rounded-t-2xl overflow-hidden">
+        <img
+          src={product.image_url}
+          alt={product.name}
+          className="w-full h-56 object-cover object-center bg-white transform transition-transform duration-300 group-hover:scale-105"
+          onError={(e) => {
+            e.currentTarget.src = 'https://images.unsplash.com/photo-1548681528-6a5c45b66b42?w=400';
+          }}
+        />
+        {isOutOfStock && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+            <Badge variant="destructive" className="text-sm">
+              Stok Habis
+            </Badge>
+          </div>
         )}
-      </CardFooter>
+        <Badge variant="secondary" className="absolute top-4 left-4 text-xs">
+          {product.category}
+        </Badge>
+      </div>
+
+      {/* Body: title, description, price, stock */}
+      <div className="px-6 pb-2 pt-2">
+        <h3 className="text-xl font-extrabold text-[#7A1316] mb-2 line-clamp-2">{product.name}</h3>
+        <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{product.description}</p>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-2xl font-bold text-[#7A1316]">{formatPrice(product.price)}</span>
+          <span className="text-sm text-muted-foreground">Stok: {product.stock_quantity}</span>
+        </div>
+      </div>
+
+      {/* Footer: actions */}
+      <div className="px-6 pb-6 pt-0">
+        <div className="flex items-center gap-4">
+          <Button asChild variant="ghost" className="flex-1 bg-[#FBF4EB] text-[#7A1316] border-none rounded-xl py-3">
+            <Link to={`/product/${product.id}`} className="inline-flex items-center justify-center gap-2">
+              <Eye className="w-4 h-4" />
+              <span className="font-medium">Detail</span>
+            </Link>
+          </Button>
+
+          {!isOutOfStock && onAddToCart && (
+            <Button size="sm" className="flex-1 bg-[#7A1316] text-[#F8DF7C] rounded-xl py-3 inline-flex items-center justify-center" onClick={() => onAddToCart(product)}>
+              <ShoppingCart className="w-4 h-4 mr-2" />
+              <span className="font-medium">Tambah</span>
+            </Button>
+          )}
+        </div>
+      </div>
     </Card>
   );
 }

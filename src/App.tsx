@@ -20,6 +20,7 @@ import AdminRoute from "./components/admin/AdminRoute";
 import NotFound from "./pages/NotFound";
 import Loading from "@/components/ui/Loading";
 import { useAuth } from "@/hooks/useAuth";
+import ScrollToTopOnNav from './components/ScrollToTopOnNav';
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ export default function App() {
         <Loading fullscreen active={loading} minVisibleMs={2000} />
 
         <BrowserRouter>
+          <ScrollToTopOnNav />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/products" element={<ProductList />} />

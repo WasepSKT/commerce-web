@@ -17,30 +17,37 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 220 13% 13%;
 
-    --primary: 32 95% 44%;
+    /* Updated brand palette (provided hex -> HSL):
+     1. #7A1316 -> 358 73% 28% (primary)
+     2. #F8DF7C -> 48 90% 73% (accent / light)
+     3. #B37F2C -> 37 61% 44% (brown)
+     4. #F8DF7C -> 48 90% 73% (reused)
+     5. #FFF4A8 -> 52 100% 83% (cream)
+   */
+    --primary: 358 73% 28%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 45 23% 95%;
+    --secondary: 48 90% 73%;
     --secondary-foreground: 220 13% 13%;
 
-    --muted: 45 23% 95%;
+    --muted: 52 100% 83%;
     --muted-foreground: 220 9% 46%;
 
-    --accent: 32 95% 44%;
+    --accent: 48 90% 73%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 358 73% 28%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 45 23% 89%;
-    --input: 45 23% 89%;
-    --ring: 32 95% 44%;
+    --border: 52 100% 83%;
+    --input: 52 100% 83%;
+    --ring: 358 73% 28%;
 
     /* Brand specific colors */
-    --brand-orange: 32 95% 44%;
-    --brand-orange-light: 32 95% 85%;
-    --brand-brown: 30 25% 25%;
-    --brand-cream: 45 25% 95%;
+    --brand-orange: 48 90% 73%;
+    --brand-orange-light: 52 100% 83%;
+    --brand-brown: 37 61% 44%;
+    --brand-cream: 52 100% 83%;
 
     --radius: 0.5rem;
 
@@ -111,8 +118,23 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  /* Typography: Roboto for body, Fredoka One for headings */
   body {
     @apply bg-background text-foreground;
+    font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Fredoka One', 'Roboto', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    /* Prevent Fredoka One from looking too tight: small positive letter-spacing */
+    letter-spacing: 0.03em;
+    /* Slightly reduce weight for better balance if needed */
+    font-weight: 400;
   }
 }
 
@@ -162,6 +184,17 @@ All colors MUST be HSL.
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Hide native scrollbars for embla viewport (keeps transform-based carousel clean) */
+.embla__viewport {
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+.embla__viewport::-webkit-scrollbar {
+  display: none;
+  /* Safari and Chrome */
 }
 
 .loading-overlay {
