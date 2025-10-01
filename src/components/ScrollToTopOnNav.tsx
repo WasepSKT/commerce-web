@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 
 /**
@@ -8,6 +8,8 @@ import { useLocation } from 'react-router-dom';
  */
 export default function ScrollToTopOnNav() {
   const { pathname } = useLocation();
+  // Track whether this is the first navigation (initial load)
+  const isFirstRef = useRef(true);
 
   useEffect(() => {
     // Determine user preference
@@ -28,15 +30,21 @@ export default function ScrollToTopOnNav() {
     }
 
     // Focus first meaningful heading to announce content change to SR users
-    // We'll try h1, then h2 inside main
-    setTimeout(() => {
-      const main = document.querySelector('main') || document.body;
-      const heading = (main.querySelector('h1') || main.querySelector('h2')) as HTMLElement | null;
-      if (heading) {
-        heading.setAttribute('tabindex', '-1');
-        heading.focus();
-      }
-    }, 200);
+    // We'll try h1, then h2 inside main. Skip focusing on the very first load to
+    // avoid an unwanted focus outline when the page is reloaded.
+    if (!isFirstRef.current) {
+      setTimeout(() => {
+        const main = document.querySelector('main') || document.body;
+        const heading = (main.querySelector('h1') || main.querySelector('h2')) as HTMLElement | null;
+        if (heading) {
+          heading.setAttribute('tabindex', '-1');
+          heading.focus();
+        }
+      }, 200);
+    }
+
+    // After the first navigation, clear the flag
+    isFirstRef.current = false;
   }, [pathname]);
 
   return null;
