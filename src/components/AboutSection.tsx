@@ -1,0 +1,73 @@
+import React from 'react';
+import { FaLeaf, FaFlask, FaHandshake, FaUsers } from 'react-icons/fa';
+import tunaImg from '@/assets/img/tuna.png';
+import salmonImg from '@/assets/img/salmon.png';
+import oceanImg from '@/assets/img/oceanfish.png';
+import { Link } from 'react-router-dom';
+
+
+export default function AboutSection() {
+  // Use local default images (do not rely on product images)
+  const images = [tunaImg, oceanImg, salmonImg];
+
+  const features = [
+    { title: 'Sertifikasi AACFO', desc: 'Semua Produk telah memenuhi standar nutrisi internasional', icon: FaLeaf },
+    { title: 'Riset & Pengembangan', desc: 'Tim ahli kami terus berinovasi untuk formula terbaik', icon: FaFlask },
+    { title: 'Kemitraan Global', desc: 'Bekerjasama dengan supplier terpercaya dari berbagai negara', icon: FaHandshake },
+    { title: 'Komunitas Pemilik', desc: 'Membangun Komunitas yang peduli kesehatan kucing', icon: FaUsers },
+  ];
+
+  return (
+    <section className="py-16">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-8">
+          <p className="text-sm font-medium text-[#F8DF7C]">Tentang Regal Paw</p>
+          <h2 className="text-3xl lg:text-4xl font-extrabold text-brand">Dedikasi Kami untuk kesehatan Kucing Indonesia</h2>
+          <p className="text-muted-foreground max-w-3xl mx-auto mt-4">
+            Sejak 2024, Regal Paw menjadi pilihan utama ribuan pemilik kucing di Indonesia. Kami memahami bahwa kucing adalah bagian dari keluarga, dan mereka layak mendapatkan nutrisi terbaik.
+            Dengan berkolaborasi bersama ahli nutrisi hewan dan dokter hewan berpengalaman, kami menghadirkan produk-produk berkualitas premium yang telah teruji klinis dan dipercaya oleh para profesional.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          {features.map((f) => {
+            const Icon = f.icon;
+            return (
+              <div key={f.title} className="flex items-start gap-4">
+                <div className="h-12 w-12 rounded-full bg-[#7A1316] flex items-center justify-center text-[#F8DF7C]">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-brand mb-1">{f.title}</h4>
+                  <p className="text-sm text-muted-foreground">{f.desc}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="bg-[#7A1316] rounded-2xl p-8">
+          <div className="flex items-center justify-center gap-12 py-8">
+            {images.map((src, i) => (
+              <div
+                key={i}
+                role="button"
+                tabIndex={0}
+                aria-label={`Produk ${i + 1}`}
+                className="w-46 h-58 flex items-center justify-center bg-white/0 transform transition-transform duration-300 hover:scale-105 hover:-translate-y-1 focus:scale-105 focus:-translate-y-1"
+              >
+                <img src={src} alt={`product-${i}`} className="max-h-full object-contain pointer-events-none" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="text-center mt-8">
+          <Link to="/about">
+            <button className="rounded-full bg-[#7A1316] text-[#F8DF7C] px-6 py-3">Pelajari Lebih Lanjut</button>
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
