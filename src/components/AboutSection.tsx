@@ -1,6 +1,6 @@
 import React from 'react';
 import { FaLeaf, FaFlask, FaHandshake, FaUsers } from 'react-icons/fa';
-import tunaImg from '@/assets/img/tuna.png';
+import tunaImg from '@/assets/img/Tuna.png';
 import salmonImg from '@/assets/img/salmon.png';
 import oceanImg from '@/assets/img/oceanfish.png';
 import { Link } from 'react-router-dom';
