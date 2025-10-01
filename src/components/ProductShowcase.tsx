@@ -194,7 +194,7 @@ const ProductShowcase: React.FC = () => {
                 onClick={goPrev}
                 disabled={!emblaApi}
                 aria-disabled={!emblaApi}
-                className="absolute top-1/2 transform -translate-y-1/2 bg-white/95 text-[#7A1316] rounded-full p-3 sm:p-3.5 shadow pointer-events-auto z-[9999] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white"
+                className="absolute top-1/2 transform -translate-y-1/2 bg-white/95 text-brand rounded-full p-3 sm:p-3.5 shadow pointer-events-auto z-[9999] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white"
                 style={{ left: 'calc(50% - var(--ps-image-half, 190px) - 40px)', boxShadow: '0 8px 20px rgba(0,0,0,0.18)', border: '2px solid rgba(248,223,124,0.95)', touchAction: 'manipulation' }}
                 data-test="ps-prev-btn"
               >
@@ -207,7 +207,7 @@ const ProductShowcase: React.FC = () => {
                 onClick={goNext}
                 disabled={!emblaApi}
                 aria-disabled={!emblaApi}
-                className="absolute top-1/2 transform -translate-y-1/2 bg-white/95 text-[#7A1316] rounded-full p-3 sm:p-3.5 shadow pointer-events-auto z-[9999] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white"
+                className="absolute top-1/2 transform -translate-y-1/2 bg-white/95 text-brand rounded-full p-3 sm:p-3.5 shadow pointer-events-auto z-[9999] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white"
                 style={{ left: 'calc(50% + var(--ps-image-half, 190px) + 12px)', boxShadow: '0 8px 20px rgba(0,0,0,0.18)', border: '2px solid rgba(248,223,124,0.95)', touchAction: 'manipulation' }}
                 data-test="ps-next-btn"
               >
@@ -237,7 +237,7 @@ const ProductShowcase: React.FC = () => {
 
           {/* Right: title & description */}
           <div className="w-full lg:w-1/2 text-center lg:text-left px-10 sm:px-20 ">
-            <h3 className="text-3xl sm:text-3xl lg:text-4xl font-extrabold text-[#7A1316] tracking-wide mx-auto lg:mx-0">{slidesData[selectedIndex].title}</h3>
+            <h3 className="text-3xl sm:text-3xl lg:text-4xl font-extrabold text-brand tracking-wide mx-auto lg:mx-0">{slidesData[selectedIndex].title}</h3>
             <p className="mt-4 sm:mt-6 text-muted-foreground text-base sm:text-lg max-w-lg mx-auto lg:mx-0">{slidesData[selectedIndex].description}</p>
           </div>
         </div>

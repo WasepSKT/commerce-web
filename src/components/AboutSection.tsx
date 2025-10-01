@@ -21,7 +21,7 @@ export default function AboutSection() {
     <section className="py-16">
       <div className="container mx-auto px-4">
         <div className="text-center mb-8">
-          <p className="text-sm font-medium text-[#F8DF7C]">Tentang Regal Paw</p>
+          <p className="text-2xl font-extrabold text-[#C6982D]">Tentang Regal Paw</p>
           <h2 className="text-3xl lg:text-4xl font-extrabold text-brand">Dedikasi Kami untuk kesehatan Kucing Indonesia</h2>
           <p className="text-muted-foreground max-w-3xl mx-auto mt-4">
             Sejak 2024, Regal Paw menjadi pilihan utama ribuan pemilik kucing di Indonesia. Kami memahami bahwa kucing adalah bagian dari keluarga, dan mereka layak mendapatkan nutrisi terbaik.
@@ -34,11 +34,11 @@ export default function AboutSection() {
             const Icon = f.icon;
             return (
               <div key={f.title} className="flex items-start gap-4">
-                <div className="h-12 w-12 rounded-full bg-[#7A1316] flex items-center justify-center text-[#F8DF7C]">
+                <div className="h-14 w-14 rounded-full bg-[#7A1316] flex items-center justify-center text-[#F8DF7C]">
                   <Icon className="h-5 w-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-brand mb-1">{f.title}</h4>
+                  <h4 className="text-xl font-semibold text-brand mb-1">{f.title}</h4>
                   <p className="text-sm text-muted-foreground">{f.desc}</p>
                 </div>
               </div>

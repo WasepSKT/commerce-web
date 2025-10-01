@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ProductCard } from '@/components/ProductCard';
 import FeaturedCarousel from '@/components/FeaturedCarousel';
 import { Layout } from '@/components/Layout';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,6 +8,11 @@ import { FaLeaf, FaShieldAlt, FaStar, FaTruck, FaShoppingCart } from 'react-icon
 import { Link } from 'react-router-dom';
 import heroImg from '@/assets/img/heroimg.svg';
 import ProductShowcase from '@/components/ProductShowcase';
+import AboutSection from '@/components/AboutSection';
+import ReferralCareerSection from '@/components/ReferralCareerSection';
+import TestimonialSection from '@/components/TestimonialSection';
+import ContactSection from '@/components/ContactSection';
+import CTASection from '@/components/CTASection';
 
 interface Product {
   id: string;
@@ -53,7 +57,7 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
-              <h1 className="text-4xl lg:text-5xl font-extrabold text-center md:text-left text-[#7A1316] leading-tight">
+              <h1 className="text-4xl lg:text-5xl font-extrabold text-center md:text-left text-brand leading-tight">
                 Nutrisi Terbaik untuk
                 <div className="text-4xl lg:text-5xl font-extrabold">Kucing kesayangan</div>
               </h1>
@@ -86,7 +90,7 @@ const Index = () => {
       >
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4 text-[#7A1316]">Mengapa Regal Paw?</h2>
+            <h2 className="text-4xl font-bold mb-4 text-brand">Mengapa Regal Paw?</h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
               Kami berkomitmen memberikan nutrisi terbaik untuk kucing kesayangan Anda,
               dengan standar kualitas internasional.
@@ -100,7 +104,7 @@ const Index = () => {
                 <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
                   <FaLeaf className="h-6 w-6 text-[#F8DF7C]" />
                 </div>
-                <h3 className="text-lg font-semibold text-[#7A1316] mb-2">100% Natural</h3>
+                <h3 className="text-lg font-semibold text-brand mb-2">100% Natural</h3>
                 <p className="text-sm text-muted-foreground text-center">
                   Terbuat dari bahan-bahan alami pilihan tanpa pengawet buatan atau pewarna kimia
                 </p>
@@ -113,7 +117,7 @@ const Index = () => {
                 <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
                   <FaShieldAlt className="h-6 w-6 text-[#F8DF7C]" />
                 </div>
-                <h3 className="text-lg font-semibold text-[#7A1316] mb-2">Kualitas Premium</h3>
+                <h3 className="text-lg font-semibold text-brand mb-2">Kualitas Premium</h3>
                 <p className="text-sm text-muted-foreground text-center">
                   Diproduksi dengan standar internasional dan telah mendapat sertifikasi dari AAFCO
                 </p>
@@ -126,7 +130,7 @@ const Index = () => {
                 <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
                   <FaStar className="h-6 w-6 text-[#F8DF7C]" />
                 </div>
-                <h3 className="text-lg font-semibold text-[#7A1316] mb-2">Nutrisi Lengkap</h3>
+                <h3 className="text-lg font-semibold text-brand mb-2">Nutrisi Lengkap</h3>
                 <p className="text-sm text-muted-foreground text-center">
                   Mengandung protein, vitamin, dan mineral yang dibutuhkan kucing untuk tumbuh sehat
                 </p>
@@ -139,7 +143,7 @@ const Index = () => {
                 <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
                   <FaTruck className="h-6 w-6 text-[#F8DF7C]" />
                 </div>
-                <h3 className="text-lg font-semibold text-[#7A1316] mb-2">Pengiriman Cepat</h3>
+                <h3 className="text-lg font-semibold text-brand mb-2">Pengiriman Cepat</h3>
                 <p className="text-sm text-muted-foreground text-center">
                   Pengiriman ke seluruh Indonesia dengan sistem tracking dan kemasan yang aman.
                 </p>
@@ -161,10 +165,10 @@ const Index = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[...Array(8)].map((_, i) => (
                 <div key={i} className="animate-pulse">
-                  <div className="bg-muted rounded-lg h-64 mb-4"></div>
-                  <div className="h-4 bg-muted rounded mb-2"></div>
-                  <div className="h-4 bg-muted rounded mb-2"></div>
-                  <div className="h-8 bg-muted rounded"></div>
+                  <div className="bg-gray-200 rounded-lg h-64 mb-4"></div>
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-8 bg-gray-200 rounded"></div>
                 </div>
               ))}
             </div>
@@ -174,24 +178,20 @@ const Index = () => {
         </div>
       </section>
 
+      {/* About Section (below Featured Products) */}
+      <AboutSection />
+
+      {/* Referral / Career Section */}
+      <ReferralCareerSection />
+
+
+      {/* Testimonials (marquee) */}
+      <TestimonialSection />
+      {/* Contact Section */}
+      <ContactSection />
+      
       {/* CTA Section */}
-      <section className="py-16 bg-primary">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold text-primary-foreground mb-4">
-            Siap Memberikan yang Terbaik untuk Kucing Anda?
-          </h2>
-          <p className="text-primary-foreground/80 text-lg mb-8 max-w-2xl mx-auto">
-            Bergabunglah dengan ribuan pemilik kucing yang telah mempercayai Regal Paw untuk
-            nutrisi terbaik kucing kesayangan mereka.
-          </p>
-          <Button size="lg" variant="secondary" className="text-lg" asChild>
-            <Link to="/products">
-              Mulai Belanja
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
-          </Button>
-        </div>
-      </section>
+      <CTASection />
     </Layout>
   );
 };

@@ -121,10 +121,10 @@ export default function ProductList() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {[...Array(8)].map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="bg-muted rounded-lg h-64 mb-4"></div>
-                <div className="h-4 bg-muted rounded mb-2"></div>
-                <div className="h-4 bg-muted rounded mb-2"></div>
-                <div className="h-8 bg-muted rounded"></div>
+                <div className="bg-gray-200 rounded-lg h-64 mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                <div className="h-8 bg-gray-200 rounded"></div>
               </div>
             ))}
           </div>
@@ -138,7 +138,7 @@ export default function ProductList() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Produk Kami</h1>
+          <h1 className="text-3xl font-bold mb-2 text-brand">Produk Kami</h1>
           <p className="text-muted-foreground">
             Temukan makanan kucing berkualitas tinggi untuk kesehatan kucing Anda
           </p>

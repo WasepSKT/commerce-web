@@ -23,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import Footer from '@/components/Footer';
 
 interface LayoutProps {
   children: ReactNode;
@@ -181,38 +182,7 @@ export function Layout({ children }: LayoutProps) {
       </main>
 
       {/* Footer */}
-      <footer className="border-t bg-card">
-        <div className="w-full px-4 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div>
-              <h3 className="font-semibold mb-4">Regal Paw</h3>
-              <p className="text-sm text-muted-foreground">
-                Penyedia makanan kucing berkualitas tinggi untuk kesehatan dan kebahagiaan kucing Anda.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-4">Kategori</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>Makanan Kering</li>
-                <li>Makanan Basah</li>
-                <li>Makanan Kitten</li>
-                <li>Makanan Dewasa</li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-4">Kontak</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>Email: info@regalpaw.com</li>
-                <li>WhatsApp: +62 812-3456-7890</li>
-                <li>Instagram: @regalpaw</li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
-            <p>&copy; 2024 Regal Paw. Semua hak dilindungi.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

@@ -8,7 +8,7 @@ export default function TestimonialSection() {
     <section className="py-16">
       <div>
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-extrabold text-brand">Apa Kata Mereka?</h2>
+          <h2 className="text-4xl font-extrabold text-brand">Apa Kata Mereka?</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">Ribuan pemilik kucing telah merasakan manfaat produk Regal Paw untuk kesehatan kucing kesayangan mereka</p>
         </div>
 

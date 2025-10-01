@@ -133,10 +133,10 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ products }) => {
   }, [items.length, selectedIndex, emblaApi]);
 
   return (
-    <div className="max-w-6xl mx-auto overflow-hidden">
+    <div className="mx-auto overflow-hidden">
       <div className="flex items-center justify-center mb-8 px-4">
         <div className="text-center">
-          <h2 className="text-3xl font-extrabold text-[#7A1316]">Produk Regal Paw</h2>
+          <h2 className="text-4xl font-extrabold text-brand">Produk Regal Paw</h2>
           <p className="text-sm text-muted-foreground">Temukan Produk Terbaik untuk Kebutuhan Si Manis</p>
         </div>
       </div>
@@ -178,7 +178,7 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ products }) => {
                   aria-label="Prev"
                   disabled={!canPrev}
                   className={`w-10 h-10 rounded-full flex items-center justify-center border border-[#E9E6EE] shadow-md ${!canPrev ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white'}`}>
-                  <FaChevronLeft className="text-[#7A1316]" />
+                  <FaChevronLeft className="text-brand" />
                 </button>
                 <button
                   onClick={scrollNext}
@@ -186,12 +186,12 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ products }) => {
                   disabled={!canNext && !hasMore}
                   className={`w-10 h-10 rounded-full flex items-center justify-center border border-[#E9E6EE] shadow-md ${(!canNext && !hasMore) ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white'}`}>
                   {loadingPage ? (
-                    <svg className="animate-spin h-4 w-4 text-[#7A1316]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-4 w-4 text-brand" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
                     </svg>
                   ) : (
-                    <FaChevronRight className="text-[#7A1316]" />
+                    <FaChevronRight className="text-brand" />
                   )}
                 </button>
               </div>

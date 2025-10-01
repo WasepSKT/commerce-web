@@ -56,10 +56,10 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
 
       {/* Body: title, description, price, stock */}
       <div className="px-6 pb-2 pt-2">
-        <h3 className="text-xl font-extrabold text-[#7A1316] mb-2 line-clamp-2">{product.name}</h3>
+        <h3 className="text-xl font-extrabold text-brand mb-2 line-clamp-2">{product.name}</h3>
         <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{product.description}</p>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-2xl font-bold text-[#7A1316]">{formatPrice(product.price)}</span>
+          <span className="text-2xl font-bold text-brand">{formatPrice(product.price)}</span>
           <span className="text-sm text-muted-foreground">Stok: {product.stock_quantity}</span>
         </div>
       </div>
@@ -67,7 +67,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
       {/* Footer: actions */}
       <div className="px-6 pb-6 pt-0">
         <div className="flex items-center gap-4">
-          <Button asChild variant="ghost" className="flex-1 bg-[#FBF4EB] text-[#7A1316] border-none rounded-xl py-3">
+          <Button asChild variant="ghost" className="flex-1 bg-[#FBF4EB] text-brand border-none rounded-xl py-3">
             <Link to={`/product/${product.id}`} className="inline-flex items-center justify-center gap-2">
               <Eye className="w-4 h-4" />
               <span className="font-medium">Detail</span>
