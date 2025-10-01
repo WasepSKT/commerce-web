@@ -145,7 +145,7 @@ export default function AdminDashboard() {
     <AdminLayout>
       <div className="w-full max-w-full px-4 md:px-6 py-6 md:py-8">
         <div className="mb-4">
-          <h1 className="text-2xl md:text-3xl font-bold mb-1 text-foreground">Admin Dashboard</h1>
+          <h1 className="text-2xl md:text-3xl font-bold mb-1 text-brand">Admin Dashboard</h1>
           <p className="text-sm md:text-base text-muted-foreground">Kelola produk, pesanan, dan pengguna</p>
         </div>
 
