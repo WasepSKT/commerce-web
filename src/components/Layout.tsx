@@ -40,35 +40,40 @@ export function Layout({ children }: LayoutProps) {
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="w-full px-4">
-          <div className="flex h-16 items-center justify-between">
-            {/* Logo */}
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                <Package className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span className="text-xl font-bold text-foreground">Regal Paw</span>
-            </Link>
-
-            {/* Navigation */}
-            <nav className="hidden md:flex items-center space-x-6">
-              <Link
-                to="/"
-                className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/' ? 'text-primary' : 'text-muted-foreground'
-                  }`}
-              >
-                Beranda
+          <div className="grid grid-cols-3 items-center h-16">
+            {/* Logo (left) */}
+            <div className="flex items-center">
+              <Link to="/" className="flex items-center space-x-2">
+                <img src="/regalpaw.png" alt="Regal Paw" className="h-10 w-auto" />
               </Link>
-              <Link
-                to="/products"
-                className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/products' ? 'text-primary' : 'text-muted-foreground'
-                  }`}
-              >
-                Produk
-              </Link>
-            </nav>
+            </div>
 
-            {/* User Menu */}
-            <div className="flex items-center space-x-2">
+            {/* Navigation (center) */}
+            <div className="hidden md:flex items-center justify-center">
+              <nav className="flex items-center space-x-8">
+                <Link to="/" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/' ? 'text-primary' : 'text-muted-foreground'}`}>
+                  Home
+                </Link>
+                <Link to="/products" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/products' ? 'text-primary' : 'text-muted-foreground'}`}>
+                  Product
+                </Link>
+                <Link to="/about" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/about' ? 'text-primary' : 'text-muted-foreground'}`}>
+                  About
+                </Link>
+                <Link to="/career" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/career' ? 'text-primary' : 'text-muted-foreground'}`}>
+                  Career
+                </Link>
+                <Link to="/blog" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/blog' ? 'text-primary' : 'text-muted-foreground'}`}>
+                  Blog
+                </Link>
+                <Link to="/contact" className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === '/contact' ? 'text-primary' : 'text-muted-foreground'}`}>
+                  Contact
+                </Link>
+              </nav>
+            </div>
+
+            {/* User Menu (right) */}
+            <div className="flex items-center justify-end space-x-2">
               {isAuthenticated ? (
                 <>
                   {profile?.role === 'admin' && (
@@ -155,9 +160,14 @@ export function Layout({ children }: LayoutProps) {
                   </DropdownMenu>
                 </>
               ) : (
-                <Button asChild size="sm">
-                  <Link to="/auth">Masuk</Link>
-                </Button>
+                <div className="hidden md:flex items-center space-x-3">
+                  <Button asChild size="sm" className="rounded-full px-4 py-2" style={{ backgroundColor: '#7A1316', color: '#F8DF7C' }}>
+                    <Link to="/auth/login">Login</Link>
+                  </Button>
+                  <Button asChild size="sm" className="rounded-full px-4 py-2" style={{ backgroundColor: '#7A1316', color: '#F8DF7C' }}>
+                    <Link to="/auth/signup">Sign Up</Link>
+                  </Button>
+                </div>
               )}
             </div>
           </div>
