@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,6 +26,17 @@ export default function ProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const { add } = useCart();
   const { toast } = useToast();
+
+  // Image zoom (lens) refs and state
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [lensVisible, setLensVisible] = useState(false);
+  const [lensPos, setLensPos] = useState({ x: 0, y: 0 }); // pixels relative to image
+  const [bgPos, setBgPos] = useState({ x: 50, y: 50 }); // percent for background-position
+  // remove separate lens box; we'll scale the original image itself
+  const LENS_WIDTH = 0; // unused
+  const LENS_HEIGHT = 0; // unused
+  const ZOOM = 2; // 2x zoom
 
   const fetchProduct = useCallback(async (productId: string) => {
     try {
@@ -126,15 +137,47 @@ export default function ProductDetail() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Product Image */}
           <div className="space-y-4">
-            <div className="relative overflow-hidden rounded-lg">
-              <img
-                src={product.image_url}
-                alt={product.name}
-                className="w-full h-96 object-cover"
-                onError={(e) => {
-                  e.currentTarget.src = 'https://images.unsplash.com/photo-1548681528-6a5c45b66b42?w=600';
+            <div
+              className={`relative overflow-hidden rounded-lg ${/* ensure cursor styles change when hovering */ ''}`}
+            >
+              {/* Zoom-enabled image: on desktop shows a lens that follows the cursor */}
+              <div
+                ref={containerRef}
+                className="w-full h-96 bg-gray-100 relative overflow-hidden"
+                onMouseMove={(e) => {
+                  const img = imgRef.current;
+                  if (!img) return;
+                  const rect = img.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  // clamp
+                  const cx = Math.max(0, Math.min(x, rect.width));
+                  const cy = Math.max(0, Math.min(y, rect.height));
+                  const px = (cx / rect.width) * 100;
+                  const py = (cy / rect.height) * 100;
+                  setLensPos({ x: cx, y: cy });
+                  setBgPos({ x: px, y: py });
+                  setLensVisible(true);
                 }}
-              />
+                onMouseLeave={() => setLensVisible(false)}
+                style={{ cursor: 'zoom-in' }}
+              >
+                <img
+                  ref={imgRef}
+                  src={product.image_url}
+                  alt={product.name}
+                  className="w-full h-96 object-cover transform-gpu"
+                  style={{
+                    transformOrigin: `${bgPos.x}% ${bgPos.y}%`,
+                    transform: lensVisible ? `scale(${ZOOM})` : 'none',
+                    transition: 'transform 0.08s linear',
+                  }}
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://images.unsplash.com/photo-1548681528-6a5c45b66b42?w=600';
+                  }}
+                />
+              </div>
+
               {isOutOfStock && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                   <Badge variant="destructive" className="text-lg p-2">
