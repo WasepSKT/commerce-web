@@ -1,4 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
+import bgLogin from '@/assets/bg/bg-login.webp';
+import googleLogo from '@/assets/img/Google__G__logo.svg.png';
+import logoImg from '/regalpaw.png';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -113,11 +116,18 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[hsl(var(--brand-cream))] via-[hsl(var(--brand-orange-light))] to-[hsl(var(--brand-orange))] flex items-center justify-center p-4">
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{
+        backgroundImage: `url(${bgLogin})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       <Card className="w-full max-w-md shadow-xl border-0">
         <CardHeader className="text-center pb-0">
           <div className="flex justify-center">
-            <img src="/regalpaw.png" alt="Regal Paw" className="h-14 w-auto" />
+            <img src={logoImg} alt="Regal Paw" className="h-14 w-auto" />
           </div>
           <CardDescription className="text-base mt-2 text-gray-600">
             Masuk untuk mulai berbelanja makanan kucing berkualitas
@@ -155,7 +165,7 @@ export default function Auth() {
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
               </svg>
             ) : (
-              <svg className="h-5 w-5 mr-2" viewBox="0 0 48 48"><g><path fill="#4285F4" d="M24 9.5c3.54 0 6.73 1.23 9.24 3.25l6.91-6.91C36.53 2.36 30.64 0 24 0 14.64 0 6.27 5.64 2.18 14.07l8.06 6.27C12.99 14.09 18.01 9.5 24 9.5z" /><path fill="#34A853" d="M46.09 24.59c0-1.64-.15-3.22-.43-4.75H24v9.02h12.41c-.53 2.86-2.13 5.28-4.53 6.91l7.09 5.52C43.73 37.36 46.09 31.41 46.09 24.59z" /><path fill="#FBBC05" d="M10.24 28.34c-.62-1.86-.98-3.84-.98-5.84s.36-3.98.98-5.84l-8.06-6.27C.73 14.64 0 19.13 0 24s.73 9.36 2.18 13.07l8.06-6.27z" /><path fill="#EA4335" d="M24 46c6.64 0 12.53-2.36 16.91-6.34l-7.09-5.52c-2.01 1.35-4.57 2.16-7.32 2.16-5.99 0-11.01-4.59-13.76-10.84l-8.06 6.27C6.27 42.36 14.64 48 24 48z" /></g></svg>
+              <img src={googleLogo} alt="Google logo" className="h-5 w-5 mr-2" />
             )}
             {loadingGoogle ? 'Memproses...' : 'Lanjutkan dengan Google'}
           </Button>
