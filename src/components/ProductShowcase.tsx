@@ -165,7 +165,7 @@ const ProductShowcase: React.FC = () => {
           <div className="w-full lg:w-1/2">
             <div
               ref={panelRef}
-              className="bg-[#7A1316] rounded-r-2xl p-6 sm:p-8 w-full h-[360px] sm:h-[420px] relative overflow-hidden"
+              className="bg-[#7A1316] sm:rounded-r-2xl rounded-none p-6 sm:p-8 w-full h-[360px] sm:h-[420px] relative overflow-hidden"
               onMouseEnter={onMouseEnter}
               onMouseLeave={onMouseLeave}
               data-aos="fade-right" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100"

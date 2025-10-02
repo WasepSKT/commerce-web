@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import FeaturedCarousel from '@/components/FeaturedCarousel';
 import { Layout } from '@/components/Layout';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowRight } from 'lucide-react';
 import { FaLeaf, FaShieldAlt, FaStar, FaTruck, FaShoppingCart } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import heroImg from '@/assets/img/heroimg.svg';
+import catVideo from '@/assets/video/kucing.mp4';
 import ProductShowcase from '@/components/ProductShowcase';
 import AboutSection from '@/components/AboutSection';
 import ReferralCareerSection from '@/components/ReferralCareerSection';
@@ -27,6 +27,8 @@ interface Product {
 const Index = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [hoveringHero, setHoveringHero] = useState(false);
 
   useEffect(() => {
     fetchFeaturedProducts();
@@ -76,8 +78,52 @@ const Index = () => {
                 </div>
               </div>
             </div>
-            <div className="flex justify-center lg:justify-end" data-aos="fade-left" data-aos-duration="700" data-aos-easing="ease-out-cubic">
-              <img src={heroImg} alt="Hero" className="w-[520px] h-auto rounded-[90px] shadow-2xl object-cover" />
+            <div
+              className="flex justify-center lg:justify-end relative"
+              data-aos="fade-left"
+              data-aos-duration="700"
+              data-aos-easing="ease-out-cubic"
+            >
+              {/* wrapper to hold image and hover-video; fixed responsive card so layout doesn't shift */}
+              <div
+                className="relative w-full max-w-[520px] h-[300px] sm:h-[360px] md:h-[420px] overflow-hidden rounded-[90px] shadow-2xl"
+                onMouseEnter={() => {
+                  setHoveringHero(true);
+                  const v = videoRef.current;
+                  if (v) {
+                    v.currentTime = 0;
+                    v.muted = true;
+                    v.play().catch(() => { });
+                  }
+                }}
+                onMouseLeave={() => {
+                  setHoveringHero(false);
+                  const v = videoRef.current;
+                  if (v) {
+                    v.pause();
+                    try {
+                      v.currentTime = 0;
+                    } catch (e) {
+                      // ignore
+                    }
+                  }
+                }}
+              >
+                <img
+                  src={heroImg}
+                  alt="Hero"
+                  className={`w-full h-full object-cover ${hoveringHero ? 'hidden' : 'block'}`}
+                />
+                <video
+                  src={catVideo}
+                  muted
+                  loop
+                  playsInline
+                  ref={videoRef}
+                  className={`${hoveringHero ? 'block' : 'hidden'} w-full h-full object-cover`}
+                  aria-hidden
+                />
+              </div>
             </div>
           </div>
         </div>

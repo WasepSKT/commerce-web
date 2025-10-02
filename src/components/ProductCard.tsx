@@ -37,11 +37,24 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         <img
           src={product.image_url}
           alt={product.name}
-          className="w-full h-56 object-cover object-center bg-white transform transition-transform duration-300 group-hover:scale-105"
+          className="w-full h-56 object-cover object-center bg-white transform transition-transform duration-300 motion-safe:group-hover:scale-105"
           onError={(e) => {
             e.currentTarget.src = 'https://images.unsplash.com/photo-1548681528-6a5c45b66b42?w=400';
           }}
         />
+
+        {/* Overlay shown on hover/focus - accessible via keyboard focus on card */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 pointer-events-none transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 flex items-end">
+          <div className="w-full p-4 text-white">
+            <h4 className="text-lg font-semibold line-clamp-1">{product.name}</h4>
+            <p className="text-sm mt-1 max-h-24 overflow-hidden">{product.description}</p>
+            <div className="mt-3 flex items-center justify-between">
+              <span className="font-bold text-xl">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(product.price)}</span>
+              <Link to={`/product/${product.id}`} className="inline-flex items-center gap-2 bg-white/90 text-black rounded-full px-3 py-2 font-medium shadow">Lihat Detail</Link>
+            </div>
+          </div>
+        </div>
+
         {isOutOfStock && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
             <Badge variant="destructive" className="text-sm">
@@ -49,6 +62,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
             </Badge>
           </div>
         )}
+
         <Badge variant="secondary" className="absolute top-4 left-4 text-xs">
           {product.category}
         </Badge>
