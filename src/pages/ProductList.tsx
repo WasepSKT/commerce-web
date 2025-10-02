@@ -156,14 +156,25 @@ export default function ProductList() {
             />
           </div>
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-full md:w-48">
+            <SelectTrigger className="w-full md:w-48 hover:bg-primary hover:text-white data-[state=open]:bg-primary data-[state=open]:text-white">
               <Filter className="w-4 h-4 mr-2" />
               <SelectValue placeholder="Kategori" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Semua Kategori</SelectItem>
+              <SelectItem
+                value="all"
+                className="hover:bg-primary hover:text-white data-[state=checked]:bg-primary data-[state=checked]:text-white"
+                onMouseEnter={() => setSelectedCategory('all')}
+              >
+                Semua Kategori
+              </SelectItem>
               {categories.slice(1).map(category => (
-                <SelectItem key={category} value={category}>
+                <SelectItem
+                  key={category}
+                  value={category}
+                  className="hover:bg-primary hover:text-white data-[state=checked]:bg-primary data-[state=checked]:text-white"
+                  onMouseEnter={() => setSelectedCategory(category)}
+                >
                   {category}
                 </SelectItem>
               ))}

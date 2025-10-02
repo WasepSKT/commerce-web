@@ -5,6 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import AboutPage from "./pages/About";
+import CareerPage from "./pages/Career";
+import ContactPage from "./pages/Contact";
+import CareerOpenings from "./pages/career/Openings";
+import CareerBenefits from "./pages/career/Benefits";
 import ProductList from "./pages/ProductList";
 import ProductDetail from "./pages/ProductDetail";
 import CartPage from './pages/Cart';
@@ -48,6 +52,10 @@ export default function App() {
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/career" element={<CareerPage />} />
+            <Route path="/career/openings" element={<CareerOpenings />} />
+            <Route path="/career/benefits" element={<CareerBenefits />} />
             <Route
               path="/admin"
               element={

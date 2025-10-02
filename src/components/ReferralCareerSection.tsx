@@ -1,6 +1,7 @@
 import React from 'react';
 import { Check, Handshake, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import referralImg from '@/assets/img/img-referal.png';
 
 export default function ReferralCareerSection() {
   return (
@@ -13,6 +14,9 @@ export default function ReferralCareerSection() {
               Bergabunglah dengan tim kami atau dapatkan penghasilan tambahan melalui
               program referral yang menguntungkan.
             </p>
+            <div className="mt-6 flex justify-center lg:justify-start w-full">
+              <img src={referralImg} alt="Referral" className="w-full object-contain" />
+            </div>
           </div>
 
           <div data-aos="fade-left" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100">
@@ -32,9 +36,10 @@ export default function ReferralCareerSection() {
                 <li className="flex items-center gap-3"><Check className="text-[#F8DF7C]" /> Bonus tambahan untuk target bulanan</li>
                 <li className="flex items-center gap-3"><Check className="text-[#F8DF7C]" /> Dashboard tracking real-time</li>
                 <li className="flex items-center gap-3"><Check className="text-[#F8DF7C]" /> Pelatihan dan dukungan marketing</li>
+                <li className="flex items-center gap-3"><Check className="text-[#F8DF7C]" /> Materi promosi lengkap (marketing kit) yang siap pakai.</li>
               </ul>
 
-              <div className="mt-6 bg-white/20 rounded-lg p-6">
+              <div className="mt-6 bg-white/20 rounded-lg p-8">
                 <p className="text-sm text-white/90">Potensi Penghasilan Bulanan:</p>
                 <div className="mt-3 grid grid-cols-3 gap-4 text-center">
                   <div>

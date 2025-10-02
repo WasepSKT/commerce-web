@@ -210,7 +210,7 @@ export default function ProductDetail() {
               <Badge variant="secondary" className="mb-2">
                 {product.category}
               </Badge>
-              <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
+              <h1 className="text-3xl font-bold mb-4 text-primary">{product.name}</h1>
 
               <div className="flex items-center space-x-2 mb-4">
                 <div className="flex items-center">
@@ -284,7 +284,7 @@ export default function ProductDetail() {
             {/* Product Info */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="font-semibold mb-4">Informasi Produk</h3>
+                <h3 className="font-semibold mb-4 text-primary">Informasi Produk</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Kategori:</span>

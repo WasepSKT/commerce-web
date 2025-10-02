@@ -51,13 +51,16 @@ export default function AboutSection() {
             {images.map((src, i) => (
               <div
                 key={i}
-                role="button"
-                tabIndex={0}
-                aria-label={`Produk ${i + 1}`}
-                className="w-46 h-58 flex items-center justify-center bg-white/0 transform transition-transform duration-300 hover:scale-105 hover:-translate-y-1 focus:scale-105 focus:-translate-y-1"
-                data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="200"
+                data-aos="fade-up"
+                data-aos-duration="700"
+                data-aos-easing="ease-out-cubic"
+                data-aos-delay="200"
               >
-                <img src={src} alt={`product-${i}`} className="max-h-full object-contain pointer-events-none"/>
+                <div role="button" tabIndex={0} aria-label={`Produk ${i + 1}`} className="w-46 h-58 flex items-center justify-center bg-white/0">
+                  <div className="transform transition-transform duration-300 hover:scale-105 hover:-translate-y-1 focus:scale-105 focus:-translate-y-1">
+                    <img src={src} alt={`product-${i}`} className="max-h-full object-contain pointer-events-none" />
+                  </div>
+                </div>
               </div>
             ))}
           </div>

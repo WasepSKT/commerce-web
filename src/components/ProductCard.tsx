@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -43,17 +43,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           }}
         />
 
-        {/* Overlay shown on hover/focus - accessible via keyboard focus on card */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 pointer-events-none transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 flex items-end">
-          <div className="w-full p-4 text-white">
-            <h4 className="text-lg font-semibold line-clamp-1">{product.name}</h4>
-            <p className="text-sm mt-1 max-h-24 overflow-hidden">{product.description}</p>
-            <div className="mt-3 flex items-center justify-between">
-              <span className="font-bold text-xl">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(product.price)}</span>
-              <Link to={`/product/${product.id}`} className="inline-flex items-center gap-2 bg-white/90 text-black rounded-full px-3 py-2 font-medium shadow">Lihat Detail</Link>
-            </div>
-          </div>
-        </div>
+        {/* overlay removed per request: no hover/focus overlay */}
 
         {isOutOfStock && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
