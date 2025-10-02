@@ -168,6 +168,7 @@ const ProductShowcase: React.FC = () => {
               className="bg-[#7A1316] rounded-r-2xl p-6 sm:p-8 w-full h-[360px] sm:h-[420px] relative overflow-hidden"
               onMouseEnter={onMouseEnter}
               onMouseLeave={onMouseLeave}
+              data-aos="fade-right" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100"
             >
               <div className="embla h-full">
                 <div className="embla__viewport h-full" ref={emblaRef}>
@@ -178,7 +179,7 @@ const ProductShowcase: React.FC = () => {
                         key={s.id}
                         aria-hidden={selectedIndex !== slidesData.findIndex((sl) => sl.id === s.id)}
                       >
-                        <div className="ps-image-wrapper w-[220px] sm:w-[320px] md:w-[380px] lg:w-[420px] h-[180px] sm:h-[260px] md:h-[300px] lg:h-[340px] flex items-center justify-center">
+                        <div className="ps-image-wrapper w-[220px] sm:w-[320px] md:w-[380px] lg:w-[420px] h-[180px] sm:h-[260px] md:h-[300px] lg:h-[340px] flex items-center justify-center" data-aos="fade-in" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="500">
                           <img src={s.img} alt={s.title} className="max-w-full max-h-full object-contain" style={{ display: 'block' }} />
                         </div>
                       </div>
@@ -236,7 +237,7 @@ const ProductShowcase: React.FC = () => {
           </div>
 
           {/* Right: title & description */}
-          <div className="w-full lg:w-1/2 text-center lg:text-left px-10 sm:px-20 ">
+          <div className="w-full lg:w-1/2 text-center lg:text-left px-10 sm:px-20" data-aos="fade-left" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100">
             <h3 className="text-3xl sm:text-3xl lg:text-4xl font-extrabold text-brand tracking-wide mx-auto lg:mx-0">{slidesData[selectedIndex].title}</h3>
             <p className="mt-4 sm:mt-6 text-muted-foreground text-base sm:text-lg max-w-lg mx-auto lg:mx-0">{slidesData[selectedIndex].description}</p>
           </div>

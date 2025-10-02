@@ -7,7 +7,7 @@ export default function ReferralCareerSection() {
     <section className="py-20">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div>
+          <div data-aos="fade-right" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100">
             <h2 className="text-4xl font-bold text-brand mb-6">Program Referral & Karir</h2>
             <p className="text-lg text-muted-foreground max-w-xl">
               Bergabunglah dengan tim kami atau dapatkan penghasilan tambahan melalui
@@ -15,7 +15,7 @@ export default function ReferralCareerSection() {
             </p>
           </div>
 
-          <div>
+          <div data-aos="fade-left" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100">
             <div className="bg-[#7A1316] rounded-2xl p-8 text-white">
               <div className="flex items-start gap-4">
                 <div className="bg-white/10 rounded-lg p-3 flex items-center justify-center">

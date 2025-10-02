@@ -20,7 +20,7 @@ export default function AboutSection() {
   return (
     <section className="py-16">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-8">
+        <div className="text-center mb-8" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100">
           <p className="text-2xl font-extrabold text-[#C6982D]">Tentang Regal Paw</p>
           <h2 className="text-3xl lg:text-4xl font-extrabold text-brand">Dedikasi Kami untuk kesehatan Kucing Indonesia</h2>
           <p className="text-muted-foreground max-w-3xl mx-auto mt-4">
@@ -29,7 +29,7 @@ export default function AboutSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100">
           {features.map((f) => {
             const Icon = f.icon;
             return (
@@ -46,7 +46,7 @@ export default function AboutSection() {
           })}
         </div>
 
-        <div className="bg-[#7A1316] rounded-2xl p-8">
+        <div className="bg-[#7A1316] rounded-2xl p-8" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic">
           <div className="flex items-center justify-center gap-12 py-8">
             {images.map((src, i) => (
               <div
@@ -55,14 +55,15 @@ export default function AboutSection() {
                 tabIndex={0}
                 aria-label={`Produk ${i + 1}`}
                 className="w-46 h-58 flex items-center justify-center bg-white/0 transform transition-transform duration-300 hover:scale-105 hover:-translate-y-1 focus:scale-105 focus:-translate-y-1"
+                data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="200"
               >
-                <img src={src} alt={`product-${i}`} className="max-h-full object-contain pointer-events-none" />
+                <img src={src} alt={`product-${i}`} className="max-h-full object-contain pointer-events-none"/>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="text-center mt-8">
+        <div className="text-center mt-8" data-aos="fade-in" data-aos-duration="700" data-aos-easing="ease-out-cubic">
           <Link to="/about">
             <button className="rounded-full bg-[#7A1316] text-[#F8DF7C] px-6 py-3">Pelajari Lebih Lanjut</button>
           </Link>

@@ -56,7 +56,7 @@ const Index = () => {
       <section className="py-16">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-6">
+            <div className="space-y-6" data-aos="fade-right" data-aos-duration="700" data-aos-easing="ease-out-cubic">
               <h1 className="text-4xl lg:text-5xl font-extrabold text-center md:text-left text-brand leading-tight">
                 Nutrisi Terbaik untuk
                 <div className="text-4xl lg:text-5xl font-extrabold">Kucing kesayangan</div>
@@ -76,7 +76,7 @@ const Index = () => {
                 </div>
               </div>
             </div>
-            <div className="flex justify-center lg:justify-end">
+            <div className="flex justify-center lg:justify-end" data-aos="fade-left" data-aos-duration="700" data-aos-easing="ease-out-cubic">
               <img src={heroImg} alt="Hero" className="w-[520px] h-auto rounded-[90px] shadow-2xl object-cover" />
             </div>
           </div>
@@ -88,7 +88,7 @@ const Index = () => {
         className="py-16"
         style={{ background: 'linear-gradient(180deg, #FFF8E0 0%, hsl(var(--background)) 100%)' }}
       >
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="200">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4 text-brand">Mengapa Regal Paw?</h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
@@ -99,7 +99,7 @@ const Index = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {/* Card 1 */}
-            <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-shadow">
+            <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-shadow" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100">
               <div className="flex flex-col items-center">
                 <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
                   <FaLeaf className="h-6 w-6 text-[#F8DF7C]" />
@@ -112,7 +112,7 @@ const Index = () => {
             </div>
 
             {/* Card 2 */}
-            <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-shadow">
+            <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-shadow" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100">
               <div className="flex flex-col items-center">
                 <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
                   <FaShieldAlt className="h-6 w-6 text-[#F8DF7C]" />
@@ -125,7 +125,7 @@ const Index = () => {
             </div>
 
             {/* Card 3 */}
-            <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-shadow">
+            <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-shadow" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="200">
               <div className="flex flex-col items-center">
                 <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
                   <FaStar className="h-6 w-6 text-[#F8DF7C]" />
@@ -138,7 +138,7 @@ const Index = () => {
             </div>
 
             {/* Card 4 */}
-            <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-shadow">
+            <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-shadow" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="300">
               <div className="flex flex-col items-center">
                 <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
                   <FaTruck className="h-6 w-6 text-[#F8DF7C]" />
@@ -189,7 +189,7 @@ const Index = () => {
       <TestimonialSection />
       {/* Contact Section */}
       <ContactSection />
-      
+
       {/* CTA Section */}
       <CTASection />
     </Layout>

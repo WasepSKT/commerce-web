@@ -7,13 +7,12 @@ export default function ContactSection() {
   return (
     <section className="py-12">
       <div className="max-w-7xl mx-auto px-4">
-        <h2 className="text-4xl lg:text-5xl font-extrabold text-brand text-center mb-4">Hubungi Kami Hari ini</h2>
-        <p className="text-muted-foreground mb-8 text-center max-w-2xl mx-auto">
+        <h2 className="text-4xl lg:text-5xl font-extrabold text-brand text-center mb-4" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic">Hubungi Kami Hari ini</h2>
+        <p className="text-muted-foreground mb-8 text-center max-w-2xl mx-auto" data-aos="fade-up" data-aos-duration="800" data-aos-easing="ease-out-cubic">
           Ada pertanyaan tentang produk atau ingin konsultasi nutrisi kucing? Tim ahli kami siap membantu Anda.
         </p>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-          <div>
-
+          <div data-aos="fade-right" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100">
             <form className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
               <input aria-label="Nama" placeholder="Nama" className="input input-bordered w-full rounded-xl p-4 bg-gray-100 border-2 border-[#7A1316] focus:outline-none focus:ring-2 focus:ring-[#7A1316]/40" />
               <input aria-label="Email" placeholder="email@contoh.com" className="input input-bordered w-full rounded-xl p-4 bg-gray-100 border-2 border-[#7A1316] focus:outline-none focus:ring-2 focus:ring-[#7A1316]/40" />
@@ -33,7 +32,7 @@ export default function ContactSection() {
             </form>
           </div>
 
-          <div>
+          <div data-aos="fade-left" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100">
             <div className="bg-[#7A1316] rounded-2xl p-8 text-white">
               <p className="text-sm uppercase tracking-wider text-white/80">Contact Us</p>
               <h3 className="text-2xl font-bold text-[#F8DF7C] mt-2">PT. Guna Aura Gemilang</h3>

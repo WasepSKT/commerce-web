@@ -5,7 +5,7 @@ import { testimonials } from '@/data/testimonials';
 
 export default function TestimonialSection() {
   return (
-    <section className="py-16">
+    <section className="py-16" data-aos="zoom-in" data-aos-duration="700" data-aos-easing="ease-out-cubic">
       <div>
         <div className="text-center mb-8">
           <h2 className="text-4xl font-extrabold text-brand">Apa Kata Mereka?</h2>
