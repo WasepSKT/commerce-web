@@ -124,7 +124,7 @@ export default function Auth() {
         backgroundPosition: 'center',
       }}
     >
-      <Card className="w-full max-w-md shadow-xl border-0">
+      <Card className="w-full max-w-md shadow-xl border-0 fade-in">
         <CardHeader className="text-center pb-0">
           <div className="flex justify-center">
             <img src={logoImg} alt="Regal Paw" className="h-14 w-auto" />
