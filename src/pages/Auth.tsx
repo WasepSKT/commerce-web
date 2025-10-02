@@ -116,7 +116,9 @@ export default function Auth() {
     <div className="min-h-screen bg-gradient-to-br from-[hsl(var(--brand-cream))] via-[hsl(var(--brand-orange-light))] to-[hsl(var(--brand-orange))] flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-xl border-0">
         <CardHeader className="text-center pb-0">
-          <CardTitle className="text-3xl font-bold text-blue-900">Regal Paw</CardTitle>
+          <div className="flex justify-center">
+            <img src="/regalpaw.png" alt="Regal Paw" className="h-14 w-auto" />
+          </div>
           <CardDescription className="text-base mt-2 text-gray-600">
             Masuk untuk mulai berbelanja makanan kucing berkualitas
           </CardDescription>
