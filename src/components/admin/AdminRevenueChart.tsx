@@ -10,7 +10,7 @@ export default function AdminRevenueChart({ data }: Props) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Tren Pendapatan (7 Hari)</CardTitle>
+        <CardTitle style={{ color: 'hsl(var(--primary))' }}>Tren Pendapatan (7 Hari)</CardTitle>
         <CardDescription>Ringkasan total pendapatan harian</CardDescription>
       </CardHeader>
       <CardContent>

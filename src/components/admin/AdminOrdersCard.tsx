@@ -21,7 +21,7 @@ export default function AdminOrdersCard({ orders, formatPrice, getStatusBadge, o
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Kelola Pesanan</CardTitle>
+        <CardTitle style={{ color: 'hsl(var(--primary))' }}>Kelola Pesanan</CardTitle>
         <CardDescription>Update status pesanan pelanggan</CardDescription>
       </CardHeader>
       <CardContent className="max-h-[28rem] overflow-y-auto">

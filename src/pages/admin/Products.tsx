@@ -165,7 +165,7 @@ export default function AdminProductsPage() {
   return (
     <AdminLayout>
       <div className="mb-4">
-        <h1 className="text-2xl md:text-3xl font-bold mb-1">Product Management</h1>
+        <h1 className="text-2xl md:text-3xl font-bold mb-1 text-primary">Product Management</h1>
         <p className="text-sm md:text-base text-muted-foreground">Tambah, edit, dan hapus produk</p>
       </div>
 
@@ -173,7 +173,7 @@ export default function AdminProductsPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Kelola Produk</CardTitle>
+              <CardTitle style={{ color: 'hsl(var(--primary))' }}>Kelola Produk</CardTitle>
               <CardDescription>Tambah, edit, atau hapus produk</CardDescription>
             </div>
             <ProductDialog

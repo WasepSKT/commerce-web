@@ -8,7 +8,7 @@ import {
   SidebarMenuSubItem,
   SidebarMenuSubButton,
 } from '@/components/ui/sidebar';
-import { Home, Package, Users, Megaphone, Gift, Settings as SettingsIcon } from 'lucide-react';
+import { Home, Package, Users, Megaphone, Gift, Settings as SettingsIcon, CreditCard } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function AdminSidebarNav() {
@@ -93,6 +93,24 @@ export default function AdminSidebarNav() {
 
           {isAuthenticated && isAdmin && (
             <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isActive('/admin/payments')}>
+                <Link
+                  to="/admin/payments"
+                  className={`sidebar-link flex items-center gap-4 px-4 py-3 rounded-l-md transition-colors text-base ${isActive('/admin/payments')
+                    ? 'sidebar-link--active text-primary-foreground font-semibold'
+                    : 'text-muted-foreground hover:bg-muted/10 hover:text-muted-foreground'
+                    }`}
+                  aria-current={isActive('/admin/payments') ? 'page' : undefined}
+                >
+                  <CreditCard className={`h-5 w-5 ${isActive('/admin/payments') ? 'text-primary-foreground' : ''}`} />
+                  <span className="text-base">Payments</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+
+          {isAuthenticated && isAdmin && (
+            <SidebarMenuItem>
               {/* Referral group header */}
               <div className="px-4 py-2 text-sm text-muted-foreground">Referral</div>
               {/* Use SidebarMenuSub to render a nested <ul> for submenu items instead of nesting <li> directly */}
@@ -111,6 +129,26 @@ export default function AdminSidebarNav() {
                       <span>All Referrals</span>
                     </Link>
                   </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton asChild isActive={location.pathname === '/admin/referrals/purchases'}>
+                    <Link
+                      to="/admin/referrals/purchases"
+                      className={`sidebar-link flex items-center gap-3 pl-8 pr-4 py-2 rounded-l-md transition-colors text-sm ${location.pathname === '/admin/referrals/purchases'
+                        ? 'sidebar-link--active text-primary-foreground font-semibold'
+                        : 'text-muted-foreground hover:bg-muted/10 hover:text-muted-foreground'
+                        }`}
+                      aria-current={location.pathname === '/admin/referrals/purchases' ? 'page' : undefined}
+                    >
+                      <CreditCard className={`h-4 w-4 ${location.pathname === '/admin/referrals/purchases' ? 'text-primary-foreground' : ''}`} />
+                      <span>Purchases</span>
+                    </Link>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+
+                <SidebarMenuSubItem>
+                  {/* Verifications removed: payments verification is available under top-level Payments */}
                 </SidebarMenuSubItem>
 
                 <SidebarMenuSubItem>

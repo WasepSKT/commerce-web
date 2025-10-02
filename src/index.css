@@ -39,7 +39,8 @@ All colors MUST be HSL.
     --destructive: 358 73% 28%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 52 100% 83%;
+    --border: 220 13% 91%;
+    /* neutral light gray for default borders */
     --input: 52 100% 83%;
     --ring: 358 73% 28%;
 
@@ -143,6 +144,24 @@ All colors MUST be HSL.
     /* Slightly reduce weight for better balance if needed */
     font-weight: 400;
   }
+}
+
+/* Form controls (text/number/date/select/textarea) use a 2px primary border to stand out and be consistent */
+input[type="text"],
+input[type="number"],
+input[type="date"],
+input[type="email"],
+input[type="password"],
+textarea,
+select {
+  /* Enforce 2px primary border globally for inputs/selects/textareas. Use !important
+     to avoid being overridden by utility classes like `border` (which Tailwind emits later). */
+  border: 2px solid hsl(var(--primary)) !important;
+}
+
+/* Utility: use on card containers to show primary-colored border */
+.card-primary-border {
+  border: 1px solid hsl(var(--primary));
 }
 
 /* Admin sidebar tweaks: prefer sidebar design tokens for consistency.

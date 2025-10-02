@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react';
+import regalpawIcon from '/regalpaw-icon.png';
 import {
   SidebarProvider,
   Sidebar,
@@ -79,8 +80,8 @@ export function AdminLayout({ active, onChange, children }: AdminLayoutProps) {
         <Sidebar>
           <SidebarHeader>
             <div className="flex items-center gap-3 px-3 py-2">
-              <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center text-primary-foreground">
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12l2-2 4 4 8-8 4 4v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>
+              <div className="h-10 w-10 flex items-center justify-center text-primary-foreground overflow-hidden">
+                <img src={regalpawIcon} alt="Regal Paw" className="h-10 w-10 object-contain" />
               </div>
               <div>
                 <div className="text-sm font-semibold">Admin Menu</div>

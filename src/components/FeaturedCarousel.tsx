@@ -153,49 +153,43 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ products }) => {
             </div>
           </div>
         </div>
-
-        {/* arrows removed from side — they will appear beside the CTA below for alignment */}
+        {/* right controls aligned under the 4th card (right edge of carousel) */}
+        <div className="w-full flex justify-end">
+          {(items.length > 0 || hasMore) && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={scrollPrev}
+                aria-label="Prev"
+                disabled={!canPrev}
+                className={`w-10 h-10 rounded-full flex items-center justify-center border border-[#E9E6EE] shadow-md ${!canPrev ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white'}`}>
+                <FaChevronLeft className="text-brand" />
+              </button>
+              <button
+                onClick={scrollNext}
+                aria-label="Next"
+                disabled={!canNext && !hasMore}
+                className={`w-10 h-10 rounded-full flex items-center justify-center border border-[#E9E6EE] shadow-md ${(!canNext && !hasMore) ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white'}`}>
+                {loadingPage ? (
+                  <svg className="animate-spin h-4 w-4 text-brand" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                  </svg>
+                ) : (
+                  <FaChevronRight className="text-brand" />
+                )}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="mt-8">
         <div className="max-w-6xl mx-auto px-4 flex items-center justify-between">
-          {/* left spacer - reserved for future use or small-screen layout */}
-          <div className="w-1/4" />
-
           {/* center CTA */}
           <div className="flex-1 flex justify-center">
             <Button asChild size="lg" className="rounded-full px-8 py-3" style={{ backgroundColor: '#7A1316', color: '#F8DF7C' }}>
               <a href="/products">Lihat Semua Produk &nbsp;➜</a>
             </Button>
-          </div>
-
-          {/* right controls aligned under the 4th card (right edge of carousel) */}
-          <div className="w-1/4 flex justify-end">
-            {(items.length > 0 || hasMore) && (
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={scrollPrev}
-                  aria-label="Prev"
-                  disabled={!canPrev}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center border border-[#E9E6EE] shadow-md ${!canPrev ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white'}`}>
-                  <FaChevronLeft className="text-brand" />
-                </button>
-                <button
-                  onClick={scrollNext}
-                  aria-label="Next"
-                  disabled={!canNext && !hasMore}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center border border-[#E9E6EE] shadow-md ${(!canNext && !hasMore) ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white'}`}>
-                  {loadingPage ? (
-                    <svg className="animate-spin h-4 w-4 text-brand" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-                    </svg>
-                  ) : (
-                    <FaChevronRight className="text-brand" />
-                  )}
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>

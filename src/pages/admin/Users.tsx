@@ -138,7 +138,7 @@ export default function AdminUsersPage() {
       <AdminLayout>
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-1">User Management</h1>
+            <h1 className="text-2xl md:text-3xl font-bold mb-1 text-primary">User Management</h1>
             <p className="text-sm md:text-base text-muted-foreground">Kelola pengguna dan peran</p>
           </div>
           {/* future CTA: add user */}
@@ -146,7 +146,7 @@ export default function AdminUsersPage() {
 
         <Card className="w-full">
           <CardHeader>
-            <CardTitle>Daftar Pengguna</CardTitle>
+            <CardTitle style={{ color: 'hsl(var(--primary))' }}>Daftar Pengguna</CardTitle>
             <CardDescription>Kelola data pengguna di bawah ini.</CardDescription>
           </CardHeader>
           <CardContent className="min-h-[50vh]">

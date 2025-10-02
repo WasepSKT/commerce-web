@@ -47,11 +47,11 @@ export default function ReferralCareerSection() {
                     <p className="text-sm text-white/80">Pemula</p>
                   </div>
                   <div>
-                    <p className="text-xl font-bold">1-5 juta</p>
+                    <p className="text-xl font-bold">5-10 juta</p>
                     <p className="text-sm text-white/80">Aktif</p>
                   </div>
                   <div>
-                    <p className="text-xl font-bold">1-5 juta</p>
+                    <p className="text-xl font-bold">10-15 juta</p>
                     <p className="text-sm text-white/80">Pro</p>
                   </div>
                 </div>

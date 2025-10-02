@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import bgLogin from '@/assets/bg/bg-login.webp';
 import googleLogo from '@/assets/img/Google__G__logo.svg.png';
 import logoImg from '/regalpaw.png';
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -58,8 +58,7 @@ export default function Auth() {
 
       if (!referrer) return;
 
-      // Prefer the cached profile from useAuth to avoid an extra DB read.
-      // If it's not available yet, fall back to querying the profiles table once.
+      // Get current user's profile id (prefer cached profile from useAuth)
       let currentProfileId: string | null = profile?.id ?? null;
       if (!currentProfileId) {
         const userResp = await supabase.auth.getUser();
@@ -75,6 +74,16 @@ export default function Auth() {
       }
 
       if (!currentProfileId) return;
+
+      // Prevent self-referral: referrer.id must not equal currentProfileId
+      if (referrer.id === currentProfileId) {
+        toast({
+          variant: 'destructive',
+          title: 'Kode referral tidak valid',
+          description: 'Anda tidak dapat menggunakan kode referral milik sendiri.',
+        });
+        return;
+      }
 
       // Update current user's referred_by and create referral record
       await supabase
@@ -124,57 +133,62 @@ export default function Auth() {
         backgroundPosition: 'center',
       }}
     >
-      <Card className="w-full max-w-md shadow-xl border-0 fade-in">
-        <CardHeader className="text-center pb-0">
-          <div className="flex justify-center">
-            <img src={logoImg} alt="Regal Paw" className="h-14 w-auto" />
-          </div>
-          <CardDescription className="text-base mt-2 text-gray-600">
-            Masuk untuk mulai berbelanja makanan kucing berkualitas
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6 pt-2">
-          {referralCode && (
-            <div className="p-3 bg-orange-100 rounded-lg text-center border border-orange-200">
-              <p className="text-sm text-orange-700">
-                🎉 Anda diundang dengan kode: <strong>{referralCode}</strong>
-              </p>
+      <div className="w-full max-w-md">
+        <Card className="w-full shadow-xl border-0 fade-in">
+          <CardHeader className="text-center pb-0">
+            <div className="flex justify-center">
+              <img src={logoImg} alt="Regal Paw" className="h-14 w-auto" />
             </div>
-          )}
-
-          <div className="space-y-2">
-            <Label htmlFor="referral" className="text-blue-900">Kode Referral (Opsional)</Label>
-            <Input
-              id="referral"
-              placeholder="Masukkan kode referral"
-              value={referralCode}
-              onChange={(e) => setReferralCode(e.target.value)}
-              className="focus:ring-blue-400"
-            />
-          </div>
-
-          <Button
-            onClick={handleGoogleSignIn}
-            className="w-full flex items-center justify-center gap-2 bg-white border border-gray-300 hover:bg-blue-50 text-gray-700 font-semibold shadow-sm py-2"
-            size="lg"
-            disabled={loadingGoogle}
-          >
-            {loadingGoogle ? (
-              <svg className="animate-spin h-5 w-5 mr-2 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-              </svg>
-            ) : (
-              <img src={googleLogo} alt="Google logo" className="h-5 w-5 mr-2" />
+            <CardDescription className="text-base mt-2 text-gray-600">
+              Masuk untuk mulai berbelanja makanan kucing berkualitas
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6 pt-2">
+            {referralCode && (
+              <div className="p-3 bg-orange-100 rounded-lg text-center border border-orange-200">
+                <p className="text-sm text-orange-700">
+                  🎉 Anda diundang dengan kode: <strong>{referralCode}</strong>
+                </p>
+              </div>
             )}
-            {loadingGoogle ? 'Memproses...' : 'Lanjutkan dengan Google'}
-          </Button>
 
-          <p className="text-xs text-center text-muted-foreground mt-2">
-            Dengan masuk, Anda menyetujui <a href="/terms" className="underline text-blue-700">syarat dan ketentuan</a> kami.
-          </p>
-        </CardContent>
-      </Card>
+            <div className="space-y-2">
+              <Label htmlFor="referral" className="text-blue-900">Kode Referral (Opsional)</Label>
+              <Input
+                id="referral"
+                placeholder="Masukkan kode referral"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value)}
+                className="focus:ring-blue-400"
+              />
+            </div>
+
+            <Button
+              onClick={handleGoogleSignIn}
+              className="w-full flex items-center justify-center gap-2 bg-white border border-gray-300 hover:bg-blue-50 text-gray-700 font-semibold shadow-sm py-2"
+              size="lg"
+              disabled={loadingGoogle}
+            >
+              {loadingGoogle ? (
+                <svg className="animate-spin h-5 w-5 mr-2 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+              ) : (
+                <img src={googleLogo} alt="Google logo" className="h-5 w-5 mr-2" />
+              )}
+              {loadingGoogle ? 'Memproses...' : 'Lanjutkan dengan Google'}
+            </Button>
+
+            <p className="text-xs text-center text-muted-foreground mt-2">
+              Dengan masuk, Anda menyetujui <a href="/terms" className="underline text-blue-700">syarat dan ketentuan</a> kami.
+            </p>
+            <div className="mb-4 text-sm text-muted-foreground text-center">
+              <Link to="/" className="underline">Kembali ke Beranda</Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

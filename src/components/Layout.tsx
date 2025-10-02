@@ -38,9 +38,9 @@ export function Layout({ children }: LayoutProps) {
   const { toast } = useToast();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+      <header className="fixed top-0 left-0 right-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="container px-4">
           <div className="grid grid-cols-2 md:grid-cols-3 items-center h-16">
             {/* Logo (left) */}
@@ -177,7 +177,7 @@ export function Layout({ children }: LayoutProps) {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1">
+      <main className="flex-1 pt-16">
         {children}
       </main>
 

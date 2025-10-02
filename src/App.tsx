@@ -21,6 +21,8 @@ import AdminUsersPage from "./pages/admin/Users";
 import AdminKampanyePage from "./pages/admin/Kampanye";
 import ReferralsPage from "./pages/admin/Referrals";
 import ReferralSettingsPage from "./pages/admin/ReferralSettings";
+import ReferralPurchasesPage from "./pages/admin/ReferralPurchases";
+import Payments from "./pages/admin/Payments";
 import AdminRoute from "./components/admin/AdminRoute";
 import NotFound from "./pages/NotFound";
 import Loading from "@/components/ui/Loading";
@@ -93,6 +95,22 @@ export default function App() {
               element={
                 <AdminRoute>
                   <ReferralsPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/referrals/purchases"
+              element={
+                <AdminRoute>
+                  <ReferralPurchasesPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/payments"
+              element={
+                <AdminRoute>
+                  <Payments />
                 </AdminRoute>
               }
             />
