@@ -42,7 +42,7 @@ export function Layout({ children }: LayoutProps) {
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="container px-4">
-          <div className="grid grid-cols-3 items-center h-16">
+          <div className="grid grid-cols-2 md:grid-cols-3 items-center h-16">
             {/* Logo (left) */}
             <div className="flex items-center">
               <Link to="/" className="flex items-center space-x-2">
