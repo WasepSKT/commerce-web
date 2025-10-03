@@ -8,7 +8,7 @@ import {
   SidebarMenuSubItem,
   SidebarMenuSubButton,
 } from '@/components/ui/sidebar';
-import { Home, Package, Users, Megaphone, Gift, Settings as SettingsIcon, CreditCard } from 'lucide-react';
+import { Home, Package, Users, Megaphone, Gift, Settings as SettingsIcon, CreditCard, Truck, ShoppingBag } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function AdminSidebarNav() {
@@ -104,6 +104,42 @@ export default function AdminSidebarNav() {
                 >
                   <CreditCard className={`h-5 w-5 ${isActive('/admin/payments') ? 'text-primary-foreground' : ''}`} />
                   <span className="text-base">Payments</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+
+          {isAuthenticated && isAdmin && (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isActive('/admin/orders')}>
+                <Link
+                  to="/admin/orders"
+                  className={`sidebar-link flex items-center gap-4 px-4 py-3 rounded-l-md transition-colors text-base ${isActive('/admin/orders')
+                    ? 'sidebar-link--active text-primary-foreground font-semibold'
+                    : 'text-muted-foreground hover:bg-muted/10 hover:text-muted-foreground'
+                    }`}
+                  aria-current={isActive('/admin/orders') ? 'page' : undefined}
+                >
+                  <ShoppingBag className={`h-5 w-5 ${isActive('/admin/orders') ? 'text-primary-foreground' : ''}`} />
+                  <span className="text-base">Orders</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+
+          {isAuthenticated && isAdmin && (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isActive('/admin/shipings')}>
+                <Link
+                  to="/admin/shipings"
+                  className={`sidebar-link flex items-center gap-4 px-4 py-3 rounded-l-md transition-colors text-base ${isActive('/admin/shipings')
+                    ? 'sidebar-link--active text-primary-foreground font-semibold'
+                    : 'text-muted-foreground hover:bg-muted/10 hover:text-muted-foreground'
+                    }`}
+                  aria-current={isActive('/admin/shipings') ? 'page' : undefined}
+                >
+                  <Truck className={`h-5 w-5 ${isActive('/admin/shipings') ? 'text-primary-foreground' : ''}`} />
+                  <span className="text-base">Shipings</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

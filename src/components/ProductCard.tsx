@@ -2,7 +2,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, Eye } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Product {
   id: string;
@@ -20,6 +21,8 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, onAddToCart }: ProductCardProps) {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -79,7 +82,18 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           </Button>
 
           {!isOutOfStock && onAddToCart && (
-            <Button size="sm" className="flex-1 bg-[#7A1316] text-[#F8DF7C] rounded-xl py-3 inline-flex items-center justify-center" onClick={() => onAddToCart(product)}>
+            <Button
+              size="sm"
+              className="flex-1 bg-[#7A1316] text-[#F8DF7C] rounded-xl py-3 inline-flex items-center justify-center"
+              onClick={() => {
+                if (!isAuthenticated) {
+                  // Redirect to login page and preserve current location
+                  navigate('/auth', { state: { from: window.location.pathname } });
+                  return;
+                }
+                onAddToCart(product);
+              }}
+            >
               <ShoppingCart className="w-4 h-4 mr-2" />
               <span className="font-medium">Tambah</span>
             </Button>

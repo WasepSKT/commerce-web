@@ -1,13 +1,23 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Layout } from '@/components/Layout';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, ShoppingCart, Star, Shield, Truck, Package } from 'lucide-react';
 import useCart from '@/hooks/useCart';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Product {
   id: string;
@@ -26,6 +36,12 @@ export default function ProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const { add } = useCart();
   const { toast } = useToast();
+  const { isAuthenticated, profile } = useAuth();
+  const navigateTo = useNavigate();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [creatingOrder, setCreatingOrder] = useState(false);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
 
   // Image zoom (lens) refs and state
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -73,12 +89,188 @@ export default function ProductDetail() {
   };
 
   const handleAddToCart = () => {
-    if (!product) return;
-
-    // Add to local cart and show toast
-    add(product.id, quantity);
-    toast({ title: 'Produk ditambahkan', description: `${product.name} x${quantity} telah ditambahkan ke keranjang.` });
+    setConfirmOpen(true);
   };
+
+  // Create a pending order in the DB and return the created order id
+  const createPendingOrder = async (): Promise<string | null> => {
+    if (!product || !profile) {
+      console.error('Missing product or profile when creating order');
+      return null;
+    }
+    setCreatingOrder(true);
+    try {
+      // Orders table expects specific columns (customer_address, user_id, etc.).
+      // Insert the order row first, then insert items into order_items.
+
+      // Build complete address string
+      let fullAddress = profile.address || '';
+      if (profile.subdistrict) fullAddress += `\n${profile.subdistrict}`;
+      if (profile.district) fullAddress += `, ${profile.district}`;
+      if (profile.city) fullAddress += `\n${profile.city}`;
+      if (profile.province) fullAddress += `, ${profile.province}`;
+      if (profile.postal_code) fullAddress += `\nKode Pos: ${profile.postal_code}`;
+
+      const orderPayload = {
+        total_amount: product.price * quantity,
+        status: 'pending' as const,
+        customer_name: profile.full_name ?? '',
+        customer_phone: profile.phone ?? '',
+        customer_address: fullAddress,
+        user_id: profile.user_id,
+      };
+
+      // insert and return the created order row
+      // supabase generated types may not match local schema here; cast `from` to any to avoid overload issues
+      const { data, error } = await supabase.from('orders').insert([orderPayload]).select().single();
+      if (error) {
+        throw error;
+      }
+
+      // Use the returned primary key (id) as the order identifier
+      const createdOrder = data as { id?: string } | null;
+      const id = createdOrder?.id ?? null;
+      if (!id) {
+        throw new Error('No order id returned');
+      }
+
+      // Insert order items into `order_items` table (separate table expected)
+      const itemsPayload = [
+        {
+          order_id: id,
+          product_id: product.id,
+          quantity,
+          price: product.price,
+        },
+      ];
+
+      // Insert items into order_items and request the inserted rows back so we can verify success
+      const itemsRes = await supabase.from('order_items').insert(itemsPayload).select();
+      // normalize items response
+      const itemsError = (itemsRes as unknown as { error?: unknown })?.error ?? null;
+      const itemsData = (itemsRes as unknown as { data?: unknown })?.data ?? itemsRes;
+      if (itemsError || !itemsData || (Array.isArray(itemsData) && itemsData.length === 0)) {
+        console.error('Failed to insert order items', itemsError ?? itemsRes);
+        // attempt to rollback the created order to avoid dangling pending orders without items
+        try {
+          await supabase.from('orders').delete().eq('id', id);
+        } catch (delErr) {
+          console.error('Failed to rollback order after item insert failure', delErr);
+        }
+        let msg = 'Unknown error while inserting items';
+        if (itemsError) {
+          if (typeof itemsError === 'object' && itemsError !== null && 'message' in itemsError) {
+            const maybeMsg = (itemsError as { message?: unknown }).message;
+            if (maybeMsg) msg = String(maybeMsg);
+          } else {
+            try {
+              msg = typeof itemsError === 'string' ? itemsError : JSON.stringify(itemsError);
+            } catch (_err) {
+              msg = String(itemsError);
+            }
+          }
+        }
+        toast({ variant: 'destructive', title: 'Gagal menyimpan item pesanan', description: String(msg) });
+        setCreatingOrder(false);
+        return null;
+      }
+
+      // set pending order id so the UI can show it
+      setPendingOrderId(id);
+      return id;
+    } catch (err: unknown) {
+      console.error('Failed to create order', err);
+      let message = 'Terjadi kesalahan saat membuat pesanan.';
+      if (typeof err === 'object' && err) {
+        const maybe = err as { message?: unknown };
+        if (maybe.message) message = String(maybe.message);
+      }
+      toast({ variant: 'destructive', title: 'Gagal membuat pesanan', description: message });
+    } finally {
+      setCreatingOrder(false);
+    }
+  };
+
+  // Open payment/recap modal without creating order yet. Order will be created on second confirm or when countdown ends.
+  const openPaymentRecap = () => {
+    // Require complete address information before proceeding
+    const missingFields: string[] = [];
+    if (!profile?.full_name) missingFields.push('Nama penerima');
+    if (!profile?.phone) missingFields.push('Nomor HP/WA');
+    if (!profile?.address) missingFields.push('Alamat lengkap');
+    if (!profile?.province) missingFields.push('Provinsi');
+    if (!profile?.city) missingFields.push('Kabupaten/Kota');
+    if (!profile?.district) missingFields.push('Kecamatan');
+    if (!profile?.subdistrict) missingFields.push('Desa/Kelurahan');
+    if (!profile?.postal_code) missingFields.push('Kode Pos');
+
+    if (missingFields.length > 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Data Alamat Belum Lengkap',
+        description: `Silakan lengkapi data berikut: ${missingFields.join(', ')}.`
+      });
+      // Redirect to profile page so user can complete it, return to product after save
+      navigateTo(`/profile?next=/product/${id}`);
+      return;
+    }
+
+    setConfirmOpen(false);
+    setPaymentOpen(true);
+  };
+
+  // Ensure order exists (create if missing), then build message and redirect to WhatsApp.
+  const redirectToWhatsApp = async () => {
+    if (!product || !profile) return;
+    try {
+      let usedOrderId = pendingOrderId;
+      if (!usedOrderId) {
+        const id = await createPendingOrder();
+        usedOrderId = id ?? null;
+        if (id) {
+          // show a small toast so user sees the created Order ID even when redirected
+          toast({ title: 'Pesanan disimpan', description: `Order ID: ${id}` });
+        }
+      }
+
+      let message = `Halo, saya ${profile.full_name ?? ''} ingin memesan:\n\n`;
+      message += `${product.name}\nJumlah: ${quantity}\nHarga: ${formatPrice(product.price * quantity)}\n\n`;
+      message += `Total: ${formatPrice(product.price * quantity)}\n\n`;
+      message += `📋 *DETAIL PENGIRIMAN:*\n`;
+      message += `Nama penerima: ${profile.full_name}\n`;
+      message += `No. HP/WA: ${profile.phone}\n`;
+      message += `\n📍 *ALAMAT LENGKAP:*\n`;
+      message += `${profile.address || ''}\n`;
+      if (profile.subdistrict) message += `${profile.subdistrict}, `;
+      if (profile.district) message += `${profile.district}\n`;
+      if (profile.city) message += `${profile.city}, `;
+      if (profile.province) message += `${profile.province}\n`;
+      if (profile.postal_code) message += `Kode Pos: ${profile.postal_code}\n`;
+
+      // Add Google Maps share link if coordinates are available
+      if (profile.latitude && profile.longitude) {
+        const googleMapsUrl = `https://www.google.com/maps?q=${profile.latitude},${profile.longitude}`;
+        message += `\n📍 *LOKASI PENERIMA:*\n${googleMapsUrl}\n`;
+      }
+
+      message += `\nTerima kasih.`;
+      if (usedOrderId) message = `Order ID: ${usedOrderId}\n` + message;
+
+      const whatsappUrl = `https://wa.me/6281234567890?text=${encodeURIComponent(message)}`;
+      window.open(whatsappUrl, '_blank');
+      setPaymentOpen(false);
+    } catch (err) {
+      console.error('Failed to create order before redirect', err);
+      let message = 'Gagal membuat pesanan sebelum redirect.';
+      if (typeof err === 'object' && err) {
+        const maybe = err as { message?: unknown };
+        if (maybe.message) message = String(maybe.message);
+      }
+      toast({ variant: 'destructive', title: 'Gagal membuat pesanan', description: message });
+    }
+  };
+
+  // No auto-countdown/redirect — user must explicitly confirm to create order and redirect
 
   if (loading) {
     return (
@@ -271,11 +463,11 @@ export default function ProductDetail() {
                     onClick={handleAddToCart}
                   >
                     <ShoppingCart className="mr-2 h-5 w-5" />
-                    Pesan via WhatsApp - {formatPrice(product.price * quantity)}
+                    Checkout - {formatPrice(product.price * quantity)}
                   </Button>
 
                   <p className="text-xs text-center text-muted-foreground">
-                    Klik untuk melanjutkan pemesanan melalui WhatsApp
+                    Klik untuk memulai proses checkout — Anda akan diminta konfirmasi dan pembayaran sebelum diarahkan ke WhatsApp.
                   </p>
                 </div>
               </div>
@@ -308,6 +500,67 @@ export default function ProductDetail() {
           </div>
         </div>
       </div>
+      {/* Confirmation Dialog */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Pesanan</DialogTitle>
+            <DialogDescription>Periksa kembali pesanan Anda sebelum kami simpan sebagai <strong>pending</strong>.</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="mb-2">Produk: <strong>{product.name}</strong></p>
+            <p className="mb-2">Jumlah: <strong>{quantity}</strong></p>
+            <p className="mb-2">Total: <strong>{formatPrice(product.price * quantity)}</strong></p>
+            <p className="mb-2">Pengiriman ke: <strong>{profile?.address}</strong></p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmOpen(false)}>Batal</Button>
+            <Button onClick={openPaymentRecap} disabled={creatingOrder}>{creatingOrder ? 'Menyimpan...' : 'Setuju, Lanjutkan'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment / Recap Dialog */}
+      <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Lakukan Pembayaran</DialogTitle>
+            <DialogDescription>Periksa rekap pembelian. Tekan konfirmasi untuk melanjutkan ke WhatsApp.</DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-3">
+            <div className="border p-3 rounded">
+              <p className="text-sm text-muted-foreground">Order ID</p>
+              <p className="font-medium">{pendingOrderId ?? '-'}</p>
+              {!pendingOrderId ? (
+                <p className="text-xs text-muted-foreground mt-1">Order akan dibuat setelah Anda menekan "Konfirmasi & Lanjutkan ke WhatsApp".</p>
+              ) : null}
+            </div>
+            <div className="border p-3 rounded">
+              <p className="text-sm text-muted-foreground">Rekap Pembelian</p>
+              <p className="font-medium">{product.name} x{quantity} — {formatPrice(product.price * quantity)}</p>
+            </div>
+            <div className="border p-3 rounded">
+              <p className="text-sm text-muted-foreground">Alamat Pengiriman</p>
+              <div className="font-medium text-sm">
+                <div>{profile?.full_name}</div>
+                <div>{profile?.phone}</div>
+                <div className="mt-1">
+                  {profile?.address}<br />
+                  {profile?.subdistrict && profile?.district && `${profile.subdistrict}, ${profile.district}`}<br />
+                  {profile?.city && profile?.province && `${profile.city}, ${profile.province}`}<br />
+                  {profile?.postal_code && `Kode Pos: ${profile.postal_code}`}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPaymentOpen(false)}>Tutup</Button>
+            <Button onClick={() => void redirectToWhatsApp()} disabled={creatingOrder}>{creatingOrder ? 'Menyimpan...' : 'Konfirmasi & Lanjutkan ke WhatsApp'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

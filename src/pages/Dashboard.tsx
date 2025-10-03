@@ -186,7 +186,7 @@ export default function Dashboard() {
           {/* Referral Section */}
           <Card>
             <CardHeader>
-              <CardTitle>Program Referral</CardTitle>
+              <CardTitle style={{ color: 'hsl(var(--primary))' }}>Program Referral</CardTitle>
               <CardDescription>
                 Ajak teman dan dapatkan reward untuk setiap referral yang berhasil
               </CardDescription>
@@ -204,7 +204,7 @@ export default function Dashboard() {
               </div>
 
               <div className="space-y-2">
-                <h4 className="font-medium">Referral Anda ({stats.totalReferrals})</h4>
+                <h4 className="font-medium text-primary">Referral Anda ({stats.totalReferrals})</h4>
                 {referrals.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     Belum ada referral. Mulai ajak teman sekarang!
@@ -231,7 +231,7 @@ export default function Dashboard() {
           {/* Recent Orders */}
           <Card>
             <CardHeader>
-              <CardTitle>Pesanan Terbaru</CardTitle>
+              <CardTitle style={{ color: 'hsl(var(--primary))' }}>Pesanan Terbaru</CardTitle>
               <CardDescription>
                 5 pesanan terakhir Anda
               </CardDescription>

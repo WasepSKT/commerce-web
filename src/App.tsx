@@ -23,7 +23,10 @@ import ReferralsPage from "./pages/admin/Referrals";
 import ReferralSettingsPage from "./pages/admin/ReferralSettings";
 import ReferralPurchasesPage from "./pages/admin/ReferralPurchases";
 import Payments from "./pages/admin/Payments";
+import AdminShipingsPage from "./pages/admin/Shipings";
+import AdminOrders from './pages/admin/Orders';
 import AdminRoute from "./components/admin/AdminRoute";
+import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import Loading from "@/components/ui/Loading";
 import { useAuth } from "@/hooks/useAuth";
@@ -46,18 +49,41 @@ export default function App() {
         <BrowserRouter>
           <ScrollToTopOnNav />
           <Routes>
+            {/* Public Routes */}
             <Route path="/" element={<Index />} />
-            <Route path="/products" element={<ProductList />} />
-            <Route path="/product/:id" element={<ProductDetail />} />
-            <Route path="/cart" element={<CartPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/career" element={<CareerPage />} />
             <Route path="/career/openings" element={<CareerOpenings />} />
             <Route path="/career/benefits" element={<CareerBenefits />} />
+            <Route path="/products" element={<ProductList />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/cart" element={
+              <ProtectedRoute>
+                <CartPage />
+              </ProtectedRoute>
+            } />
+
+            {/* Admin Routes */}
+            <Route
+              path="/admin/orders"
+              element={
+                <AdminRoute>
+                  <AdminOrders />
+                </AdminRoute>
+              }
+            />
             <Route
               path="/admin"
               element={
@@ -115,6 +141,14 @@ export default function App() {
               }
             />
             <Route
+              path="/admin/shipings"
+              element={
+                <AdminRoute>
+                  <AdminShipingsPage />
+                </AdminRoute>
+              }
+            />
+            <Route
               path="/admin/referrals/settings"
               element={
                 <AdminRoute>
@@ -122,7 +156,8 @@ export default function App() {
                 </AdminRoute>
               }
             />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
+            {/* Catch-all route for 404 - MUST BE LAST */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

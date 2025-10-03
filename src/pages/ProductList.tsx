@@ -5,6 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ProductCard } from '@/components/ProductCard';
 import { useToast } from '@/hooks/use-toast';
 import useCart from '@/hooks/useCart';
+import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Search, Filter } from 'lucide-react';
 import { Layout } from '@/components/Layout';
@@ -26,6 +28,8 @@ export default function ProductList() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const { map: cart, add, totalItems } = useCart();
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   const categories = ['all', 'Dry Food', 'Wet Food', 'Kitten Food'];
 
@@ -92,26 +96,14 @@ export default function ProductList() {
       return;
     }
 
-    // Create WhatsApp message
-    let message = "Halo, saya ingin memesan:\n\n";
-    let total = 0;
-
-    Object.entries(cart).forEach(([productId, quantity]) => {
-      const product = products.find(p => p.id === productId);
-      if (product && quantity > 0) {
-        const subtotal = product.price * quantity;
-        message += `${product.name}\n`;
-        message += `Jumlah: ${quantity}\n`;
-        message += `Harga: ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(subtotal)}\n\n`;
-        total += subtotal;
-      }
-    });
-
-    message += `Total: ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(total)}\n\n`;
-    message += "Mohon konfirmasi pesanan ini. Terima kasih!";
-
-    const whatsappUrl = `https://wa.me/6281234567890?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+    // Require auth before opening WhatsApp
+    if (!isAuthenticated) {
+      toast({ variant: 'destructive', title: 'Harap masuk terlebih dahulu', description: 'Silakan login untuk melanjutkan ke checkout.' });
+      navigate('/auth', { state: { from: '/products' } });
+      return;
+    }
+    // Navigate to cart page so user can review & use the unified checkout flow
+    navigate('/cart');
   };
 
   if (loading) {
@@ -189,7 +181,7 @@ export default function ProductList() {
               {getTotalItems()} item(s) dalam keranjang
             </span>
             <Button onClick={proceedToCheckout}>
-              Checkout via WhatsApp
+              Checkout
             </Button>
           </div>
         )}
