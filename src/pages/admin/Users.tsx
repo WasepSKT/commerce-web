@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { TableSkeleton, PaginationSkeleton } from '@/components/ui/AdminSkeleton';
 
 // Safe error message extractor to avoid `any` casts for lint
 function getErrorMessage(err: unknown, fallback = 'Gagal mengambil data pengguna'): string {
@@ -152,7 +153,10 @@ export default function AdminUsersPage() {
           <CardContent className="min-h-[50vh]">
 
             {loading ? (
-              <div className="text-center py-8 text-muted-foreground">Loading data pengguna...</div>
+              <>
+                <TableSkeleton rows={8} columns={6} />
+                <PaginationSkeleton showInfo={true} />
+              </>
             ) : error ? (
               <div className="text-center py-8 text-red-500">{error}</div>
             ) : users.length === 0 ? (

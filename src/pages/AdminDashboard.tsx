@@ -8,6 +8,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import Loading from '@/components/ui/Loading';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 
 interface Order {
@@ -22,7 +24,7 @@ interface Order {
 export default function AdminDashboard() {
   const { isAuthenticated, isAdmin, loading, user } = useAuth();
 
-
+  const [dataLoading, setDataLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState({
     totalProducts: 0,
@@ -39,6 +41,7 @@ export default function AdminDashboard() {
   }, [isAuthenticated, isAdmin]);
 
   const fetchAdminData = async () => {
+    setDataLoading(true);
     try {
       // Fetch orders
       const { data: ordersData } = await supabase
@@ -63,6 +66,8 @@ export default function AdminDashboard() {
       setStats({ totalProducts, totalOrders, totalRevenue, totalUsers });
     } catch (error) {
       console.error('Error fetching admin data:', error);
+    } finally {
+      setDataLoading(false);
     }
   };
 
@@ -149,19 +154,83 @@ export default function AdminDashboard() {
           <p className="text-sm md:text-base text-muted-foreground">Kelola produk, pesanan, dan pengguna</p>
         </div>
 
-        {/* Stats */}
-        <AdminStatsGrid
-          totalProducts={stats.totalProducts}
-          totalOrders={stats.totalOrders}
-          totalRevenue={stats.totalRevenue}
-          totalUsers={stats.totalUsers}
-          formatPrice={formatPrice}
-        />
+        {dataLoading ? (
+          <>
+            {/* Stats Skeleton */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
+              {[...Array(4)].map((_, i) => (
+                <Card key={i}>
+                  <CardContent className="p-4 md:p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-8 w-16" />
+                      </div>
+                      <Skeleton className="h-8 w-8" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
-          <AdminRevenueChart data={buildRevenueSeries()} />
-          <AdminOrdersCard orders={orders} formatPrice={formatPrice} getStatusBadge={getStatusBadge} onUpdateStatus={handleUpdateOrderStatus} />
-        </div>
+            {/* Charts and Orders Skeleton */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
+              {/* Revenue Chart Skeleton */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    <Skeleton className="h-6 w-32" />
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-64 w-full" />
+                </CardContent>
+              </Card>
+
+              {/* Orders Card Skeleton */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    <Skeleton className="h-6 w-32" />
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="flex items-center justify-between p-3 border rounded">
+                        <div className="space-y-1">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-3 w-32" />
+                          <Skeleton className="h-4 w-20" />
+                        </div>
+                        <div className="space-y-1">
+                          <Skeleton className="h-6 w-16" />
+                          <Skeleton className="h-8 w-20" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Stats */}
+            <AdminStatsGrid
+              totalProducts={stats.totalProducts}
+              totalOrders={stats.totalOrders}
+              totalRevenue={stats.totalRevenue}
+              totalUsers={stats.totalUsers}
+              formatPrice={formatPrice}
+            />
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
+              <AdminRevenueChart data={buildRevenueSeries()} />
+              <AdminOrdersCard orders={orders} formatPrice={formatPrice} getStatusBadge={getStatusBadge} onUpdateStatus={handleUpdateOrderStatus} />
+            </div>
+          </>
+        )}
       </div>
     </AdminLayout>
   );

@@ -14,6 +14,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { printXPrinterReceipt } from '@/lib/receiptPrinter';
+import { TableSkeleton, HeaderSkeleton } from '@/components/ui/AdminSkeleton';
 
 interface OrderRow {
   id: string;
@@ -329,7 +330,9 @@ export default function Payments() {
             </DialogContent>
           </Dialog>
 
-          {rows.length === 0 ? (
+          {loading ? (
+            <TableSkeleton rows={6} columns={6} />
+          ) : rows.length === 0 ? (
             <div className="py-12">
               <EmptyState
                 title="Tidak ada pembayaran pending"

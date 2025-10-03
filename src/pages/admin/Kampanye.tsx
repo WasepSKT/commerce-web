@@ -1,4 +1,5 @@
 import AdminLayout from '@/components/admin/AdminLayout';
+import { CardGridSkeleton, HeaderSkeleton } from '@/components/ui/AdminSkeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function AdminKampanyePage() {

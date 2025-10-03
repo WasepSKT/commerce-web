@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
+import { TableSkeleton, HeaderSkeleton } from '@/components/ui/AdminSkeleton';
 import EmptyState from '@/components/ui/EmptyState';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';

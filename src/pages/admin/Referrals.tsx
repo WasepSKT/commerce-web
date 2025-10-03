@@ -4,6 +4,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import EmptyState from '@/components/ui/EmptyState';
 import useDebouncedEffect from '@/hooks/useDebouncedEffect';
 import { RefreshCw } from 'lucide-react';
+import { TableSkeleton, FiltersSkeleton } from '@/components/ui/AdminSkeleton';
 
 interface Referral {
   id: string;
@@ -104,7 +105,9 @@ export default function Referrals() {
             </div>
           </div>
 
-          {referrals.length === 0 ? (
+          {loading ? (
+            <TableSkeleton rows={6} columns={6} />
+          ) : referrals.length === 0 ? (
             <div className="py-12">
               <EmptyState
                 title="Belum ada referral"

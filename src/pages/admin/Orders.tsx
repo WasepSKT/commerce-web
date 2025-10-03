@@ -6,7 +6,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useToast } from '@/hooks/use-toast';
 import { printXPrinterReceipt } from '@/lib/receiptPrinter';
 import { printInvoice } from '@/lib/invoiceGenerator';
-import { RefreshCw, Search } from 'lucide-react';
+import { printFaktur } from '@/lib/fakturGenerator';
+import { RefreshCw, Search, Download, Printer, FileText } from 'lucide-react';
+import { TableSkeleton, HeaderSkeleton, FiltersSkeleton } from '@/components/ui/AdminSkeleton';
 
 interface OrderRow {
   id: string;
@@ -70,6 +72,7 @@ export default function AdminOrders() {
       case 'pending': return 'Menunggu';
       case 'paid': return 'Dibayar';
       case 'shipped': return 'Dikirim';
+      case 'completed': return 'Selesai';
       case 'cancelled': return 'Dibatalkan';
       default: return status ?? 'Tidak Diketahui';
     }
@@ -184,6 +187,26 @@ export default function AdminOrders() {
     }
   };
 
+  const downloadFaktur = async (order: OrderRow) => {
+    try {
+      // Fetch full order details with enriched product names
+      const enrichedOrder = await fetchOrderWithProductNames(order.id);
+      if (enrichedOrder) {
+        printFaktur(enrichedOrder);
+        toast({ title: 'Sukses', description: 'Faktur berhasil dibuat' });
+      } else {
+        throw new Error('Gagal memuat detail pesanan');
+      }
+    } catch (error) {
+      console.error('Faktur generation failed:', error);
+      toast({
+        title: 'Gagal',
+        description: error instanceof Error ? error.message : 'Gagal membuat faktur',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const printResi = async (order: OrderRow) => {
     try {
       // Fetch full order details with enriched product names
@@ -231,42 +254,49 @@ export default function AdminOrders() {
             <option value="pending">Pending</option>
             <option value="paid">Dibayar</option>
             <option value="shipped">Dikirim</option>
+            <option value="completed">Selesai</option>
+            <option value="selesai">Selesai</option>
             <option value="cancelled">Dibatalkan</option>
           </select>
         </div>
 
-        <div className="mt-4 overflow-auto rounded border">
-          <table className="min-w-full divide-y text-sm">
-            <thead className="bg-muted/10">
-              <tr>
-                <th className="px-4 py-2 text-left">Order ID</th>
-                <th className="px-4 py-2 text-left">Customer</th>
-                <th className="px-4 py-2 text-left">Amount</th>
-                <th className="px-4 py-2 text-left">Status</th>
-                <th className="px-4 py-2 text-left">Created</th>
-                <th className="px-4 py-2 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-background divide-y">
-              {filtered.map(o => (
-                <tr key={o.id}>
-                  <td className="px-4 py-3 font-mono">{o.id}</td>
-                  <td className="px-4 py-3">{o.customer_name ?? o.user_id ?? '-'}</td>
-                  <td className="px-4 py-3">Rp {Number(o.total_amount ?? 0).toLocaleString('id-ID')}</td>
-                  <td className="px-4 py-3">{getStatusInIndonesian(o.status)}</td>
-                  <td className="px-4 py-3">{o.created_at ? new Date(o.created_at).toLocaleString() : '-'}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => void openDetail(String(o.id))}>Detail</Button>
-                      {(o.status === 'dikirim' || o.status === 'shipped') && <Button size="sm" onClick={() => void downloadInvoice(o)}>Download Invoice</Button>}
-                      {o.status === 'paid' && <Button size="sm" onClick={() => void printResi(o)}>Cetak Resi</Button>}
-                    </div>
-                  </td>
+        {loading ? (
+          <TableSkeleton rows={8} columns={6} />
+        ) : (
+          <div className="mt-4 overflow-auto rounded border">
+            <table className="min-w-full divide-y text-sm">
+              <thead className="bg-muted/10">
+                <tr>
+                  <th className="px-4 py-2 text-left">Order ID</th>
+                  <th className="px-4 py-2 text-left">Customer</th>
+                  <th className="px-4 py-2 text-left">Amount</th>
+                  <th className="px-4 py-2 text-left">Status</th>
+                  <th className="px-4 py-2 text-left">Created</th>
+                  <th className="px-4 py-2 text-left">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="bg-background divide-y">
+                {filtered.map(o => (
+                  <tr key={o.id}>
+                    <td className="px-4 py-3 font-mono">{o.id}</td>
+                    <td className="px-4 py-3">{o.customer_name ?? o.user_id ?? '-'}</td>
+                    <td className="px-4 py-3">Rp {Number(o.total_amount ?? 0).toLocaleString('id-ID')}</td>
+                    <td className="px-4 py-3">{getStatusInIndonesian(o.status)}</td>
+                    <td className="px-4 py-3">{o.created_at ? new Date(o.created_at).toLocaleString() : '-'}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => void openDetail(String(o.id))}>Detail</Button>
+                        {(o.status === 'dikirim' || o.status === 'shipped') && <Button size="sm" variant="default" onClick={() => void downloadInvoice(o)}><Download className="mr-1 h-4 w-4" />Invoice</Button>}
+                        {(o.status === 'completed' || o.status === 'selesai') && <Button size="sm" variant="default" onClick={() => void downloadFaktur(o)}><FileText className="mr-1 h-4 w-4" />Faktur</Button>}
+                        {o.status === 'paid' && <Button size="sm" variant="default" onClick={() => void printResi(o)}><Printer className="mr-1 h-4 w-4" />Resi</Button>}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         <Dialog open={!!detail} onOpenChange={(open) => { if (!open) setDetail(null); }}>
           <DialogContent>
@@ -299,7 +329,10 @@ export default function AdminOrders() {
                 <div className="flex gap-2">
                   <Button variant="ghost" onClick={() => setDetail(null)}>Tutup</Button>
                   {(detail.status === 'dikirim' || detail.status === 'shipped') && (
-                    <Button onClick={() => downloadInvoice(detail)}>Download Invoice</Button>
+                    <Button onClick={() => downloadInvoice(detail)}><Download className="mr-2 h-4 w-4" />Download Invoice</Button>
+                  )}
+                  {(detail.status === 'completed' || detail.status === 'selesai') && (
+                    <Button onClick={() => downloadFaktur(detail)}><FileText className="mr-2 h-4 w-4" />Download Faktur</Button>
                   )}
                 </div>
               </div>

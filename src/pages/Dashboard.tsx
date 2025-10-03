@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Copy, Gift, ShoppingBag, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Loading from '@/components/ui/Loading';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Order {
   id: string;
@@ -33,6 +34,7 @@ export default function Dashboard() {
   const { isAuthenticated, profile, loading } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [referrals, setReferrals] = useState<Referral[]>([]);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
   const [stats, setStats] = useState({
     totalOrders: 0,
     totalSpent: 0,
@@ -42,6 +44,7 @@ export default function Dashboard() {
   const { toast } = useToast();
 
   const fetchDashboardData = useCallback(async () => {
+    setDashboardLoading(true);
     try {
       // Fetch user orders
       const { data: ordersData } = await supabase
@@ -71,6 +74,8 @@ export default function Dashboard() {
       setStats({ totalOrders, totalSpent, totalReferrals, rewardPoints });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+    } finally {
+      setDashboardLoading(false);
     }
   }, [profile]);
 
@@ -132,55 +137,73 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Pesanan</p>
-                  <p className="text-2xl font-bold">{stats.totalOrders}</p>
+        {dashboardLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {[...Array(4)].map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-8 w-16" />
+                    </div>
+                    <Skeleton className="h-8 w-8" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Pesanan</p>
+                    <p className="text-2xl font-bold">{stats.totalOrders}</p>
+                  </div>
+                  <ShoppingBag className="h-8 w-8 text-primary" />
                 </div>
-                <ShoppingBag className="h-8 w-8 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Belanja</p>
-                  <p className="text-2xl font-bold">{formatPrice(stats.totalSpent)}</p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Belanja</p>
+                    <p className="text-2xl font-bold">{formatPrice(stats.totalSpent)}</p>
+                  </div>
+                  <Gift className="h-8 w-8 text-primary" />
                 </div>
-                <Gift className="h-8 w-8 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Referral Berhasil</p>
-                  <p className="text-2xl font-bold">{stats.totalReferrals}</p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Referral Berhasil</p>
+                    <p className="text-2xl font-bold">{stats.totalReferrals}</p>
+                  </div>
+                  <Users className="h-8 w-8 text-primary" />
                 </div>
-                <Users className="h-8 w-8 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Poin Reward</p>
-                  <p className="text-2xl font-bold">{stats.rewardPoints}</p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Poin Reward</p>
+                    <p className="text-2xl font-bold">{stats.rewardPoints}</p>
+                  </div>
+                  <Gift className="h-8 w-8 text-primary" />
                 </div>
-                <Gift className="h-8 w-8 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Referral Section */}
@@ -192,39 +215,67 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground mb-2">Kode Referral Anda:</p>
-                <div className="flex items-center justify-between">
-                  <code className="text-lg font-mono font-bold">{profile?.referral_code}</code>
-                  <Button size="sm" onClick={copyReferralCode}>
-                    <Copy className="h-4 w-4 mr-2" />
-                    Salin Link
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <h4 className="font-medium text-primary">Referral Anda ({stats.totalReferrals})</h4>
-                {referrals.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Belum ada referral. Mulai ajak teman sekarang!
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {referrals.slice(0, 3).map((referral) => (
-                      <div key={referral.id} className="flex items-center justify-between p-3 bg-muted/50 rounded">
-                        <div>
-                          <p className="text-sm font-medium">{referral.referrer.full_name || referral.referrer.email}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(referral.created_at).toLocaleDateString('id-ID')}
-                          </p>
-                        </div>
-                        <Badge variant="secondary">+{referral.reward_points} poin</Badge>
-                      </div>
-                    ))}
+              {dashboardLoading ? (
+                <>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <Skeleton className="h-4 w-32 mb-2" />
+                    <div className="flex items-center justify-between">
+                      <Skeleton className="h-6 w-24" />
+                      <Skeleton className="h-8 w-20" />
+                    </div>
                   </div>
-                )}
-              </div>
+                  <div className="space-y-2">
+                    <Skeleton className="h-5 w-40" />
+                    <div className="space-y-2">
+                      {[...Array(3)].map((_, i) => (
+                        <div key={i} className="flex items-center justify-between p-3 bg-muted/50 rounded">
+                          <div className="space-y-1">
+                            <Skeleton className="h-4 w-32" />
+                            <Skeleton className="h-3 w-20" />
+                          </div>
+                          <Skeleton className="h-5 w-16" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-2">Kode Referral Anda:</p>
+                    <div className="flex items-center justify-between">
+                      <code className="text-lg font-mono font-bold">{profile?.referral_code}</code>
+                      <Button size="sm" onClick={copyReferralCode}>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Salin Link
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-primary">Referral Anda ({stats.totalReferrals})</h4>
+                    {referrals.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        Belum ada referral. Mulai ajak teman sekarang!
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {referrals.slice(0, 3).map((referral) => (
+                          <div key={referral.id} className="flex items-center justify-between p-3 bg-muted/50 rounded">
+                            <div>
+                              <p className="text-sm font-medium">{referral.referrer.full_name || referral.referrer.email}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(referral.created_at).toLocaleDateString('id-ID')}
+                              </p>
+                            </div>
+                            <Badge variant="secondary">+{referral.reward_points} poin</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -237,7 +288,20 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {orders.length === 0 ? (
+              {dashboardLoading ? (
+                <div className="space-y-4">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-20" />
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                      <Skeleton className="h-6 w-16" />
+                    </div>
+                  ))}
+                </div>
+              ) : orders.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   Belum ada pesanan. Mulai berbelanja sekarang!
                 </p>

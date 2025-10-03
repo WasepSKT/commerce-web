@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import {
 import ProductDialog from '@/components/admin/ProductDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { TableSkeleton, HeaderSkeleton } from '@/components/ui/AdminSkeleton';
 
 interface Product {
   id: string;
@@ -46,6 +47,7 @@ type DialogResult = {
 export default function AdminProductsPage() {
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productForm, setProductForm] = useState({
@@ -59,14 +61,22 @@ export default function AdminProductsPage() {
     stock_quantity: ''
   });
 
+  const fetchProducts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+      setProducts(data || []);
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+      toast({ title: 'Gagal', description: 'Gagal memuat produk', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
     fetchProducts();
-  }, []);
-
-  const fetchProducts = async () => {
-    const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false });
-    setProducts(data || []);
-  };
+  }, [fetchProducts]);
 
   const resetForm = () => {
     setProductForm({
@@ -200,45 +210,51 @@ export default function AdminProductsPage() {
           </div>
         </CardHeader>
         <CardContent className="max-h-[70vh] overflow-y-auto">
-          <div className="w-full overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-muted-foreground">
-                  <th className="px-3 py-2 text-left">Gambar</th>
-                  <th className="px-3 py-2 text-left">Nama</th>
-                  <th className="px-3 py-2 text-left">Harga</th>
-                  <th className="px-3 py-2 text-left">Stok</th>
-                  <th className="px-3 py-2 text-left">Kategori</th>
-                  <th className="px-3 py-2 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.map((product) => (
-                  <tr key={product.id} className="border-b last:border-0">
-                    <td className="px-3 py-2">
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="h-12 w-12 rounded object-cover bg-muted"
-                      />
-                    </td>
-                    <td className="px-3 py-2 align-top">
-                      <div className="font-medium">{product.name}</div>
-                    </td>
-                    <td className="px-3 py-2 align-top">{formatPrice(product.price)}</td>
-                    <td className="px-3 py-2 align-top">{product.stock_quantity}</td>
-                    <td className="px-3 py-2 align-top"><Badge variant="outline">{product.category}</Badge></td>
-                    <td className="px-3 py-2 align-top">
-                      <div className="flex gap-2 justify-end">
-                        <Button size="sm" variant="outline" onClick={() => handleEdit(product)}><Edit className="h-4 w-4" /></Button>
-                        <Button size="sm" variant="destructive" onClick={() => setDeletingProduct(product)}><Trash2 className="h-4 w-4" /></Button>
-                      </div>
-                    </td>
+          {loading ? (
+            <div className="p-4">
+              <TableSkeleton rows={6} columns={6} />
+            </div>
+          ) : (
+            <div className="w-full overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-muted-foreground">
+                    <th className="px-3 py-2 text-left">Gambar</th>
+                    <th className="px-3 py-2 text-left">Nama</th>
+                    <th className="px-3 py-2 text-left">Harga</th>
+                    <th className="px-3 py-2 text-left">Stok</th>
+                    <th className="px-3 py-2 text-left">Kategori</th>
+                    <th className="px-3 py-2 text-right">Aksi</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {products.map((product) => (
+                    <tr key={product.id} className="border-b last:border-0">
+                      <td className="px-3 py-2">
+                        <img
+                          src={product.image_url}
+                          alt={product.name}
+                          className="h-12 w-12 rounded object-cover bg-muted"
+                        />
+                      </td>
+                      <td className="px-3 py-2 align-top">
+                        <div className="font-medium">{product.name}</div>
+                      </td>
+                      <td className="px-3 py-2 align-top">{formatPrice(product.price)}</td>
+                      <td className="px-3 py-2 align-top">{product.stock_quantity}</td>
+                      <td className="px-3 py-2 align-top"><Badge variant="outline">{product.category}</Badge></td>
+                      <td className="px-3 py-2 align-top">
+                        <div className="flex gap-2 justify-end">
+                          <Button size="sm" variant="outline" onClick={() => handleEdit(product)}><Edit className="h-4 w-4" /></Button>
+                          <Button size="sm" variant="destructive" onClick={() => setDeletingProduct(product)}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
         <AlertDialog open={!!deletingProduct} onOpenChange={(open) => { if (!open) setDeletingProduct(null); }}>
           <AlertDialogContent>
