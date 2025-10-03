@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { X } from 'lucide-react';
 import { useCallback } from 'react';
 import { format } from 'date-fns';
@@ -261,15 +262,19 @@ export default function ReferralSettings() {
 
               <div>
                 <Label>Reward type</Label>
-                <select
+                <Select
                   value={settings.reward_type}
-                  onChange={(e) => setSettings(s => ({ ...s, reward_type: e.target.value as Settings['reward_type'] }))}
-                  className="mt-1 block w-full rounded-md border px-3 py-2 bg-background"
+                  onValueChange={(value) => setSettings(s => ({ ...s, reward_type: value as Settings['reward_type'] }))}
                 >
-                  <option value="points">Points</option>
-                  <option value="coupon">Coupon</option>
-                  <option value="credit">Credit</option>
-                </select>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Pilih tipe reward" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="points">Points</SelectItem>
+                    <SelectItem value="coupon">Coupon</SelectItem>
+                    <SelectItem value="credit">Credit</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>

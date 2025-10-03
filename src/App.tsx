@@ -13,6 +13,7 @@ import ProductList from "./pages/ProductList";
 import ProductDetail from "./pages/ProductDetail";
 import CartPage from './pages/Cart';
 import ProfilePage from './pages/Profile';
+import MyOrders from './pages/MyOrders';
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -72,6 +73,11 @@ export default function App() {
             <Route path="/cart" element={
               <ProtectedRoute>
                 <CartPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/my-orders" element={
+              <ProtectedRoute>
+                <MyOrders />
               </ProtectedRoute>
             } />
 

@@ -27,6 +27,7 @@ import {
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { TableSkeleton, PaginationSkeleton } from '@/components/ui/AdminSkeleton';
 
@@ -249,10 +250,15 @@ export default function AdminUsersPage() {
               <Input value={editValues?.full_name ?? ''} onChange={(e) => setEditValues({ ...editValues, full_name: e.target.value })} />
 
               <label className="text-xs text-muted-foreground">Role</label>
-              <select className="w-full rounded-md border px-2 py-1" value={editValues?.role ?? 'customer'} onChange={(e) => setEditValues({ ...editValues, role: e.target.value as UserProfile['role'] })}>
-                <option value="customer">customer</option>
-                <option value="admin">admin</option>
-              </select>
+              <Select value={editValues?.role ?? 'customer'} onValueChange={(value) => setEditValues({ ...editValues, role: value as UserProfile['role'] })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="customer">customer</SelectItem>
+                  <SelectItem value="admin">admin</SelectItem>
+                </SelectContent>
+              </Select>
 
               {/* reward_points intentionally hidden from edit modal */}
             </div>

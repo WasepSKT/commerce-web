@@ -86,7 +86,7 @@ export function Layout({ children }: LayoutProps) {
                   {/* cart indicator */}
                   <Link to="/cart" className="mr-2">
                     <div className="relative inline-flex">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
                         <ShoppingCart className="h-4 w-4" />
                       </Button>
                       <span className="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full bg-primary text-xs text-primary-foreground w-5 h-5">{totalItems}</span>
@@ -94,7 +94,7 @@ export function Layout({ children }: LayoutProps) {
                   </Link>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full cursor-pointer hover:opacity-90">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full cursor-pointer hover:bg-primary/10 hover:text-primary">
                         <User className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -119,6 +119,12 @@ export function Layout({ children }: LayoutProps) {
                             <Link to="/dashboard" className="flex items-center">
                               <User className="mr-2 h-4 w-4" />
                               Dashboard
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link to="/my-orders" className="flex items-center">
+                              <Package className="mr-2 h-4 w-4" />
+                              Pesanan Saya
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>

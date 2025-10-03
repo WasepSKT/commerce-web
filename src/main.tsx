@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { initLiteAnimations } from './lib/animations';
+import { startOrderExpiryChecker } from './lib/orderExpiry';
 // AOS will be optionally used if installed; import CSS so it's available when package exists
 import 'aos/dist/aos.css';
 import AOS from 'aos';
@@ -18,6 +19,9 @@ if (typeof window !== 'undefined') {
     AOS.init({ duration: 700, easing: 'ease-out-cubic', once: true, mirror: false });
   }
 }
+
+// Start the order expiry checker
+startOrderExpiryChecker();
 
 createRoot(document.getElementById("root")!).render(<App />);
 

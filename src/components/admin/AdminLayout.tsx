@@ -119,7 +119,7 @@ export function AdminLayout({ active, onChange, children }: AdminLayoutProps) {
                   <div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="inline-flex items-center rounded-full bg-muted/40 p-1 cursor-pointer hover:opacity-95">
+                        <button className="inline-flex items-center rounded-full bg-muted/40 p-1 cursor-pointer hover:bg-primary/10 hover:text-primary">
                           <User className="h-5 w-5" />
                         </button>
                       </DropdownMenuTrigger>

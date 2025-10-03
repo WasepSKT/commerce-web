@@ -8,6 +8,7 @@ import { printXPrinterReceipt } from '@/lib/receiptPrinter';
 import { printInvoice } from '@/lib/invoiceGenerator';
 import { printFaktur } from '@/lib/fakturGenerator';
 import { RefreshCw, Search, Download, Printer, FileText } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TableSkeleton, HeaderSkeleton, FiltersSkeleton } from '@/components/ui/AdminSkeleton';
 
 interface OrderRow {
@@ -249,15 +250,20 @@ export default function AdminOrders() {
               className="pl-10 pr-4 py-2 border rounded-md w-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
           </div>
-          <select value={filter} onChange={(e) => setFilter(e.target.value)} className="p-2 border rounded-md min-w-[140px]">
-            <option value="all">Semua Status</option>
-            <option value="pending">Pending</option>
-            <option value="paid">Dibayar</option>
-            <option value="shipped">Dikirim</option>
-            <option value="completed">Selesai</option>
-            <option value="selesai">Selesai</option>
-            <option value="cancelled">Dibatalkan</option>
-          </select>
+          <Select value={filter} onValueChange={setFilter}>
+            <SelectTrigger className="min-w-[140px]">
+              <SelectValue placeholder="Filter Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="paid">Dibayar</SelectItem>
+              <SelectItem value="shipped">Dikirim</SelectItem>
+              <SelectItem value="completed">Selesai</SelectItem>
+              <SelectItem value="selesai">Selesai</SelectItem>
+              <SelectItem value="cancelled">Dibatalkan</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {loading ? (

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -37,6 +37,56 @@ export default function CartPage() {
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const { toast } = useToast();
+  const hasCleanedUp = useRef(false);
+
+  // Function to clear corrupted cart data
+  const clearCorruptedCart = useCallback(() => {
+    try {
+      localStorage.removeItem('rp_cart_v1');
+      clear();
+      toast({
+        title: 'Keranjang dibersihkan',
+        description: 'Data keranjang yang rusak telah dihapus.'
+      });
+      window.location.reload(); // Reload to reset state
+    } catch (err) {
+      console.error('Failed to clear cart:', err);
+    }
+  }, [clear, toast]);
+
+  // Memoize invalid items detection to prevent loops
+  const invalidItemsInfo = useMemo(() => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const invalid = items.filter(item => {
+      if (!item.id || typeof item.id !== 'string' || item.id.trim() === '') {
+        return true;
+      }
+      return !uuidRegex.test(item.id);
+    });
+
+    return {
+      hasInvalid: invalid.length > 0,
+      invalidItems: invalid,
+      count: invalid.length
+    };
+  }, [items]);
+
+  // Clean up invalid cart items only when first detected
+  useEffect(() => {
+    if (invalidItemsInfo.hasInvalid && !hasCleanedUp.current) {
+      console.warn('Found invalid cart items, cleaning up:', invalidItemsInfo.invalidItems);
+      hasCleanedUp.current = true; // Mark as cleaned up
+
+      // Clean up invalid items in a single batch
+      invalidItemsInfo.invalidItems.forEach(item => removeItem(item.id));
+
+      toast({
+        title: 'Data keranjang dibersihkan',
+        description: `Dihapus ${invalidItemsInfo.count} item yang tidak valid.`,
+        variant: 'default'
+      });
+    }
+  }, [invalidItemsInfo.hasInvalid, invalidItemsInfo.invalidItems, invalidItemsInfo.count, removeItem, toast]);
 
   // recap modal is now immediate action only; no auto-countdown
 
@@ -49,6 +99,12 @@ export default function CartPage() {
     return { data: res as T, error: undefined };
   };
 
+  // UUID validation regex
+  const isValidUUID = (id: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(id);
+  };
+
   const fetchProducts = useCallback(async (ids: string[]) => {
     if (ids.length === 0) {
       setProducts([]);
@@ -56,14 +112,39 @@ export default function CartPage() {
       return;
     }
 
+    // Filter out invalid IDs and non-UUIDs (don't remove here to avoid loops)
+    const validIds = ids.filter(id => {
+      if (!id || typeof id !== 'string' || id.trim() === '') {
+        return false;
+      }
+
+      if (!isValidUUID(id)) {
+        console.warn('Skipping invalid UUID:', id);
+        return false;
+      }
+
+      return true;
+    });
+
+    if (validIds.length === 0) {
+      setProducts([]);
+      setLoading(false);
+      return;
+    }
+
     try {
+      console.log('Fetching products for valid UUIDs:', validIds);
       const { data, error } = await supabase
         .from('products')
         .select('id,name,price,image_url,stock_quantity')
-        .in('id', ids)
+        .in('id', validIds)
         .eq('is_active', true);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      console.log('Fetched products:', data);
       setProducts(data || []);
     } catch (err) {
       console.error('Failed to fetch cart products', err);
@@ -75,7 +156,14 @@ export default function CartPage() {
 
   // Only refetch product metadata when the set of product IDs changes.
   // This prevents re-fetching when only quantities change.
-  const idsKey = useMemo(() => items.map(i => i.id).sort().join(','), [items]);
+  const idsKey = useMemo(() => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const validIds = items
+      .map(i => i.id)
+      .filter(id => id && typeof id === 'string' && id.trim() !== '' && uuidRegex.test(id))
+      .sort();
+    return validIds.join(',');
+  }, [items]);
 
   useEffect(() => {
     const ids = idsKey ? idsKey.split(',').filter(Boolean) : [];
@@ -302,16 +390,45 @@ export default function CartPage() {
           </div>
         </div>
 
-        {lineItems.length === 0 ? (
-          <div className="py-12">
-            <EmptyState
-              title="Keranjang kosong"
-              description="Tambahkan produk ke keranjang untuk memulai belanja."
-              lottieSrc="https://lottie.host/6ebe5320-be98-4e5d-90b5-a9f5d2f186fd/ez07wuijAR.lottie"
-              cta={{ label: 'Lanjut Belanja', onClick: () => { navigate('/products'); } }}
-            />
-          </div>
-        ) : (
+        {(() => {
+          if (invalidItemsInfo.hasInvalid) {
+            return (
+              <div className="py-12 text-center">
+                <div className="max-w-md mx-auto">
+                  <h3 className="text-lg font-semibold mb-2 text-red-600">Data Keranjang Rusak</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Ditemukan data keranjang yang tidak valid. Silakan bersihkan keranjang untuk melanjutkan.
+                  </p>
+                  <div className="space-x-2">
+                    <Button onClick={clearCorruptedCart} variant="destructive">
+                      Bersihkan Keranjang
+                    </Button>
+                    <Button asChild variant="outline">
+                      <Link to="/products">Mulai Belanja</Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (lineItems.length === 0) {
+            return (
+              <div className="py-12">
+                <EmptyState
+                  title="Keranjang kosong"
+                  description="Tambahkan produk ke keranjang untuk memulai belanja."
+                  lottieSrc="https://lottie.host/6ebe5320-be98-4e5d-90b5-a9f5d2f186fd/ez07wuijAR.lottie"
+                  cta={{ label: 'Lanjut Belanja', onClick: () => { navigate('/products'); } }}
+                />
+              </div>
+            );
+          }
+
+          return null;
+        })()}
+
+        {lineItems.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-4">
               {lineItems.map(li => (
@@ -389,35 +506,52 @@ export default function CartPage() {
               </Dialog>
 
               {/* Confirmation Dialog: show order details and ask user to confirm before creating pending order */}
-              {showConfirm ? (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                  <div className="bg-white rounded p-4 w-96">
-                    <h3 className="font-semibold">Konfirmasi Pesanan</h3>
-                    <div className="text-sm text-muted-foreground mt-2">
-                      <div className="mb-2">Periksa kembali detail pesanan sebelum melanjutkan:</div>
+              <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Konfirmasi Pesanan</DialogTitle>
+                    <DialogDescription>
+                      Periksa kembali detail pesanan sebelum melanjutkan:
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-3">
+                    <div className="space-y-2">
                       {lineItems.map(li => (
-                        <div key={li.id} className="flex justify-between py-1 border-b last:border-b-0">
-                          <div>
-                            <div className="font-medium">{li.name}</div>
-                            <div className="text-xs text-muted-foreground">Jumlah: {li.quantity} • {formatPrice(li.price)}</div>
+                        <div key={li.id} className="flex justify-between items-start py-2 border-b last:border-b-0">
+                          <div className="flex-1">
+                            <div className="font-medium text-sm">{li.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              Jumlah: {li.quantity} • {formatPrice(li.price)}
+                            </div>
                           </div>
-                          <div className="self-center">{formatPrice(li.price * li.quantity)}</div>
+                          <div className="text-sm font-medium">
+                            {formatPrice(li.price * li.quantity)}
+                          </div>
                         </div>
                       ))}
-                      <div className="mt-2 flex justify-between font-medium"> <div>Total</div> <div>{formatPrice(subtotal)}</div></div>
-                      <div className="mt-3 text-sm">
-                        <div>Nama penerima: {profile?.full_name ?? '-'}</div>
-                        <div>No. HP/WA: {profile?.phone ?? '-'}</div>
-                        <div>Alamat: {profile?.address ?? '-'}</div>
-                      </div>
                     </div>
-                    <div className="mt-4 flex justify-end items-center gap-2">
-                      <Button variant="ghost" onClick={() => setShowConfirm(false)}>Kembali</Button>
-                      <Button disabled={creatingOrder} onClick={() => void openRecap()}>{creatingOrder ? 'Membuat...' : 'Konfirmasi & Lanjut'}</Button>
+
+                    <div className="flex justify-between font-medium text-base pt-2 border-t">
+                      <div>Total</div>
+                      <div>{formatPrice(subtotal)}</div>
+                    </div>
+
+                    <div className="bg-muted/30 p-3 rounded-lg text-sm space-y-1">
+                      <div><span className="font-medium">Nama penerima:</span> {profile?.full_name ?? '-'}</div>
+                      <div><span className="font-medium">No. HP/WA:</span> {profile?.phone ?? '-'}</div>
+                      <div><span className="font-medium">Alamat:</span> {profile?.address ?? '-'}</div>
                     </div>
                   </div>
-                </div>
-              ) : null}
+
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => setShowConfirm(false)}>Kembali</Button>
+                    <Button disabled={creatingOrder} onClick={() => void openRecap()}>
+                      {creatingOrder ? 'Membuat...' : 'Konfirmasi & Lanjut'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               <Card>
                 <CardContent className="p-4 text-sm text-muted-foreground">

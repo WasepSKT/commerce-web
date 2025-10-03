@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { loadKodepos, getProvincesFromCache, getCitiesFromCache, getDistrictsFromCache, getSubdistrictsFromCache, Subdistrict } from '@/lib/loadKodepos';
 
 type Props = {
@@ -98,45 +100,67 @@ export default function AddressSelectors({ province, setProvince, city, setCity,
     <>
       <div>
         <label className="text-sm font-medium">Provinsi</label>
-        <select className="input w-full" disabled={loadingLocations} value={province} onChange={(e) => { const v = e.target.value.trim(); console.debug('Province selected:', v); setProvince(v); }}>
-          <option value="">{loadingLocations ? 'Memuat...' : 'Pilih Provinsi'}</option>
-          {provinces.map(p => <option key={p} value={p}>{p}</option>)}
-        </select>
+        <Select disabled={loadingLocations} value={province} onValueChange={(v) => { console.debug('Province selected:', v); setProvince(v); }}>
+          <SelectTrigger>
+            <SelectValue placeholder={loadingLocations ? 'Memuat...' : 'Pilih Provinsi'} />
+          </SelectTrigger>
+          <SelectContent>
+            {provinces.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       <div>
         <label className="text-sm font-medium">Kabupaten / Kota</label>
-        <select className="input w-full" disabled={!province || loadingLocations} value={city} onChange={(e) => { const v = e.target.value.trim(); console.debug('City selected:', v); setCity(v); }}>
-          <option value="">{province ? (cities.length ? 'Pilih Kota' : 'Tidak ada kota') : 'Pilih provinsi dulu'}</option>
-          {cities.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
+        <Select disabled={!province || loadingLocations} value={city} onValueChange={(v) => { console.debug('City selected:', v); setCity(v); }}>
+          <SelectTrigger>
+            <SelectValue placeholder={province ? (cities.length ? 'Pilih Kota' : 'Tidak ada kota') : 'Pilih provinsi dulu'} />
+          </SelectTrigger>
+          <SelectContent>
+            {cities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       <div>
         <label className="text-sm font-medium">Kecamatan</label>
-        <select className="input w-full" disabled={!city || loadingLocations} value={district} onChange={(e) => { const v = e.target.value.trim(); console.debug('District selected:', v); setDistrict(v); }}>
-          <option value="">{city ? (districts.length ? 'Pilih Kecamatan' : 'Tidak ada kecamatan') : 'Pilih kota dulu'}</option>
-          {districts.map(d => <option key={d} value={d}>{d}</option>)}
-        </select>
+        <Select disabled={!city || loadingLocations} value={district} onValueChange={(v) => { console.debug('District selected:', v); setDistrict(v); }}>
+          <SelectTrigger>
+            <SelectValue placeholder={city ? (districts.length ? 'Pilih Kecamatan' : 'Tidak ada kecamatan') : 'Pilih kota dulu'} />
+          </SelectTrigger>
+          <SelectContent>
+            {districts.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
-      <div>
-        <label className="text-sm font-medium">Desa / Kelurahan</label>
-        <select className="input w-full" disabled={!district || loadingLocations} value={subdistrict} onChange={(e) => {
-          const val = e.target.value.trim();
-          console.debug('Subdistrict selected:', val);
-          setSubdistrict(val);
-          const found = subdistricts.find(s => s.name.trim() === val);
-          if (found) setPostalCode(found.postal);
-        }}>
-          <option value="">{district ? (subdistricts.length ? 'Pilih Desa / Kelurahan' : 'Tidak ada desa') : 'Pilih kecamatan dulu'}</option>
-          {subdistricts.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
-        </select>
-      </div>
+      <div className="flex gap-3">
+        <div className="flex-[0.7]">
+          <label className="text-sm font-medium">Desa / Kelurahan</label>
+          <Select disabled={!district || loadingLocations} value={subdistrict} onValueChange={(val) => {
+            console.debug('Subdistrict selected:', val);
+            setSubdistrict(val);
+            const found = subdistricts.find(s => s.name.trim() === val);
+            if (found) setPostalCode(found.postal);
+          }}>
+            <SelectTrigger>
+              <SelectValue placeholder={district ? (subdistricts.length ? 'Pilih Desa / Kelurahan' : 'Tidak ada desa') : 'Pilih kecamatan dulu'} />
+            </SelectTrigger>
+            <SelectContent>
+              {subdistricts.map(s => <SelectItem key={s.name} value={s.name}>{s.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
 
-      <div>
-        <label className="text-sm font-medium">Kode Pos</label>
-        <input className="input w-full" value={postalCode} readOnly={!!postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="Otomatis akan terisi setelah pilih desa" />
+        <div className="flex-[0.3]">
+          <label className="text-sm font-medium">Kode Pos</label>
+          <Input
+            value={postalCode}
+            readOnly={!!postalCode}
+            onChange={(e) => setPostalCode(e.target.value)}
+            placeholder="Otomatis terisi"
+          />
+        </div>
       </div>
     </>
   );
