@@ -264,8 +264,8 @@ export default function MyOrders() {
     <Layout>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2 text-brand">Pesanan Saya</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold mb-2 text-brand text-center md:text-left">Pesanan Saya</h1>
+          <p className="text-muted-foreground text-center md:text-left">
             Kelola dan lacak pesanan Anda
           </p>
         </div>

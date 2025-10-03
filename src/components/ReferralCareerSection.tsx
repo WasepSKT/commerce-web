@@ -1,6 +1,7 @@
 import React from 'react';
 import { Check, Handshake, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import ResponsiveAOS from '@/components/ui/ResponsiveAOS';
 import referralImg from '@/assets/img/img-referal.png';
 
 export default function ReferralCareerSection() {
@@ -8,7 +9,13 @@ export default function ReferralCareerSection() {
     <section className="py-20">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div data-aos="fade-right" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100">
+          <ResponsiveAOS
+            mobileAnimation="fade-up"
+            desktopAnimation="fade-right"
+            duration="700"
+            easing="ease-out-cubic"
+            delay="100"
+          >
             <h2 className="text-4xl font-bold text-brand mb-6">Program Referral & Karir</h2>
             <p className="text-lg text-muted-foreground max-w-xl">
               Bergabunglah dengan tim kami atau dapatkan penghasilan tambahan melalui
@@ -17,9 +24,15 @@ export default function ReferralCareerSection() {
             <div className="mt-6 flex justify-center lg:justify-start w-full">
               <img src={referralImg} alt="Referral" className="w-full object-contain" />
             </div>
-          </div>
+          </ResponsiveAOS>
 
-          <div data-aos="fade-left" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100">
+          <ResponsiveAOS
+            mobileAnimation="fade-up"
+            desktopAnimation="fade-left"
+            duration="700"
+            easing="ease-out-cubic"
+            delay="200"
+          >
             <div className="bg-[#7A1316] rounded-2xl p-8 text-white">
               <div className="flex items-start gap-4">
                 <div className="bg-white/10 rounded-lg p-3 flex items-center justify-center">
@@ -67,7 +80,7 @@ export default function ReferralCareerSection() {
                 </Button>
               </div>
             </div>
-          </div>
+          </ResponsiveAOS>
         </div>
       </div>
     </section>

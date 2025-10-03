@@ -194,6 +194,63 @@ export const FadeInLeft: React.FC<Omit<ScrollAnimationProps, 'animation'>> = (pr
   <ScrollAnimation {...props} animation="slideLeft" />
 );
 
+export const FadeInRight: React.FC<Omit<ScrollAnimationProps, 'animation'>> = (props) => (
+  <ScrollAnimation {...props} animation="slideRight" />
+);
+
+// Responsive components that adapt based on screen size
+export const ResponsiveFadeInLeft: React.FC<Omit<ScrollAnimationProps, 'animation'>> = (props) => {
+  const [isMobile, setIsMobile] = useState(() => {
+    // Initial check for mobile during component initialization
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false; // Default to desktop during SSR
+  });
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    // Initial check after component mounts
+    checkScreenSize();
+
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  return (
+    <ScrollAnimation {...props} animation={isMobile ? 'slideUp' : 'slideLeft'} />
+  );
+};
+
+export const ResponsiveFadeInRight: React.FC<Omit<ScrollAnimationProps, 'animation'>> = (props) => {
+  const [isMobile, setIsMobile] = useState(() => {
+    // Initial check for mobile during component initialization
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false; // Default to desktop during SSR
+  });
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    // Initial check after component mounts
+    checkScreenSize();
+
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  return (
+    <ScrollAnimation {...props} animation={isMobile ? 'slideUp' : 'slideRight'} />
+  );
+};
+
 export const FadeInScale: React.FC<Omit<ScrollAnimationProps, 'animation'>> = (props) => (
   <ScrollAnimation {...props} animation="scale" />
 );

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
+import ResponsiveAnimation from '@/components/ui/ResponsiveAnimation';
 import heroImg from '@/assets/img/hero-career.png';
 import { Link } from 'react-router-dom';
 
@@ -10,7 +11,12 @@ export default function CareerPage() {
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 items-center gap-12">
-            <div data-aos="fade-right" data-aos-duration="700" data-aos-easing="ease-out-cubic">
+            <ResponsiveAnimation
+              mobileAnimation="fade-up"
+              desktopAnimation="fade-right"
+              duration="700"
+              easing="ease-out-cubic"
+            >
               <h1 className="text-4xl md:text-5xl font-extrabold text-brand mb-4">Karir di Regal Paw</h1>
               <p className="text-lg text-muted-foreground mb-6 max-w-xl">
                 Bergabunglah dengan tim yang berdedikasi untuk meningkatkan kualitas hidup hewan peliharaan. Kami mencari talenta yang bersemangat,
@@ -36,11 +42,18 @@ export default function CareerPage() {
                   <p className="text-sm text-muted-foreground">Asuransi kesehatan, cuti tahunan, dan akses ke program edukasi internal.</p>
                 </div>
               </div>
-            </div>
+            </ResponsiveAnimation>
 
-            <div data-aos="fade-left" data-aos-duration="700" data-aos-easing="ease-out-cubic" className="flex justify-center lg:justify-end">
+            <ResponsiveAnimation
+              mobileAnimation="fade-up"
+              desktopAnimation="fade-left"
+              duration="700"
+              easing="ease-out-cubic"
+              delay="200"
+              className="flex justify-center lg:justify-end"
+            >
               <img src={heroImg} alt="Career hero" className="w-full max-w-[520px] object-cover" />
-            </div>
+            </ResponsiveAnimation>
           </div>
         </div>
       </section>

@@ -210,7 +210,7 @@ export default function AboutPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
-            <div data-aos="fade-right" data-aos-duration="700" data-aos-easing="ease-out-cubic">
+            <div data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic">
               <h2 className="text-2xl font-semibold text-brand mb-4">Misi Kami</h2>
               <p className="text-muted-foreground mb-6">
                 Menyediakan produk nutrisi kucing yang aman, bergizi, dan terjangkau untuk membantu setiap kucing mencapai kesehatan optimal.
@@ -239,7 +239,7 @@ export default function AboutPage() {
               </div>
             </div>
 
-            <div data-aos="fade-left" data-aos-duration="700" data-aos-easing="ease-out-cubic">
+            <div data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="200">
               <ProductCarousel />
             </div>
           </div>

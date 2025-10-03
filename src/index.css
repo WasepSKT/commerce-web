@@ -402,6 +402,47 @@ html {
   outline-offset: 2px;
 }
 
+/* Responsive AOS animations */
+@layer utilities {
+  .aos-responsive-left {
+    @apply md:hidden;
+  }
+
+  .aos-responsive-left[data-aos="fade-up"] {
+    @apply block;
+  }
+
+  @media (min-width: 768px) {
+    .aos-responsive-left[data-aos="fade-up"] {
+      animation: none !important;
+    }
+
+    .aos-responsive-left::before {
+      content: "";
+      animation-name: fade-right;
+    }
+  }
+
+  .aos-responsive-right {
+    @apply md:hidden;
+  }
+
+  .aos-responsive-right[data-aos="fade-up"] {
+    @apply block;
+  }
+
+  @media (min-width: 768px) {
+    .aos-responsive-right[data-aos="fade-up"] {
+      animation: none !important;
+    }
+
+    .aos-responsive-right::before {
+      content: "";
+      animation-name: fade-left;
+    }
+  }
+}
+
 /* Disable scroll animations for users who prefer reduced motion */
 @media (prefers-reduced-motion: reduce) {
   html {

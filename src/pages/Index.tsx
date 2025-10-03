@@ -15,7 +15,7 @@ import ContactSection from '@/components/ContactSection';
 import CTASection from '@/components/CTASection';
 import ScrollProgress from '@/components/ui/ScrollProgress';
 import ScrollNavigation from '@/components/ui/ScrollNavigation';
-import { ScrollAnimation, FadeInUp, FadeInLeft, FadeInScale, ParallaxScroll } from '@/components/ui/ScrollAnimation';
+import { ScrollAnimation, FadeInUp, FadeInScale, ParallaxScroll, ResponsiveFadeInRight } from '@/components/ui/ScrollAnimation';
 
 interface Product {
   id: string;
@@ -91,7 +91,7 @@ const Index = () => {
       <section id="hero-section" className="py-16">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <FadeInLeft duration={800} delay={200}>
+            <ResponsiveFadeInRight duration={800} delay={200}>
               <div className="space-y-6">
                 <h1 className="text-4xl lg:text-5xl font-extrabold text-center md:text-left text-brand leading-tight">
                   Nutrisi Terbaik untuk
@@ -112,7 +112,7 @@ const Index = () => {
                   </div>
                 </div>
               </div>
-            </FadeInLeft>
+            </ResponsiveFadeInRight>
             <ParallaxScroll parallaxSpeed={-0.3} duration={1000} delay={400}>
               <div className="flex justify-center lg:justify-end relative">
                 {/* wrapper to hold image and hover-video; fixed responsive card so layout doesn't shift */}

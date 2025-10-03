@@ -191,7 +191,7 @@ export default function ProfilePage() {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-4">Profil Saya</h1>
+        <h1 className="text-2xl font-bold mb-4 text-primary text-center md:text-left">Profil Saya</h1>
         <Card>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

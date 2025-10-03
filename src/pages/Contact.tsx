@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
+import ResponsiveAnimation from '@/components/ui/ResponsiveAnimation';
 import heroContact from '@/assets/img/hero-contact.png';
 import { Link } from 'react-router-dom';
 
@@ -33,7 +34,12 @@ export default function ContactPage() {
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div data-aos="fade-right" data-aos-duration="700" data-aos-easing="ease-out-cubic">
+            <ResponsiveAnimation
+              mobileAnimation="fade-up"
+              desktopAnimation="fade-right"
+              duration="700"
+              easing="ease-out-cubic"
+            >
               <h1 className="text-4xl md:text-5xl font-extrabold text-brand mb-4">Hubungi Regal Paw</h1>
               <p className="text-lg text-muted-foreground mb-6 max-w-xl">
                 Punya pertanyaan tentang produk, distribusi, atau kerja sama? Tim kami siap membantu.
@@ -57,11 +63,18 @@ export default function ContactPage() {
                 <p>Alamat kantor: Jalan Contoh No.1, Jakarta</p>
                 <p>Tel: +62 21 555-0123</p>
               </div>
-            </div>
+            </ResponsiveAnimation>
 
-            <div data-aos="fade-left" data-aos-duration="700" data-aos-easing="ease-out-cubic" className="flex justify-center lg:justify-end">
+            <ResponsiveAnimation
+              mobileAnimation="fade-up"
+              desktopAnimation="fade-left"
+              duration="700"
+              easing="ease-out-cubic"
+              delay="200"
+              className="flex justify-center lg:justify-end"
+            >
               <img src={heroContact} alt="Contact hero" className="w-full max-w-[520px] object-cover" />
-            </div>
+            </ResponsiveAnimation>
           </div>
         </div>
       </section>

@@ -129,8 +129,8 @@ export default function Dashboard() {
     <Layout>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2 text-brand">Dashboard</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold mb-2 text-brand text-center md:text-left">Dashboard</h1>
+          <p className="text-muted-foreground text-center md:text-left">
             Selamat datang, {profile?.full_name || profile?.email}!
           </p>
         </div>

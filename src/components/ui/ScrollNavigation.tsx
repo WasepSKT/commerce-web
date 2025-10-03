@@ -44,6 +44,18 @@ export const ScrollNavigation: React.FC<ScrollNavigationProps> = ({
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(!autoHide);
   const [isMouseNearEdge, setIsMouseNearEdge] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   // Update visibility based on scroll position
   useEffect(() => {
@@ -130,8 +142,10 @@ export const ScrollNavigation: React.FC<ScrollNavigationProps> = ({
     center: 'left-1/2 -translate-x-1/2'
   };
 
-  // Combined visibility logic: show only if scrolled enough AND mouse is near edge (or position is not right)
-  const shouldShow = isVisible && (position !== 'right' || isMouseNearEdge);
+  // Combined visibility logic: 
+  // Mobile: show when scrolled (no edge detection needed)
+  // Desktop: show only if scrolled enough AND mouse is near edge (or position is not right)
+  const shouldShow = isVisible && (isMobile || position !== 'right' || isMouseNearEdge);
 
   if (!shouldShow && autoHide) {
     return null;
@@ -139,10 +153,10 @@ export const ScrollNavigation: React.FC<ScrollNavigationProps> = ({
 
   return (
     <>
-      {/* Invisible hover area for right edge detection */}
+      {/* Invisible hover area for right edge detection - Desktop only */}
       {position === 'right' && (
         <div
-          className="fixed top-0 right-0 bottom-0 w-20 z-30 bg-transparent"
+          className="hidden md:block fixed top-0 right-0 bottom-0 w-20 z-30 bg-transparent"
           onMouseEnter={() => setIsMouseNearEdge(true)}
           onMouseLeave={() => setIsMouseNearEdge(false)}
         />
@@ -150,10 +164,15 @@ export const ScrollNavigation: React.FC<ScrollNavigationProps> = ({
 
       <div
         className={cn(
-          'fixed top-1/2 -translate-y-1/2 z-40 flex flex-col items-center space-y-2',
+          // Mobile: fixed bottom-right position
+          'fixed bottom-6 right-4 z-40 flex flex-col items-center space-y-2',
+          // Desktop: use position prop
+          'md:top-1/2 md:-translate-y-1/2 md:bottom-auto',
+          position === 'left' && 'md:left-4 md:right-auto',
+          position === 'right' && 'md:right-4',
+          position === 'center' && 'md:left-1/2 md:-translate-x-1/2 md:right-auto',
           'transition-all duration-700 ease-out',
           'transform-gpu will-change-transform',
-          positionClasses[position],
           shouldShow
             ? 'opacity-100 translate-x-0 scale-100'
             : position === 'right'
@@ -169,12 +188,12 @@ export const ScrollNavigation: React.FC<ScrollNavigationProps> = ({
           backfaceVisibility: 'hidden'
         }}
       >
-        {/* Directional Scroll Up */}
+        {/* Directional Scroll Up - Hidden on mobile */}
         {showDirectionalButtons && !isAtTop && (
           <button
             onClick={() => handleDirectionalScroll('up')}
             className={cn(
-              'p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-primary/20',
+              'hidden md:block p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-primary/20',
               'hover:bg-primary hover:text-white transition-all duration-400',
               'focus:outline-none focus:ring-2 focus:ring-primary/50',
               'transform hover:scale-110 active:scale-95',
@@ -190,10 +209,10 @@ export const ScrollNavigation: React.FC<ScrollNavigationProps> = ({
           </button>
         )}
 
-        {/* Section Navigation */}
+        {/* Section Navigation - Hidden on mobile */}
         {sections.length > 0 && (
           <div
-            className="flex flex-col items-center space-y-1 py-2 transition-all duration-500"
+            className="hidden md:flex flex-col items-center space-y-1 py-2 transition-all duration-500"
             style={{
               transitionDelay: shouldShow ? '0.2s' : '0s',
               transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)'
@@ -238,15 +257,16 @@ export const ScrollNavigation: React.FC<ScrollNavigationProps> = ({
           </div>
         )}
 
-        {/* Back to Top */}
+        {/* Back to Top - Mobile optimized */}
         {showBackToTop && !isAtTop && (
           <button
             onClick={() => scrollToTop()}
             className={cn(
-              'p-3 bg-primary text-white rounded-full shadow-lg',
+              'p-3 md:p-3 bg-primary text-white rounded-full shadow-lg',
               'hover:bg-primary/90 transition-all duration-400 transform hover:scale-110 active:scale-95',
               'focus:outline-none focus:ring-2 focus:ring-primary/50',
               'hover:shadow-xl hover:shadow-primary/40',
+              'w-12 h-12 md:w-auto md:h-auto flex items-center justify-center',
               progress > 80 && 'animate-pulse'
             )}
             style={{
@@ -259,12 +279,12 @@ export const ScrollNavigation: React.FC<ScrollNavigationProps> = ({
           </button>
         )}
 
-        {/* Directional Scroll Down */}
+        {/* Directional Scroll Down - Hidden on mobile */}
         {showDirectionalButtons && !isAtBottom && (
           <button
             onClick={() => handleDirectionalScroll('down')}
             className={cn(
-              'p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-primary/20',
+              'hidden md:block p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-primary/20',
               'hover:bg-primary hover:text-white transition-all duration-400',
               'focus:outline-none focus:ring-2 focus:ring-primary/50',
               'transform hover:scale-110 active:scale-95',
@@ -280,9 +300,9 @@ export const ScrollNavigation: React.FC<ScrollNavigationProps> = ({
           </button>
         )}
 
-        {/* Progress indicator */}
+        {/* Progress indicator - Hidden on mobile */}
         <div
-          className="w-0.5 h-12 bg-primary/15 relative overflow-hidden rounded-full transition-all duration-500"
+          className="hidden md:block w-0.5 h-12 bg-primary/15 relative overflow-hidden rounded-full transition-all duration-500"
           style={{
             transitionDelay: shouldShow ? '0.5s' : '0s',
             transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)'
