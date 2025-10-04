@@ -86,7 +86,7 @@ export default function Dashboard() {
 
   const copyReferralCode = () => {
     if (profile?.referral_code) {
-      const referralUrl = `${window.location.origin}/auth?ref=${profile.referral_code}`;
+      const referralUrl = `${window.location.origin}/signup?ref=${profile.referral_code}`;
       navigator.clipboard.writeText(referralUrl);
       toast({
         title: "Link referral disalin!",

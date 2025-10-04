@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Layout } from '@/components/Layout';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Package, Truck, CheckCircle, XCircle, Clock, AlertTriangle, Download, FileText, Star } from 'lucide-react';
+import { Package, Truck, CheckCircle, XCircle, Clock, AlertTriangle, Download, FileText, Star, CheckCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RatingModal } from '@/components/ui/RatingModal';
-import { downloadInvoice, downloadReceipt } from '@/lib/documentGenerator';
+import { printInvoice } from '@/lib/invoiceGenerator';
+import { printFaktur } from '@/lib/fakturGenerator';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +23,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 interface OrderItem {
   id: string;
@@ -43,6 +57,7 @@ interface Order {
   customer_address: string;
   shipping_courier?: string | null;
   tracking_number?: string | null;
+  notes?: string | null;
   created_at: string;
   updated_at: string;
   order_items: OrderItem[];
@@ -50,11 +65,38 @@ interface Order {
 
 export default function MyOrders() {
   const { isAuthenticated, profile, loading } = useAuth();
+  const { toast } = useToast();
+
+  // Pilihan alasan pembatalan
+  const cancelReasons = [
+    'Berubah pikiran',
+    'Menemukan harga lebih murah',
+    'Pesanan tidak sesuai kebutuhan',
+    'Kesalahan dalam pemesanan',
+    'Terlalu lama menunggu konfirmasi',
+    'Alasan keuangan',
+    'Lainnya'
+  ];
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [cancellingOrder, setCancellingOrder] = useState<string | null>(null);
-  const [selectedOrderForRating, setSelectedOrderForRating] = useState<Order | null>(null);
-  const { toast } = useToast();
+  const [confirmingDelivery, setConfirmingDelivery] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState<string>('');
+  const [selectedOrderToCancel, setSelectedOrderToCancel] = useState<string | null>(null);
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
+
+  const toggleOrderExpansion = (orderId: string) => {
+    setExpandedOrders(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(orderId)) {
+        newSet.delete(orderId);
+      } else {
+        newSet.add(orderId);
+      }
+      return newSet;
+    });
+  };
 
   const fetchMyOrders = useCallback(async () => {
     if (!profile?.user_id) return;
@@ -144,21 +186,7 @@ export default function MyOrders() {
         color: 'text-blue-600',
         description: 'Pesanan sedang dalam pengiriman'
       },
-      dikirim: {
-        label: 'Dikirim',
-        variant: 'outline' as const,
-        icon: Truck,
-        color: 'text-blue-600',
-        description: 'Pesanan sedang dalam pengiriman'
-      },
       completed: {
-        label: 'Selesai',
-        variant: 'secondary' as const,
-        icon: Package,
-        color: 'text-green-700',
-        description: 'Pesanan telah selesai'
-      },
-      selesai: {
         label: 'Selesai',
         variant: 'secondary' as const,
         icon: Package,
@@ -192,13 +220,19 @@ export default function MyOrders() {
     return orderAge >= hours24;
   };
 
-  const handleCancelOrder = async (orderId: string) => {
+  const canConfirmDelivery = (order: Order) => {
+    // Order bisa dikonfirmasi jika statusnya 'shipped'
+    return order.status === 'shipped';
+  };
+
+  const handleCancelOrder = async (orderId: string, reason: string) => {
     setCancellingOrder(orderId);
     try {
       const { error } = await supabase
         .from('orders')
         .update({
           status: 'cancelled',
+          notes: `Dibatalkan: ${reason}`,
           updated_at: new Date().toISOString()
         })
         .eq('id', orderId);
@@ -212,15 +246,94 @@ export default function MyOrders() {
 
       // Refresh orders
       await fetchMyOrders();
-    } catch (error) {
+
+      // Reset states
+      setSelectedOrderToCancel(null);
+      setCancelReason('');
+    } catch (error: unknown) {
       console.error('Error cancelling order:', error);
+      let errorMessage = 'Terjadi kesalahan saat membatalkan pesanan.';
+
+      // Check for RLS policy errors
+      if (error && typeof error === 'object' && 'code' in error) {
+        const errorCode = (error as { code?: string }).code;
+        const errorMsg = (error as { message?: string }).message;
+
+        if (errorCode === '42501' || errorMsg?.includes('policy')) {
+          errorMessage = 'Tidak dapat membatalkan pesanan. Pastikan pesanan masih dalam status pending dan dibuat dalam 24 jam terakhir.';
+        } else if (errorCode === 'PGRST301') {
+          errorMessage = 'Pesanan tidak ditemukan atau Anda tidak memiliki akses untuk membatalkannya.';
+        }
+      }
+
       toast({
         title: 'Gagal membatalkan pesanan',
-        description: 'Terjadi kesalahan saat membatalkan pesanan.',
+        description: errorMessage,
         variant: 'destructive'
       });
     } finally {
       setCancellingOrder(null);
+    }
+  };
+
+  const handleConfirmCancel = () => {
+    if (!cancelReason) {
+      toast({
+        title: 'Alasan diperlukan',
+        description: 'Silakan pilih alasan pembatalan pesanan.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (selectedOrderToCancel) {
+      void handleCancelOrder(selectedOrderToCancel, cancelReason);
+    }
+  };
+
+  const handleConfirmDelivery = async (orderId: string) => {
+    setConfirmingDelivery(orderId);
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          status: 'completed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Pesanan dikonfirmasi',
+        description: 'Terima kasih! Pesanan Anda telah dikonfirmasi sebagai diterima.'
+      });
+
+      // Refresh orders
+      await fetchMyOrders();
+    } catch (error: unknown) {
+      console.error('Error confirming delivery:', error);
+      let errorMessage = 'Terjadi kesalahan saat mengkonfirmasi penerimaan pesanan.';
+
+      // Check for RLS policy errors
+      if (error && typeof error === 'object' && 'code' in error) {
+        const errorCode = (error as { code?: string }).code;
+        const errorMsg = (error as { message?: string }).message;
+
+        if (errorCode === '42501' || errorMsg?.includes('policy')) {
+          errorMessage = 'Tidak dapat mengkonfirmasi pesanan. Pastikan pesanan dalam status pengiriman.';
+        } else if (errorCode === 'PGRST301') {
+          errorMessage = 'Pesanan tidak ditemukan atau Anda tidak memiliki akses untuk mengkonfirmasinya.';
+        }
+      }
+
+      toast({
+        title: 'Gagal mengkonfirmasi pesanan',
+        description: errorMessage,
+        variant: 'destructive'
+      });
+    } finally {
+      setConfirmingDelivery(null);
     }
   };
 
@@ -320,178 +433,283 @@ export default function MyOrders() {
               const StatusIcon = statusInfo.icon;
               const expired = isOrderExpired(order);
 
+              const isExpanded = expandedOrders.has(order.id);
+
               return (
                 <Card key={order.id} className={expired ? 'border-red-200 bg-red-50/50' : ''}>
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-lg text-primary">
-                          Pesanan #{order.id.slice(0, 8)}
-                        </CardTitle>
-                        <CardDescription>
-                          {formatDate(order.created_at)}
-                        </CardDescription>
-                      </div>
-                      <div className="text-right">
-                        <div className="flex items-center gap-2 mb-2">
-                          <StatusIcon className={`h-4 w-4 ${statusInfo.color}`} />
-                          <Badge variant={statusInfo.variant}>
-                            {statusInfo.label}
-                          </Badge>
-                        </div>
-                        {order.status === 'pending' && !expired && (
-                          <div className="text-sm text-orange-600 font-medium">
-                            {getTimeRemaining(order.created_at)}
-                          </div>
-                        )}
-                        {expired && (
-                          <div className="text-sm text-red-600 font-medium flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3" />
-                            Kedaluwarsa
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {statusInfo.description}
-                    </p>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {/* Order Items */}
-                      <div>
-                        <h4 className="font-medium mb-2 text-primary">Item Pesanan:</h4>
-                        <div className="space-y-2">
-                          {order.order_items?.map((item, index) => (
-                            <div key={index} className="flex justify-between text-sm">
-                              <span>
-                                {item.name} × {item.quantity}
-                              </span>
-                              <span>{formatPrice(item.price * item.quantity)}</span>
+                  <Collapsible>
+                    <CollapsibleTrigger asChild>
+                      <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <CardTitle className="text-lg text-primary">
+                                Pesanan #{order.id.slice(0, 8)}
+                              </CardTitle>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleOrderExpansion(order.id);
+                                }}
+                                className="h-6 w-6 p-0 shrink-0"
+                              >
+                                {isExpanded ? (
+                                  <ChevronUp className="h-4 w-4" />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4" />
+                                )}
+                              </Button>
                             </div>
-                          )) || (
-                              <p className="text-sm text-muted-foreground">
-                                Detail item tidak tersedia
-                              </p>
+                            <CardDescription>
+                              {formatDate(order.created_at)} • Total: {formatPrice(order.total_amount)}
+                            </CardDescription>
+                          </div>
+                          <div className="text-right">
+                            <div className="flex items-center gap-2 mb-2">
+                              <StatusIcon className={`h-4 w-4 ${statusInfo.color}`} />
+                              <Badge variant={statusInfo.variant}>
+                                {statusInfo.label}
+                              </Badge>
+                            </div>
+                            {order.status === 'pending' && !expired && (
+                              <div className="text-sm text-orange-600 font-medium">
+                                {getTimeRemaining(order.created_at)}
+                              </div>
                             )}
-                        </div>
-                      </div>
-
-                      {/* Shipping Info */}
-                      {(order.shipping_courier || order.tracking_number) && (
-                        <div className="pt-2 border-t">
-                          <h4 className="font-medium mb-2 text-primary">Informasi Pengiriman:</h4>
-                          <div className="space-y-1 text-sm">
-                            {order.shipping_courier && (
-                              <p>
-                                <span className="font-medium">Kurir:</span> {order.shipping_courier}
-                              </p>
-                            )}
-                            {order.tracking_number && (
-                              <p>
-                                <span className="font-medium">No. Resi:</span>{' '}
-                                <code className="bg-muted px-1 rounded">
-                                  {order.tracking_number}
-                                </code>
-                              </p>
+                            {expired && (
+                              <div className="text-sm text-red-600 font-medium flex items-center gap-1">
+                                <AlertTriangle className="h-3 w-3" />
+                                Kedaluwarsa
+                              </div>
                             )}
                           </div>
                         </div>
-                      )}
+                      </CardHeader>
+                    </CollapsibleTrigger>
 
-                      {/* Address */}
-                      <div className="pt-2 border-t">
-                        <h4 className="font-medium mb-2 text-primary">Alamat Pengiriman:</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {order.customer_address}
-                        </p>
-                      </div>
+                    <CollapsibleContent>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {/* Order Items */}
+                          <div>
+                            <h4 className="font-medium mb-2 text-primary">Item Pesanan:</h4>
+                            <div className="space-y-2">
+                              {order.order_items?.map((item, index) => (
+                                <div key={index} className="flex justify-between text-sm">
+                                  <span>
+                                    {item.name} × {item.quantity}
+                                  </span>
+                                  <span>{formatPrice(item.price * item.quantity)}</span>
+                                </div>
+                              )) || (
+                                  <p className="text-sm text-muted-foreground">
+                                    Detail item tidak tersedia
+                                  </p>
+                                )}
+                            </div>
+                          </div>
 
-                      {/* Total and Actions */}
-                      <div className="pt-2 border-t flex justify-between items-center">
-                        <div>
-                          <p className="text-lg font-bold">
-                            Total: {formatPrice(order.total_amount)}
-                          </p>
-                        </div>
-                        <div className="flex gap-2 flex-wrap">
-                          {/* Download Invoice - untuk status paid dan shipped */}
-                          {(order.status === 'paid' || order.status === 'shipped' || order.status === 'dikirim') && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => downloadInvoice(order)}
-                              className="border-primary text-primary hover:bg-primary hover:text-white"
-                            >
-                              <Download className="h-4 w-4 mr-1" />
-                              Invoice
-                            </Button>
+                          {/* Shipping Info */}
+                          {(order.shipping_courier || order.tracking_number) && (
+                            <div className="pt-2 border-t">
+                              <h4 className="font-medium mb-2 text-primary">Informasi Pengiriman:</h4>
+                              <div className="space-y-1 text-sm">
+                                {order.shipping_courier && (
+                                  <p>
+                                    <span className="font-medium">Kurir:</span> {order.shipping_courier}
+                                  </p>
+                                )}
+                                {order.tracking_number && (
+                                  <p>
+                                    <span className="font-medium">No. Resi:</span>{' '}
+                                    <code className="bg-muted px-1 rounded">
+                                      {order.tracking_number}
+                                    </code>
+                                  </p>
+                                )}
+                              </div>
+                            </div>
                           )}
 
-                          {/* Download Receipt - untuk status completed */}
-                          {(order.status === 'completed' || order.status === 'selesai') && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => downloadReceipt(order)}
-                              className="text-green-600 border-green-600 hover:bg-green-50"
-                            >
-                              <FileText className="h-4 w-4 mr-1" />
-                              Faktur
-                            </Button>
+                          {/* Address */}
+                          <div className="pt-2 border-t">
+                            <h4 className="font-medium mb-2 text-primary">Alamat Pengiriman:</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {order.customer_address}
+                            </p>
+                          </div>
+
+                          {/* Notes */}
+                          {order.notes && (
+                            <div className="pt-2 border-t">
+                              <h4 className="font-medium mb-2 text-primary">Catatan:</h4>
+                              <div className={`p-3 rounded-lg text-sm ${order.status === 'cancelled'
+                                  ? 'bg-red-50 border border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300'
+                                  : 'bg-yellow-50 border border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-300'
+                                }`}>
+                                {order.notes}
+                              </div>
+                            </div>
                           )}
 
-                          {/* Rating Button - untuk status completed */}
-                          {(order.status === 'completed' || order.status === 'selesai') && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setSelectedOrderForRating(order)}
-                              className="text-yellow-600 border-yellow-600 hover:bg-yellow-50"
-                            >
-                              <Star className="h-4 w-4 mr-1" />
-                              Rating
-                            </Button>
-                          )}
-
-                          {/* Cancel Order - untuk status pending */}
-                          {canCancelOrder(order) && !expired && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
+                          {/* Total and Actions */}
+                          <div className="pt-2 border-t flex justify-between items-center">
+                            <div>
+                              <p className="text-lg font-bold">
+                                Total: {formatPrice(order.total_amount)}
+                              </p>
+                            </div>
+                            <div className="flex gap-2 flex-wrap">
+                              {/* Download Invoice - untuk status paid dan shipped */}
+                              {(order.status === 'paid' || order.status === 'shipped') && (
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  disabled={cancellingOrder === order.id}
-                                  className="text-red-600 border-red-600 hover:bg-red-50"
+                                  onClick={() => printInvoice(order as unknown as Parameters<typeof printInvoice>[0])}
+                                  className="border-primary text-primary hover:bg-primary hover:text-white"
                                 >
-                                  <XCircle className="h-4 w-4 mr-1" />
-                                  Batalkan
+                                  <Download className="h-4 w-4 mr-1" />
+                                  Invoice
                                 </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Batalkan Pesanan</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Apakah Anda yakin ingin membatalkan pesanan #{order.id.slice(0, 8)}?
-                                    Tindakan ini tidak dapat dibatalkan.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Batal</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => handleCancelOrder(order.id)}
-                                    className="bg-red-600 hover:bg-red-700"
-                                  >
-                                    Ya, Batalkan
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
+                              )}
+
+                              {/* Download Receipt - untuk status completed */}
+                              {(order.status === 'completed') && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => printFaktur(order as unknown as Parameters<typeof printFaktur>[0])}
+                                  className="border-primary text-primary hover:bg-primary hover:text-white"
+                                >
+                                  <FileText className="h-4 w-4 mr-1" />
+                                  Faktur
+                                </Button>
+                              )}
+
+                              {/* Rating Button - untuk status completed */}
+                              {(order.status === 'completed') && order.order_items && order.order_items.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {order.order_items.map((item, itemIndex) => (
+                                    <RatingModal
+                                      key={itemIndex}
+                                      orderId={order.id}
+                                      productId={item.product_id}
+                                      productName={item.name || 'Produk'}
+                                      onSuccess={() => {
+                                        void fetchMyOrders();
+                                      }}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Confirm Delivery - untuk status shipped */}
+                              {canConfirmDelivery(order) && (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={confirmingDelivery === order.id}
+                                      className="border-primary text-primary hover:bg-primary hover:text-white disabled:opacity-50"
+                                    >
+                                      <CheckCheck className="h-4 w-4 mr-1" />
+                                      Pesanan Diterima
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Konfirmasi Penerimaan Pesanan</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Apakah Anda sudah menerima pesanan #{order.id.slice(0, 8)}?
+                                        Dengan mengkonfirmasi, pesanan akan ditandai sebagai selesai.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Belum Diterima</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => handleConfirmDelivery(order.id)}
+                                        className="bg-primary hover:bg-primary/90"
+                                      >
+                                        {confirmingDelivery === order.id ? 'Memproses...' : 'Ya, Sudah Diterima'}
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              )}
+
+                              {/* Cancel Order - untuk status pending */}
+                              {canCancelOrder(order) && !expired && (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={cancellingOrder === order.id}
+                                      className="border-primary text-primary hover:bg-primary hover:text-white disabled:opacity-50"
+                                      onClick={() => {
+                                        setSelectedOrderToCancel(order.id);
+                                        setCancelReason('');
+                                      }}
+                                    >
+                                      <XCircle className="h-4 w-4 mr-1" />
+                                      Batalkan
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Batalkan Pesanan</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Silakan pilih alasan pembatalan pesanan #{order.id.slice(0, 8)}.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+
+                                    <div className="space-y-4">
+                                      <div>
+                                        <Label htmlFor="cancelReason">Alasan Pembatalan</Label>
+                                        <Select value={cancelReason} onValueChange={setCancelReason}>
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Pilih alasan pembatalan..." />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {cancelReasons.map((reason) => (
+                                              <SelectItem key={reason} value={reason}>
+                                                {reason}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel
+                                        onClick={() => {
+                                          setSelectedOrderToCancel(null);
+                                          setCancelReason('');
+                                        }}
+                                      >
+                                        Batal
+                                      </AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={handleConfirmCancel}
+                                        className="bg-red-600 hover:bg-red-700"
+                                        disabled={!cancelReason || cancellingOrder === order.id}
+                                      >
+                                        {cancellingOrder === order.id ? 'Memproses...' : 'Ya, Batalkan'}
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  </CardContent>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Collapsible>
                 </Card>
               );
             })}

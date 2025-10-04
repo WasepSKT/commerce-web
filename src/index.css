@@ -7,6 +7,97 @@ All colors MUST be HSL.
 */
 
 @layer base {
+
+  /* Remove default focus outline while preserving accessibility */
+  *:focus {
+    outline: none;
+  }
+
+  /* Only show focus outline when navigating with keyboard */
+  *:focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+  }
+
+  /* Remove default button focus styles */
+  button:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Remove default link focus styles */
+  a:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Remove default input focus styles that might show black border */
+  input:focus:not(:focus-visible),
+  textarea:focus:not(:focus-visible),
+  select:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Remove outline from body and main containers */
+  body:focus,
+  #root:focus,
+  main:focus,
+  div:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Ensure headings don't show outline when programmatically focused */
+  h1[tabindex="-1"]:focus,
+  h2[tabindex="-1"]:focus,
+  h3[tabindex="-1"]:focus,
+  h4[tabindex="-1"]:focus,
+  h5[tabindex="-1"]:focus,
+  h6[tabindex="-1"]:focus {
+    outline: none;
+  }
+
+  /* Remove webkit/browser specific focus rings */
+  *:focus {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-focus-ring-color: transparent;
+  }
+
+  /* Hide scrollbar focus */
+  *::-webkit-scrollbar-thumb:focus {
+    outline: none;
+  }
+
+  /* Additional safety: remove any possible black borders or outlines */
+  * {
+    box-shadow: none !important;
+  }
+
+  *:focus {
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Prevent any elements from showing unwanted focus styles on page load */
+  body *:focus:not(:focus-visible):not(input):not(textarea):not(select):not(button):not(a) {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure no element gets focused on page load */
+  *:not(input):not(textarea):not(select):not(button):not(a)[tabindex="-1"]:focus {
+    outline: none !important;
+  }
+
+  /* Prevent initial focus styles on body and document */
+  body {
+    outline: none !important;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Remove focus from any initially focused elements */
+  *:focus:not(:focus-visible) {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
   :root {
     --background: 45 25% 98%;
     --foreground: 220 13% 13%;

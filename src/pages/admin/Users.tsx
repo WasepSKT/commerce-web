@@ -105,13 +105,70 @@ export default function AdminUsersPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase.from('profiles').delete().eq('id', id);
-      if (error) throw error;
-      toast({ title: 'Pengguna dihapus' });
+      // Cari user yang akan dihapus untuk mendapatkan user_id
+      const userToDelete = users.find(user => user.id === id);
+      if (!userToDelete) {
+        throw new Error('User tidak ditemukan');
+      }
+
+      console.log('Deleting user:', { id, user_id: userToDelete.user_id, email: userToDelete.email });
+
+      // Metode 1: Coba hapus dari Supabase Auth menggunakan Admin API
+      try {
+        const { error: authError } = await supabase.auth.admin.deleteUser(userToDelete.user_id);
+
+        if (authError) {
+          console.warn('Auth Admin API error:', authError);
+          // Lanjut ke metode fallback
+          throw new Error(`Auth deletion failed: ${authError.message}`);
+        }
+
+        // Jika berhasil hapus dari auth, profile akan terhapus otomatis via cascade/trigger
+        toast({ title: 'Pengguna berhasil dihapus sepenuhnya' });
+
+      } catch (authErr) {
+        console.warn('Auth deletion failed, trying database cleanup:', authErr);
+
+        // Metode 2: Fallback - gunakan RPC function untuk hapus data dari database
+        const rpcParams = { p_user_id: userToDelete.user_id };
+        const { data: rpcResult, error: rpcError } = await supabase.rpc(
+          'admin_delete_user' as 'handle_referral_signup',
+          rpcParams as unknown as Parameters<typeof supabase.rpc>[1]
+        );
+
+        if (rpcError) {
+          console.error('RPC deletion error:', rpcError);
+          // Metode 3: Manual deletion sebagai last resort
+          const { error: profileError } = await supabase.from('profiles').delete().eq('id', id);
+          if (profileError) {
+            throw new Error(`Semua metode penghapusan gagal. Auth: ${authErr}. RPC: ${rpcError.message}. Profile: ${profileError.message}`);
+          }
+
+          toast({
+            title: 'Data pengguna dihapus dari database',
+            description: 'Akun auth mungkin masih ada. Silakan hubungi administrator untuk pembersihan manual.',
+            variant: 'default'
+          });
+        } else {
+          console.log('RPC deletion result:', rpcResult);
+          toast({
+            title: 'Data pengguna berhasil dihapus',
+            description: rpcResult?.message || 'Data berhasil dihapus dari database',
+            variant: 'default'
+          });
+        }
+      }
+
       setDeleting(null);
       await fetchUsers();
+
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Gagal menghapus pengguna', description: getErrorMessage(err) });
+      console.error('Delete user error:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Gagal menghapus pengguna',
+        description: getErrorMessage(err, 'Terjadi kesalahan saat menghapus pengguna')
+      });
     }
   };
 

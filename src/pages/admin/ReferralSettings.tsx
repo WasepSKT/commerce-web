@@ -8,31 +8,16 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X } from 'lucide-react';
+import { X, Plus } from 'lucide-react';
 import { useCallback } from 'react';
 import { format } from 'date-fns';
 
-// Format number to Indonesian Rupiah string (Rp 10.000)
-function formatRupiah(value: number | null | undefined) {
-  if (value === null || value === undefined) return 'Rp 0';
-  try {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value);
-  } catch (e) {
-    return `Rp ${String(value)}`;
-  }
-}
-
-type Settings = {
-  id?: string;
-  name: string;
-  active: boolean;
-  reward_type: 'points' | 'coupon' | 'credit';
-  reward_value?: number | null;
-  // referral program doesn't store levels here; levels are in separate table
-  max_per_referrer?: number | null;
-  expiration_days?: number | null;
-  min_purchase_amount?: number | null;
-};
+// Modular imports
+import { Settings, LevelRow, FormData } from '@/types/referral';
+import { formatRupiah, validateRangeAgainstExisting, parseAmount, rangesOverlap } from '@/lib/referralUtils';
+import { ReferralLevelService } from '@/services/referralService';
+import { LevelFormModal } from '@/components/admin/LevelFormModal';
+import { LevelDisplay } from '@/components/admin/LevelDisplay';
 
 export default function ReferralSettings() {
   const [settings, setSettings] = useState<Settings>({
@@ -47,34 +32,29 @@ export default function ReferralSettings() {
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [expirationDate, setExpirationDate] = useState<string | null>(null);
-  // levels are managed in the referral_levels table (separate admin page)
   const { toast } = useToast();
 
-  // Referral levels management (embedded)
-  type LevelRow = {
-    id: string;
-    name: string;
-    min_amount: string;
-    max_amount?: string | null;
-    weight: number;
-    priority: number;
-    active: boolean;
-  };
-
+  // Referral levels management (using modular types)
   const [levels, setLevels] = useState<LevelRow[]>([]);
-  const [newLevel, setNewLevel] = useState<Partial<LevelRow>>({ name: '', min_amount: '0', weight: 1, priority: 0, active: true });
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editLevel, setEditLevel] = useState<Partial<LevelRow> | null>(null);
-  const [newLevelError, setNewLevelError] = useState<string | null>(null);
-  const [editLevelError, setEditLevelError] = useState<string | null>(null);
+
+  // Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingLevel, setEditingLevel] = useState<LevelRow | null>(null);
+  const [formData, setFormData] = useState<FormData>({
+    name: '',
+    min_amount: '0',
+    weight: 5, // 5% as integer
+    priority: 0,
+    active: true
+  });
+  const [formError, setFormError] = useState<string | null>(null);
   const fetchLevels = useCallback(async () => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any).from('referral_levels').select('*').order('priority', { ascending: false });
+      const { data, error } = await ReferralLevelService.fetchLevels();
       if (error) {
         toast({ variant: 'destructive', title: 'Gagal memuat levels', description: String(error.message || error) });
       } else if (data) {
-        setLevels(data as unknown as LevelRow[]);
+        setLevels(data);
       }
     } catch (error) {
       console.error('Error fetching levels:', error);
@@ -82,25 +62,18 @@ export default function ReferralSettings() {
   }, [toast]);
 
   // Helpers for validation: parse numeric amounts and check overlap
-  const parseAmount = (v: string | number | null | undefined) => {
-    if (v === null || v === undefined || v === '') return null;
-    const n = Number(v);
-    if (Number.isNaN(n)) return null;
-    return n;
-  };
 
-  const rangesOverlap = (aMin: number, aMax: number | null, bMin: number, bMax: number | null) => {
-    const Amax = aMax === null ? Number.POSITIVE_INFINITY : aMax;
-    const Bmax = bMax === null ? Number.POSITIVE_INFINITY : bMax;
-    return aMin <= Bmax && bMin <= Amax;
-  };
+
+
 
   const validateRangeAgainstExisting = (min: number, max: number | null, excludeId?: string | null) => {
     if (min < 0) return 'Min amount harus bernilai 0 atau lebih.';
     if (max !== null && min >= max) return 'Min harus lebih kecil dari Max.';
 
     for (const lv of levels) {
-      if (excludeId && lv.id === excludeId) continue;
+      if (excludeId && lv.id === excludeId) {
+        continue;
+      }
       const lvMin = Number(lv.min_amount ?? 0);
       const lvMax = lv.max_amount ? Number(lv.max_amount) : null;
       if (rangesOverlap(min, max, lvMin, lvMax)) {
@@ -111,7 +84,90 @@ export default function ReferralSettings() {
     return null;
   };
 
-  useEffect(() => { void fetchLevels(); }, [fetchLevels]);
+  // Modal helper functions
+  const openAddModal = () => {
+    setFormData({ name: '', min_amount: '0', weight: 5, priority: 0, active: true }); // 5% as integer
+    setEditingLevel(null);
+    setFormError(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (level: LevelRow) => {
+    setFormData({
+      ...level,
+      weight: level.weight || 5, // Default 5% if weight is 0
+      priority: level.priority || 0
+    });
+    setEditingLevel(level);
+    setFormError(null);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setFormData({ name: '', min_amount: '0', weight: 5, priority: 0, active: true });
+    setEditingLevel(null);
+    setFormError(null);
+  };
+
+  const handleSaveLevel = async () => {
+    setFormError(null);
+
+    if (!formData.name) {
+      setFormError('Nama level diperlukan');
+      return;
+    }
+
+    if (!formData.weight || formData.weight <= 0) {
+      setFormError('Percentage bonus harus lebih dari 0%');
+      return;
+    }
+
+    const min = parseAmount(formData.min_amount ?? '0') ?? 0;
+    const max = parseAmount(formData.max_amount ?? null);
+    const validationMsg = validateRangeAgainstExisting(min, max, editingLevel?.id);
+
+    if (validationMsg) {
+      setFormError(validationMsg);
+      return;
+    }
+
+    try {
+      const { error } = await ReferralLevelService.saveLevel(formData, editingLevel);
+      if (error) {
+        toast({
+          variant: 'destructive',
+          title: editingLevel ? 'Gagal menyimpan perubahan' : 'Gagal menambahkan level',
+          description: String(error.message || error)
+        });
+        return;
+      }
+
+      toast({ title: editingLevel ? 'Level berhasil diperbarui' : 'Level berhasil ditambahkan' });
+      closeModal();
+      await fetchLevels();
+    } catch (error) {
+      console.error('Error saving level:', error);
+      toast({ variant: 'destructive', title: 'Terjadi kesalahan', description: 'Silakan coba lagi' });
+    }
+  };
+
+  const handleDeleteLevel = async (levelId: string, levelName: string) => {
+    if (!confirm(`Hapus level "${levelName}"? Tindakan ini tidak dapat dibatalkan.`)) return;
+
+    try {
+      const { error } = await ReferralLevelService.deleteLevel(levelId);
+      if (error) {
+        toast({ variant: 'destructive', title: 'Gagal menghapus level', description: String(error.message || error) });
+      } else {
+        toast({ title: 'Level berhasil dihapus' });
+        await fetchLevels();
+      }
+    } catch (error) {
+      console.error('Error deleting level:', error);
+      toast({ variant: 'destructive', title: 'Terjadi kesalahan', description: 'Silakan coba lagi' });
+    }
+  };
 
   // show/hide guidance card (session-only; will reappear on page refresh)
   const [showGuidance, setShowGuidance] = useState(true);
@@ -123,44 +179,54 @@ export default function ReferralSettings() {
   const openSettingsInfo = () => setShowSettingsInfo(true);
 
   useEffect(() => {
-    const fetchSettings = async () => {
+    const fetchSettingsAndLevels = async () => {
       setDataLoading(true);
-      const { data, error } = await supabase
-        .from('referral_settings')
-        .select('*')
-        .eq('name', 'default')
-        .maybeSingle();
 
-      if (error) {
-        toast({ variant: 'destructive', title: 'Gagal memuat pengaturan', description: String(error.message || error) });
-      } else if (data) {
-        // compute expiration date from expiration_days if present
-        let expDate: string | null = null;
-        if (data.expiration_days !== null && data.expiration_days !== undefined) {
-          const d = new Date();
-          d.setDate(d.getDate() + Number(data.expiration_days));
-          expDate = format(d, 'yyyy-MM-dd');
+      try {
+        // Fetch settings
+        const { data, error } = await supabase
+          .from('referral_settings')
+          .select('*')
+          .eq('name', 'default')
+          .maybeSingle();
+
+        if (error) {
+          toast({ variant: 'destructive', title: 'Gagal memuat pengaturan', description: String(error.message || error) });
+        } else if (data) {
+          // compute expiration date from expiration_days if present
+          let expDate: string | null = null;
+          if (data.expiration_days !== null && data.expiration_days !== undefined) {
+            const d = new Date();
+            d.setDate(d.getDate() + Number(data.expiration_days));
+            expDate = format(d, 'yyyy-MM-dd');
+          }
+
+          setSettings({
+            id: data.id,
+            name: data.name,
+            active: data.active,
+            reward_type: data.reward_type as Settings['reward_type'],
+            reward_value: data.reward_value !== null ? Number(data.reward_value) : null,
+            max_per_referrer: data.max_per_referrer,
+            expiration_days: data.expiration_days,
+            min_purchase_amount: data.min_purchase_amount,
+          });
+
+          setExpirationDate(expDate);
         }
 
-        setSettings({
-          id: data.id,
-          name: data.name,
-          active: data.active,
-          reward_type: data.reward_type as Settings['reward_type'],
-          reward_value: data.reward_value !== null ? Number(data.reward_value) : null,
-          max_per_referrer: data.max_per_referrer,
-          expiration_days: data.expiration_days,
-          min_purchase_amount: data.min_purchase_amount,
-        });
+        // Fetch levels using existing fetchLevels function
+        await fetchLevels();
 
-        setExpirationDate(expDate);
+      } catch (error) {
+        console.error('Error fetching settings and levels:', error);
+      } finally {
+        setDataLoading(false);
       }
-
-      setDataLoading(false);
     };
 
-    void fetchSettings();
-  }, [toast]);
+    void fetchSettingsAndLevels();
+  }, [toast, fetchLevels]);
 
   const handleSave = async () => {
     // basic validation
@@ -180,7 +246,7 @@ export default function ReferralSettings() {
         expiration_days = diffDays > 0 ? diffDays : 0;
       }
 
-      const upsertPayload: Partial<Settings> = {
+      const payload: Partial<Settings> & { id?: string } = {
         name: settings.name,
         active: settings.active,
         reward_type: settings.reward_type,
@@ -190,10 +256,31 @@ export default function ReferralSettings() {
         min_purchase_amount: settings.min_purchase_amount,
       };
 
-      const { error } = await supabase.from('referral_settings').upsert(upsertPayload, { onConflict: 'name' });
+      let error;
+
+      if (settings.id) {
+        // Update existing record
+        const updateResult = await supabase
+          .from('referral_settings')
+          .update(payload)
+          .eq('id', settings.id);
+        error = updateResult.error;
+      } else {
+        // Insert new record
+        const insertResult = await supabase
+          .from('referral_settings')
+          .insert(payload);
+        error = insertResult.error;
+      }
 
       if (error) {
-        toast({ variant: 'destructive', title: 'Gagal menyimpan', description: String(error.message || error) });
+        console.error('Save error details:', error);
+        console.error('Save payload:', payload);
+        toast({
+          variant: 'destructive',
+          title: 'Gagal menyimpan',
+          description: `Error: ${error.message || error}${error.details ? ` - ${error.details}` : ''}`
+        });
       } else {
         toast({ title: 'Pengaturan referral disimpan' });
       }
@@ -327,13 +414,14 @@ export default function ReferralSettings() {
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="font-medium">Cara mengisi level (singkat)</div>
-                      <div className="text-sm text-muted-foreground mt-1">Masukkan angka untuk jumlah pembelian dalam Rupiah. Contoh: ketik <strong>100000</strong> untuk Rp 100.000. Jangan tambahkan huruf "Rp". Jika kolom Max dibiarkan kosong berarti tak terbatas.</div>
+                      <div className="text-sm text-muted-foreground mt-1">Definisikan rentang pembelian dan persentase bonus untuk setiap level referral. Masukkan angka dalam Rupiah tanpa "Rp". Contoh: ketik <strong>100000</strong> untuk Rp 100.000.</div>
                       <ul className="text-xs text-muted-foreground mt-2 list-disc ml-5 space-y-1">
-                        <li>Min harus lebih kecil dari Max (kalau Max diisi).</li>
-                        <li>Jangan buat rentang yang saling tumpang tindih antar level.</li>
-                        <li>Weight = seberapa besar bobot/benefit (angka, 0 berarti kecil).</li>
-                        <li>Priority = urutan pengecekan (angka lebih besar = dicek/diprioritaskan dulu).</li>
-                        <li>Level juga bisa ditutup/ dinonaktifkan dari daftar jika tidak lagi digunakan — level tetap tersimpan tapi tidak akan diberikan kepada pengguna.</li>
+                        <li><strong>Rentang (Min/Max):</strong> Tentukan batas minimal dan maksimal pembelian untuk level ini.</li>
+                        <li><strong>Percentage:</strong> Berapa persen bonus yang didapat dari nilai pembelian (contoh: 5% dari Rp 100.000 = Rp 5.000).</li>
+                        <li><strong>Priority:</strong> Urutan pengecekan level (angka lebih besar = dicek dulu).</li>
+                        <li>Min harus lebih kecil dari Max. Jika Max kosong = tak terbatas.</li>
+                        <li>Rentang antar level tidak boleh tumpang tindih.</li>
+                        <li>Level bisa dinonaktifkan tanpa menghapus data.</li>
                       </ul>
                     </div>
                     <div className="ml-4">
@@ -348,20 +436,23 @@ export default function ReferralSettings() {
                       <div className="p-2 border border-gray-200 rounded bg-white">
                         <div className="font-medium">Bronze</div>
                         <div className="text-xs text-muted-foreground">Min: {formatRupiah(0)}</div>
-                        <div className="text-xs text-muted-foreground">Max: {formatRupiah(49999)}</div>
-                        <div className="text-xs text-muted-foreground">Weight: 1 · Priority: 0</div>
+                        <div className="text-xs text-muted-foreground">Max: {formatRupiah(499999)}</div>
+                        <div className="text-xs text-muted-foreground">Percentage: 2% · Priority: 1</div>
+                        <div className="text-xs text-primary/70">Bonus: {formatRupiah(499999 * 0.02)}</div>
                       </div>
                       <div className="p-2 border border-gray-200 rounded bg-white">
                         <div className="font-medium">Silver</div>
-                        <div className="text-xs text-muted-foreground">Min: {formatRupiah(50000)}</div>
-                        <div className="text-xs text-muted-foreground">Max: {formatRupiah(199999)}</div>
-                        <div className="text-xs text-muted-foreground">Weight: 2 · Priority: 1</div>
+                        <div className="text-xs text-muted-foreground">Min: {formatRupiah(500000)}</div>
+                        <div className="text-xs text-muted-foreground">Max: {formatRupiah(1999999)}</div>
+                        <div className="text-xs text-muted-foreground">Percentage: 5% · Priority: 2</div>
+                        <div className="text-xs text-primary/70">Bonus: {formatRupiah(1999999 * 0.05)}</div>
                       </div>
                       <div className="p-2 border border-gray-200 rounded bg-white">
                         <div className="font-medium">Gold</div>
-                        <div className="text-xs text-muted-foreground">Min: {formatRupiah(200000)}</div>
+                        <div className="text-xs text-muted-foreground">Min: {formatRupiah(2000000)}</div>
                         <div className="text-xs text-muted-foreground">Max: — (tak terbatas)</div>
-                        <div className="text-xs text-muted-foreground">Weight: 3 · Priority: 2</div>
+                        <div className="text-xs text-muted-foreground">Percentage: 10% · Priority: 3</div>
+                        <div className="text-xs text-primary/70">Bonus: {formatRupiah(5000000 * 0.10)}</div>
                       </div>
                     </div>
                   </div>
@@ -375,144 +466,37 @@ export default function ReferralSettings() {
                 </div>
               )}
 
-              <div className="mt-4 p-3 border border-gray-200 rounded bg-background space-y-3">
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <Label>Nama</Label>
-                    <Input value={newLevel.name ?? ''} onChange={(e) => setNewLevel(n => ({ ...n, name: e.target.value }))} />
-                  </div>
-                  <div>
-                    <Label>Min amount</Label>
-                    <Input value={newLevel.min_amount ?? '0'} onChange={(e) => setNewLevel(n => ({ ...n, min_amount: e.target.value }))} />
-                    <p className="text-xs text-muted-foreground mt-1">Contoh: {formatRupiah(Number(newLevel.min_amount ?? 0))} — masukkan angka saja (mis. <code>100000</code> untuk Rp 100.000).</p>
-                  </div>
-                  <div>
-                    <Label>Max amount (opsional)</Label>
-                    <Input value={newLevel.max_amount ?? ''} onChange={(e) => setNewLevel(n => ({ ...n, max_amount: e.target.value }))} />
-                    <p className="text-xs text-muted-foreground mt-1">Contoh: {newLevel.max_amount ? formatRupiah(Number(newLevel.max_amount)) : '∞'} — kosongkan untuk tak berbatas.</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <Label>Weight</Label>
-                    <Input value={String(newLevel.weight ?? 1)} onChange={(e) => setNewLevel(n => ({ ...n, weight: Number(e.target.value) }))} />
-                  </div>
-                  <div>
-                    <Label>Priority</Label>
-                    <Input value={String(newLevel.priority ?? 0)} onChange={(e) => setNewLevel(n => ({ ...n, priority: Number(e.target.value) }))} />
-                  </div>
-                  <div className="flex items-end">
-                    <Button onClick={async () => {
-                      setNewLevelError(null);
-                      if (!newLevel.name) { setNewLevelError('Nama level diperlukan'); return; }
-                      const min = parseAmount(newLevel.min_amount ?? '0') ?? 0;
-                      const max = parseAmount(newLevel.max_amount ?? null);
-                      const validationMsg = validateRangeAgainstExisting(min, max);
-                      if (validationMsg) { setNewLevelError(validationMsg); return; }
-
-                      const payload = {
-                        name: newLevel.name,
-                        min_amount: min,
-                        max_amount: max,
-                        weight: Number(newLevel.weight ?? 1),
-                        priority: Number(newLevel.priority ?? 0),
-                        active: Boolean(newLevel.active ?? true),
-                      };
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      const { error } = await (supabase as any).from('referral_levels').insert(payload);
-                      if (error) { toast({ variant: 'destructive', title: 'Gagal menambahkan level', description: String(error.message || error) }); }
-                      else { toast({ title: 'Level ditambahkan' }); setNewLevel({ name: '', min_amount: '0', weight: 1, priority: 0, active: true }); await fetchLevels(); }
-                    }}>
-                      Tambah Level
-                    </Button>
-                  </div>
-                </div>
-                {newLevelError && <div className="text-sm text-red-600 mt-1">{newLevelError}</div>}
-
+              <div className="mt-4 flex justify-between items-center">
                 <div>
-                  <h4 className="text-2xl font-medium mb-2 text-primary">Daftar Levels</h4>
-                  <div className="space-y-2">
-                    {levels.map(l => (
-                      <div key={l.id} className="p-2 border border-gray-200 rounded">
-                        {editingId === l.id && editLevel ? (
-                          <div className="space-y-2">
-                            <div className="flex gap-2">
-                              <div className="flex-1">
-                                <Label>Nama</Label>
-                                <Input className="mt-1" value={editLevel.name ?? ''} onChange={(e) => setEditLevel(prev => ({ ...(prev ?? {}), name: e.target.value }))} />
-                              </div>
-                              <div className="w-32">
-                                <Label>Min amount</Label>
-                                <Input className="mt-1" value={String(editLevel.min_amount ?? '')} onChange={(e) => setEditLevel(prev => ({ ...(prev ?? {}), min_amount: e.target.value }))} />
-                              </div>
-                              <div className="w-32">
-                                <Label>Max amount</Label>
-                                <Input className="mt-1" value={String(editLevel.max_amount ?? '')} onChange={(e) => setEditLevel(prev => ({ ...(prev ?? {}), max_amount: e.target.value }))} />
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="w-24">
-                                <Label>Weight</Label>
-                                <Input className="mt-1" value={String(editLevel.weight ?? 1)} onChange={(e) => setEditLevel(prev => ({ ...(prev ?? {}), weight: Number(e.target.value) }))} />
-                              </div>
-                              <div className="w-24">
-                                <Label>Priority</Label>
-                                <Input className="mt-1" value={String(editLevel.priority ?? 0)} onChange={(e) => setEditLevel(prev => ({ ...(prev ?? {}), priority: Number(e.target.value) }))} />
-                              </div>
-                              <div className="ml-auto flex gap-2">
-                                <Button onClick={async () => {
-                                  if (!editLevel) return;
-                                  setEditLevelError(null);
-                                  const min = parseAmount(editLevel.min_amount ?? '0') ?? 0;
-                                  const max = parseAmount(editLevel.max_amount ?? null);
-                                  const validationMsg = validateRangeAgainstExisting(min, max, l.id);
-                                  if (validationMsg) { setEditLevelError(validationMsg); return; }
-
-                                  const payload = {
-                                    name: editLevel.name,
-                                    min_amount: min,
-                                    max_amount: max,
-                                    weight: Number(editLevel.weight ?? 1),
-                                    priority: Number(editLevel.priority ?? 0),
-                                    active: Boolean(editLevel.active ?? true),
-                                  };
-                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                  const { error } = await (supabase as any).from('referral_levels').update(payload).eq('id', l.id);
-                                  if (error) { toast({ variant: 'destructive', title: 'Gagal menyimpan perubahan', description: String(error.message || error) }); }
-                                  else { toast({ title: 'Perubahan disimpan' }); setEditingId(null); setEditLevel(null); await fetchLevels(); }
-                                }}>Simpan</Button>
-                                <Button variant="secondary" onClick={() => { setEditingId(null); setEditLevel(null); }}>Batal</Button>
-                              </div>
-                            </div>
-                            {editLevelError && <div className="text-sm text-red-600">{editLevelError}</div>}
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="font-medium">{l.name}</div>
-                              <div className="text-xs text-muted-foreground">Min: {formatRupiah(Number(l.min_amount))} — Max: {l.max_amount ? formatRupiah(Number(l.max_amount)) : '∞'}</div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="text-sm text-muted-foreground">Weight: {l.weight} · Priority: {l.priority} · {l.active ? 'Active' : 'Inactive'}</div>
-                              <div className="ml-4 flex gap-2">
-                                <Button onClick={() => { setEditingId(l.id); setEditLevel({ ...l }); }}>Edit</Button>
-                                <Button variant="destructive" onClick={async () => {
-                                  if (!confirm('Hapus level ini? Tindakan ini tidak dapat dibatalkan.')) return;
-                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                  const { error } = await (supabase as any).from('referral_levels').delete().eq('id', l.id);
-                                  if (error) { toast({ variant: 'destructive', title: 'Gagal menghapus level', description: String(error.message || error) }); }
-                                  else { toast({ title: 'Level dihapus' }); await fetchLevels(); }
-                                }}>Hapus</Button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    {levels.length === 0 && <div className="text-xs text-muted-foreground">Belum ada level. Tambah level di atas.</div>}
-                  </div>
+                  <h4 className="text-2xl font-medium text-primary">Daftar Levels</h4>
+                  <p className="text-sm text-muted-foreground">Kelola level referral dan reward yang diberikan</p>
                 </div>
+                <Button
+                  onClick={openAddModal}
+                  className="flex items-center gap-2 h-11 bg-primary hover:bg-primary/90"
+                >
+                  <Plus className="w-4 h-4" />
+                  Tambah Level
+                </Button>
               </div>
+
+              <LevelDisplay
+                levels={levels}
+                onEditLevel={openEditModal}
+                onDeleteLevel={handleDeleteLevel}
+              />
+
+              {/* Modal untuk Add/Edit Level */}
+              <LevelFormModal
+                isOpen={isModalOpen}
+                onClose={closeModal}
+                onSave={handleSaveLevel}
+                editingLevel={editingLevel}
+                formData={formData}
+                setFormData={setFormData}
+                formError={formError}
+              />
+              {/* Modal content is now in LevelFormModal component */}
             </div>
           </>
         )}

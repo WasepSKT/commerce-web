@@ -75,17 +75,17 @@ export default function AdminSidebarNav() {
 
           {isAuthenticated && isAdmin && (
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isActive('/admin/kampanye')}>
+              <SidebarMenuButton asChild isActive={isActive('/admin/campaign')}>
                 <Link
-                  to="/admin/kampanye"
-                  className={`sidebar-link flex items-center gap-4 px-4 py-3 rounded-l-md transition-colors text-base ${isActive('/admin/kampanye')
+                  to="/admin/campaign"
+                  className={`sidebar-link flex items-center gap-4 px-4 py-3 rounded-l-md transition-colors text-base ${isActive('/admin/campaign')
                     ? 'sidebar-link--active text-primary-foreground font-semibold'
                     : 'text-muted-foreground hover:bg-muted/10 hover:text-muted-foreground'
                     }`}
-                  aria-current={isActive('/admin/kampanye') ? 'page' : undefined}
+                  aria-current={isActive('/admin/campaign') ? 'page' : undefined}
                 >
-                  <Megaphone className={`h-5 w-5 ${isActive('/admin/kampanye') ? 'text-primary-foreground' : ''}`} />
-                  <span className="text-base">Kampanye</span>
+                  <Megaphone className={`h-5 w-5 ${isActive('/admin/campaign') ? 'text-primary-foreground' : ''}`} />
+                  <span className="text-base">Campaign</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

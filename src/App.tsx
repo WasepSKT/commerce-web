@@ -15,11 +15,12 @@ import CartPage from './pages/Cart';
 import ProfilePage from './pages/Profile';
 import MyOrders from './pages/MyOrders';
 import Auth from "./pages/Auth";
+import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminProductsPage from "./pages/admin/Products";
 import AdminUsersPage from "./pages/admin/Users";
-import AdminKampanyePage from "./pages/admin/Kampanye";
+import AdminCampaignPage from "./pages/admin/Campaign";
 import ReferralsPage from "./pages/admin/Referrals";
 import ReferralSettingsPage from "./pages/admin/ReferralSettings";
 import ReferralPurchasesPage from "./pages/admin/ReferralPurchases";
@@ -60,6 +61,8 @@ export default function App() {
             <Route path="/products" element={<ProductList />} />
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/auth/signup" element={<Signup />} />
+            <Route path="/signup" element={<Signup />} />
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />
@@ -115,10 +118,10 @@ export default function App() {
               }
             />
             <Route
-              path="/admin/kampanye"
+              path="/admin/campaign"
               element={
                 <AdminRoute>
-                  <AdminKampanyePage />
+                  <AdminCampaignPage />
                 </AdminRoute>
               }
             />

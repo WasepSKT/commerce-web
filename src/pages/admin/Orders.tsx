@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { printXPrinterReceipt } from '@/lib/receiptPrinter';
 import { printInvoice } from '@/lib/invoiceGenerator';
 import { printFaktur } from '@/lib/fakturGenerator';
-import { RefreshCw, Search, Download, Printer, FileText } from 'lucide-react';
+import { RefreshCw, Search, Download, Printer, FileText, Eye } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TableSkeleton, HeaderSkeleton, FiltersSkeleton } from '@/components/ui/AdminSkeleton';
 
@@ -22,6 +22,7 @@ interface OrderRow {
   customer_address?: string;
   shipping_courier?: string | null;
   tracking_number?: string | null;
+  notes?: string | null;
   order_items?: Array<Record<string, unknown>>;
   [key: string]: unknown;
 }
@@ -240,7 +241,7 @@ export default function AdminOrders() {
         </div>
 
         <div className="mt-4 flex items-center gap-2">
-          <div className="relative flex-1 max-w-sm">
+          <div className="relative flex-1 min-w-[300px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
@@ -251,7 +252,7 @@ export default function AdminOrders() {
             />
           </div>
           <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="min-w-[140px]">
+            <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Filter Status" />
             </SelectTrigger>
             <SelectContent>
@@ -260,7 +261,6 @@ export default function AdminOrders() {
               <SelectItem value="paid">Dibayar</SelectItem>
               <SelectItem value="shipped">Dikirim</SelectItem>
               <SelectItem value="completed">Selesai</SelectItem>
-              <SelectItem value="selesai">Selesai</SelectItem>
               <SelectItem value="cancelled">Dibatalkan</SelectItem>
             </SelectContent>
           </Select>
@@ -277,6 +277,7 @@ export default function AdminOrders() {
                   <th className="px-4 py-2 text-left">Customer</th>
                   <th className="px-4 py-2 text-left">Amount</th>
                   <th className="px-4 py-2 text-left">Status</th>
+                  <th className="px-4 py-2 text-left">Notes</th>
                   <th className="px-4 py-2 text-left">Created</th>
                   <th className="px-4 py-2 text-left">Actions</th>
                 </tr>
@@ -288,13 +289,27 @@ export default function AdminOrders() {
                     <td className="px-4 py-3">{o.customer_name ?? o.user_id ?? '-'}</td>
                     <td className="px-4 py-3">Rp {Number(o.total_amount ?? 0).toLocaleString('id-ID')}</td>
                     <td className="px-4 py-3">{getStatusInIndonesian(o.status)}</td>
+                    <td className="px-4 py-3 text-xs max-w-32 truncate" title={o.notes || '-'}>
+                      {o.notes ? (
+                        <span className={o.status === 'cancelled' ? 'text-red-600' : 'text-gray-600'}>
+                          {o.notes}
+                        </span>
+                      ) : ('-')}
+                    </td>
                     <td className="px-4 py-3">{o.created_at ? new Date(o.created_at).toLocaleString() : '-'}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => void openDetail(String(o.id))}>Detail</Button>
-                        {(o.status === 'dikirim' || o.status === 'shipped') && <Button size="sm" variant="default" onClick={() => void downloadInvoice(o)}><Download className="mr-1 h-4 w-4" />Invoice</Button>}
-                        {(o.status === 'completed' || o.status === 'selesai') && <Button size="sm" variant="default" onClick={() => void downloadFaktur(o)}><FileText className="mr-1 h-4 w-4" />Faktur</Button>}
-                        {o.status === 'paid' && <Button size="sm" variant="default" onClick={() => void printResi(o)}><Printer className="mr-1 h-4 w-4" />Resi</Button>}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void openDetail(String(o.id))}
+                          className="border-primary text-primary hover:bg-primary hover:text-white"
+                        >
+                          <Eye className="mr-1 h-4 w-4" />Detail
+                        </Button>
+                        {(o.status === 'dikirim' || o.status === 'shipped') && <Button size="sm" variant="outline" onClick={() => void downloadInvoice(o)} className="border-primary text-primary hover:bg-primary hover:text-white"><Download className="mr-1 h-4 w-4" />Invoice</Button>}
+                        {(o.status === 'completed' || o.status === 'selesai') && <Button size="sm" variant="outline" onClick={() => void downloadFaktur(o)} className="border-primary text-primary hover:bg-primary hover:text-white"><FileText className="mr-1 h-4 w-4" />Faktur</Button>}
+                        {o.status === 'paid' && <Button size="sm" variant="outline" onClick={() => void printResi(o)} className="border-primary text-primary hover:bg-primary hover:text-white"><Printer className="mr-1 h-4 w-4" />Resi</Button>}
                       </div>
                     </td>
                   </tr>
@@ -332,13 +347,33 @@ export default function AdminOrders() {
                     </ul>
                   ) : <div className="text-sm text-muted-foreground">Tidak ada item.</div>}
                 </div>
+                {detail.notes && (
+                  <div className="border p-3 rounded">
+                    <p className="text-sm text-muted-foreground">Notes</p>
+                    <p className={`text-sm ${detail.status === 'cancelled' ? 'text-red-600' : 'text-gray-700'}`}>
+                      {detail.notes}
+                    </p>
+                  </div>
+                )}
                 <div className="flex gap-2">
-                  <Button variant="ghost" onClick={() => setDetail(null)}>Tutup</Button>
+                  <Button variant="outline" onClick={() => setDetail(null)}>Tutup</Button>
                   {(detail.status === 'dikirim' || detail.status === 'shipped') && (
-                    <Button onClick={() => downloadInvoice(detail)}><Download className="mr-2 h-4 w-4" />Download Invoice</Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => downloadInvoice(detail)}
+                      className="border-primary text-primary hover:bg-primary hover:text-white"
+                    >
+                      <Download className="mr-2 h-4 w-4" />Download Invoice
+                    </Button>
                   )}
                   {(detail.status === 'completed' || detail.status === 'selesai') && (
-                    <Button onClick={() => downloadFaktur(detail)}><FileText className="mr-2 h-4 w-4" />Download Faktur</Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => downloadFaktur(detail)}
+                      className="border-primary text-primary hover:bg-primary hover:text-white"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />Download Faktur
+                    </Button>
                   )}
                 </div>
               </div>

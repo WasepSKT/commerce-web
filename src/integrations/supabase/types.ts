@@ -322,7 +322,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      handle_referral_signup: {
+        Args: {
+          referral_code_input: string
+          new_user_id: string
+        }
+        Returns: {
+          success: boolean
+          message: string
+          reward_points?: number
+          referrer_id?: string
+        }
+      }
     }
     Enums: {
       order_status: "pending" | "paid" | "shipped" | "completed" | "cancelled"

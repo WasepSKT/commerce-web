@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import Footer from '@/components/Footer';
+import { CustomerNotificationDropdown } from '@/components/CustomerNotificationDropdown';
 
 interface LayoutProps {
   children: ReactNode;
@@ -83,6 +84,8 @@ export function Layout({ children }: LayoutProps) {
                       Admin
                     </Badge>
                   )}
+                  {/* notifications */}
+                  <CustomerNotificationDropdown />
                   {/* cart indicator */}
                   <Link to="/cart" className="mr-2">
                     <div className="relative inline-flex">
@@ -139,33 +142,36 @@ export function Layout({ children }: LayoutProps) {
                       <DropdownMenuItem className="cursor-pointer" onSelect={() => setLogoutOpen(true)}>
                         <span className="flex items-center"><LogOut className="mr-2 h-4 w-4" />Keluar</span>
                       </DropdownMenuItem>
-                      <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Keluar dari akun?</AlertDialogTitle>
-                          </AlertDialogHeader>
-                          <AlertDialogDescription>Apakah Anda yakin ingin logout? Anda akan dialihkan ke halaman utama.</AlertDialogDescription>
-                          <div className="mt-4 flex justify-end gap-2">
-                            <AlertDialogCancel className="mr-2">Batal</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={async () => {
-                                const { error } = await signOut();
-                                if (error) {
-                                  const errMsg = (error as unknown as { message?: string })?.message ?? String(error);
-                                  toast({ variant: 'destructive', title: 'Gagal logout', description: errMsg });
-                                } else {
-                                  toast({ title: 'Anda telah logout' });
-                                  navigate('/');
-                                }
-                              }}
-                            >
-                              Keluar
-                            </AlertDialogAction>
-                          </div>
-                        </AlertDialogContent>
-                      </AlertDialog>
                     </DropdownMenuContent>
                   </DropdownMenu>
+
+                  {/* Logout Confirmation Dialog - Moved outside of DropdownMenu */}
+                  <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Keluar dari akun?</AlertDialogTitle>
+                      </AlertDialogHeader>
+                      <AlertDialogDescription>Apakah Anda yakin ingin logout? Anda akan dialihkan ke halaman utama.</AlertDialogDescription>
+                      <div className="mt-4 flex justify-end gap-2">
+                        <AlertDialogCancel className="mr-2" onClick={() => setLogoutOpen(false)}>Batal</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={async () => {
+                            const { error } = await signOut();
+                            if (error) {
+                              const errMsg = (error as unknown as { message?: string })?.message ?? String(error);
+                              toast({ variant: 'destructive', title: 'Gagal logout', description: errMsg });
+                            } else {
+                              toast({ title: 'Anda telah logout' });
+                              navigate('/');
+                            }
+                            setLogoutOpen(false); // Explicitly close dialog
+                          }}
+                        >
+                          Keluar
+                        </AlertDialogAction>
+                      </div>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </>
               ) : (
                 <div className="hidden md:flex items-center space-x-3">

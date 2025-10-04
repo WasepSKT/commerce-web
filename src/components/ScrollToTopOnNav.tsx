@@ -38,7 +38,10 @@ export default function ScrollToTopOnNav() {
         const heading = (main.querySelector('h1') || main.querySelector('h2')) as HTMLElement | null;
         if (heading) {
           heading.setAttribute('tabindex', '-1');
-          heading.focus();
+          heading.style.outline = 'none';
+          heading.style.boxShadow = 'none';
+          heading.style.border = 'none';
+          heading.focus({ preventScroll: true });
         }
       }, 200);
     }

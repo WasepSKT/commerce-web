@@ -124,10 +124,25 @@ export default function Shipings() {
                             <SelectValue placeholder="Pilih jasa kirim" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="jne">JNE</SelectItem>
-                            <SelectItem value="pos">POS Indonesia</SelectItem>
-                            <SelectItem value="tiki">TIKI</SelectItem>
-                            <SelectItem value="sicepat">SiCepat</SelectItem>
+                            <SelectItem value="JNE">JNE</SelectItem>
+                            <SelectItem value="J&T Express">J&T Express</SelectItem>
+                            <SelectItem value="TIKI">TIKI</SelectItem>
+                            <SelectItem value="POS Indonesia">POS Indonesia</SelectItem>
+                            <SelectItem value="SiCepat">SiCepat</SelectItem>
+                            <SelectItem value="Ninja Express">Ninja Express</SelectItem>
+                            <SelectItem value="AnterAja">AnterAja</SelectItem>
+                            <SelectItem value="Shopee Express">Shopee Express</SelectItem>
+                            <SelectItem value="Grab Express">Grab Express</SelectItem>
+                            <SelectItem value="GoSend">GoSend</SelectItem>
+                            <SelectItem value="Lion Parcel">Lion Parcel</SelectItem>
+                            <SelectItem value="Dakota Cargo">Dakota Cargo</SelectItem>
+                            <SelectItem value="SAP Express">SAP Express</SelectItem>
+                            <SelectItem value="RPX">RPX</SelectItem>
+                            <SelectItem value="Wahana">Wahana</SelectItem>
+                            <SelectItem value="JX Express">JX Express</SelectItem>
+                            <SelectItem value="Paxel">Paxel</SelectItem>
+                            <SelectItem value="IDE Express">IDE Express</SelectItem>
+                            <SelectItem value="Kurir Lokal">Kurir Lokal</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

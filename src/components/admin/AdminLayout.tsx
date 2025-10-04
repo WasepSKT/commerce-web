@@ -9,6 +9,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { User, AlertTriangle, Settings, LogOut } from 'lucide-react';
+import { NotificationDropdown } from '@/components/admin/NotificationDropdown';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,8 +32,8 @@ import {
 } from '@/components/ui/alert-dialog';
 
 interface AdminLayoutProps {
-  active?: 'products' | 'users' | 'kampanye';
-  onChange?: (key: 'products' | 'users' | 'kampanye') => void;
+  active?: 'products' | 'users' | 'campaign';
+  onChange?: (key: 'products' | 'users' | 'campaign') => void;
   children: ReactNode;
 }
 
@@ -115,6 +116,10 @@ export function AdminLayout({ active, onChange, children }: AdminLayoutProps) {
                   <div className="hidden md:flex items-center rounded-md px-3 py-1 text-sm font-medium text-muted-foreground">
                     {profile?.full_name ?? profile?.email ?? 'Admin'}
                   </div>
+
+                  {/* Notification dropdown */}
+                  <NotificationDropdown />
+
                   {/* User dropdown */}
                   <div>
                     <DropdownMenu>

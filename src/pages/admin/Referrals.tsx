@@ -28,6 +28,7 @@ export default function Referrals() {
   const [loading, setLoading] = useState(false);
   const [autoApplied, setAutoApplied] = useState(false);
   const requestIdRef = useRef(0);
+  const initialLoadRef = useRef(true);
 
   const fetchReferrals = async (reset = false) => {
     const req = ++requestIdRef.current;
@@ -56,23 +57,37 @@ export default function Referrals() {
   };
 
   useEffect(() => {
-    void fetchReferrals(true);
+    if (initialLoadRef.current) {
+      initialLoadRef.current = false;
+      void fetchReferrals(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // Only trigger when limit changes and not initial load
+    if (!initialLoadRef.current) {
+      void fetchReferrals(true);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [limit]);
 
   // Debounce auto-apply for search and date filters
   // Calls fetchReferrals(true) after a short pause and shows a brief "Auto-applied" indicator
   useDebouncedEffect(() => {
-    const run = async () => {
-      setAutoApplied(true);
-      try {
-        await fetchReferrals(true);
-      } finally {
-        // brief visual feedback
-        window.setTimeout(() => setAutoApplied(false), 1200);
-      }
-    };
-    void run();
+    // Only trigger when not initial load
+    if (!initialLoadRef.current) {
+      const run = async () => {
+        setAutoApplied(true);
+        try {
+          await fetchReferrals(true);
+        } finally {
+          // brief visual feedback
+          window.setTimeout(() => setAutoApplied(false), 1200);
+        }
+      };
+      void run();
+    }
   }, [search, fromDate, toDate], 350);
 
   return (
