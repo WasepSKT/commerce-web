@@ -15,7 +15,12 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, ShoppingCart, Star, Shield, Truck, Package, MessageCircle } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Star, Shield, Truck, Package, MessageCircle, ChevronDown } from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import useCart from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import { StarRating, RatingDistribution } from '@/components/ui/StarRating';
@@ -42,6 +47,7 @@ export default function ProductDetail() {
   const navigateTo = useNavigate();
   const { ratingData, loading: ratingLoading } = useProductRating(id || '');
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [isProductInfoOpen, setIsProductInfoOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
@@ -408,13 +414,13 @@ export default function ProductDetail() {
               <h1 className="text-3xl font-bold mb-4 text-primary">{product.name}</h1>
 
               <div className="flex items-center space-x-2 mb-4">
-                <StarRating 
-                  rating={ratingData.averageRating} 
-                  size="md" 
+                <StarRating
+                  rating={ratingData.averageRating}
+                  size="md"
                   showValue={ratingData.totalReviews > 0}
                 />
                 <span className="text-sm text-muted-foreground">
-                  {ratingData.totalReviews > 0 
+                  {ratingData.totalReviews > 0
                     ? `(${ratingData.averageRating.toFixed(1)}/5 dari ${ratingData.totalReviews} review)`
                     : '(Belum ada review)'
                   }
@@ -428,6 +434,41 @@ export default function ProductDetail() {
               <p className="text-muted-foreground leading-relaxed mb-6">
                 {product.description}
               </p>
+
+              {/* Collapsible Product Info */}
+              <Collapsible open={isProductInfoOpen} onOpenChange={setIsProductInfoOpen} className="mb-6">
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-primary/10 hover:text-primary">
+                    <span className="text-sm font-medium">Informasi Produk</span>
+                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isProductInfoOpen ? 'transform rotate-180' : ''
+                      }`} />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Kategori:</span>
+                          <p className="font-medium">{product.category}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Stok:</span>
+                          <p className="font-medium">{product.stock_quantity} unit</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Berat:</span>
+                          <p className="font-medium">1.5 kg</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Asal:</span>
+                          <p className="font-medium">Import</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </CollapsibleContent>
+              </Collapsible>
 
               <div className="flex items-center space-x-2 mb-6">
                 <span className="text-sm">Stok tersedia:</span>
@@ -478,107 +519,85 @@ export default function ProductDetail() {
               </div>
             )}
 
-            {/* Product Info */}
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-semibold mb-4 text-primary">Informasi Produk</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Kategori:</span>
-                    <p className="font-medium">{product.category}</p>
+          </div>
+        </div>
+
+        {/* Reviews Section - Full Width */}
+        <div className="mt-12">
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="font-semibold mb-4 text-primary flex items-center gap-2">
+                <MessageCircle className="h-5 w-5" />
+                Ulasan & Rating
+              </h3>
+
+              {ratingData.totalReviews > 0 ? (
+                <div className="space-y-6">
+                  {/* Rating Summary */}
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <div className="text-center mb-4">
+                        <div className="text-4xl font-bold text-primary mb-2">
+                          {ratingData.averageRating.toFixed(1)}
+                        </div>
+                        <StarRating rating={ratingData.averageRating} size="lg" />
+                        <p className="text-sm text-muted-foreground mt-2">
+                          Berdasarkan {ratingData.totalReviews} ulasan
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3">Distribusi Rating</h4>
+                      <RatingDistribution
+                        distribution={ratingData.ratingDistribution}
+                        totalReviews={ratingData.totalReviews}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Stok:</span>
-                    <p className="font-medium">{product.stock_quantity} unit</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Berat:</span>
-                    <p className="font-medium">1.5 kg</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Asal:</span>
-                    <p className="font-medium">Import</p>
+
+                  {/* Individual Reviews */}
+                  <div className="border-t pt-6">
+                    <h4 className="font-medium mb-4">Ulasan Pelanggan</h4>
+                    <div className="space-y-4 max-h-96 overflow-y-auto">
+                      {ratingData.reviews.map((review) => (
+                        <div key={review.id} className="border rounded-lg p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <p className="font-medium text-sm">
+                                {review.profiles?.full_name || 'Pembeli'}
+                              </p>
+                              <StarRating rating={review.rating} size="sm" />
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(review.created_at).toLocaleDateString('id-ID', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </span>
+                          </div>
+                          {review.comment && (
+                            <p className="text-sm text-muted-foreground">
+                              {review.comment}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Reviews Section */}
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-semibold mb-4 text-primary flex items-center gap-2">
-                  <MessageCircle className="h-5 w-5" />
-                  Ulasan & Rating
-                </h3>
-                
-                {ratingData.totalReviews > 0 ? (
-                  <div className="space-y-6">
-                    {/* Rating Summary */}
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div>
-                        <div className="text-center mb-4">
-                          <div className="text-4xl font-bold text-primary mb-2">
-                            {ratingData.averageRating.toFixed(1)}
-                          </div>
-                          <StarRating rating={ratingData.averageRating} size="lg" />
-                          <p className="text-sm text-muted-foreground mt-2">
-                            Berdasarkan {ratingData.totalReviews} ulasan
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-medium mb-3">Distribusi Rating</h4>
-                        <RatingDistribution 
-                          distribution={ratingData.ratingDistribution}
-                          totalReviews={ratingData.totalReviews}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Individual Reviews */}
-                    <div className="border-t pt-6">
-                      <h4 className="font-medium mb-4">Ulasan Pelanggan</h4>
-                      <div className="space-y-4 max-h-96 overflow-y-auto">
-                        {ratingData.reviews.map((review) => (
-                          <div key={review.id} className="border rounded-lg p-4">
-                            <div className="flex items-start justify-between mb-2">
-                              <div>
-                                <p className="font-medium text-sm">
-                                  {review.profiles?.full_name || 'Pembeli'}
-                                </p>
-                                <StarRating rating={review.rating} size="sm" />
-                              </div>
-                              <span className="text-xs text-muted-foreground">
-                                {new Date(review.created_at).toLocaleDateString('id-ID', {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric'
-                                })}
-                              </span>
-                            </div>
-                            {review.comment && (
-                              <p className="text-sm text-muted-foreground">
-                                {review.comment}
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <MessageCircle className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-                    <p className="text-muted-foreground">Belum ada ulasan untuk produk ini</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Jadilah yang pertama memberikan ulasan setelah membeli produk ini
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+              ) : (
+                <div className="text-center py-8">
+                  <MessageCircle className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+                  <p className="text-muted-foreground">Belum ada ulasan untuk produk ini</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Jadilah yang pertama memberikan ulasan setelah membeli produk ini
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
       {/* Confirmation Dialog */}

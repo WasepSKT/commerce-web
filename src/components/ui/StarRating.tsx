@@ -45,7 +45,7 @@ export function StarRating({
           const starValue = index + 1;
           const isFilled = starValue <= rating;
           const isPartialFilled = starValue - 1 < rating && starValue > rating;
-          
+
           return (
             <div
               key={index}
@@ -102,7 +102,7 @@ export function RatingDistribution({ distribution, totalReviews, className }: Ra
       {[5, 4, 3, 2, 1].map((rating) => {
         const count = distribution[rating] || 0;
         const percentage = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
-        
+
         return (
           <div key={rating} className="flex items-center gap-2 text-sm">
             <div className="flex items-center gap-1 min-w-[60px]">
