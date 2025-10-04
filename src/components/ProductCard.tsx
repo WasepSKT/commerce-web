@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, Eye } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { StarRating } from '@/components/ui/StarRating';
+import { useProductRating } from '@/hooks/useProductRating';
 
 interface Product {
   id: string;
@@ -23,6 +25,8 @@ interface ProductCardProps {
 export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const { ratingData } = useProductRating(product.id);
+  
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -65,6 +69,22 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
       <div className="px-6 pb-2 pt-2">
         <h3 className="text-xl font-extrabold text-brand mb-2 line-clamp-2">{product.name}</h3>
         <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{product.description}</p>
+        
+        {/* Rating Section */}
+        <div className="flex items-center gap-2 mb-2">
+          <StarRating 
+            rating={ratingData.averageRating} 
+            size="sm" 
+            showValue={ratingData.totalReviews > 0}
+          />
+          {ratingData.totalReviews > 0 && (
+            <span className="text-xs text-muted-foreground">({ratingData.totalReviews})</span>
+          )}
+          {ratingData.totalReviews === 0 && (
+            <span className="text-xs text-muted-foreground">Belum ada rating</span>
+          )}
+        </div>
+        
         <div className="flex items-center justify-between mb-2">
           <span className="text-2xl font-bold text-brand">{formatPrice(product.price)}</span>
           <span className="text-sm text-muted-foreground">Stok: {product.stock_quantity}</span>
