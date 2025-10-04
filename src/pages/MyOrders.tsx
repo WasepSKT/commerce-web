@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Layout } from '@/components/Layout';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Package, Truck, CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react';
+import { Package, Truck, CheckCircle, XCircle, Clock, AlertTriangle, Download, FileText, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { RatingModal } from '@/components/ui/RatingModal';
+import { downloadInvoice, downloadReceipt } from '@/lib/documentGenerator';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,6 +53,7 @@ export default function MyOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [cancellingOrder, setCancellingOrder] = useState<string | null>(null);
+  const [selectedOrderForRating, setSelectedOrderForRating] = useState<Order | null>(null);
   const { toast } = useToast();
 
   const fetchMyOrders = useCallback(async () => {
@@ -174,7 +177,8 @@ export default function MyOrders() {
   };
 
   const canCancelOrder = (order: Order) => {
-    const allowedStatuses = ['pending', 'paid'];
+    // Hanya order dengan status 'pending' yang bisa dibatalkan
+    const allowedStatuses = ['pending'];
     const orderAge = new Date().getTime() - new Date(order.created_at).getTime();
     const hours24 = 24 * 60 * 60 * 1000;
 
@@ -410,7 +414,47 @@ export default function MyOrders() {
                             Total: {formatPrice(order.total_amount)}
                           </p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
+                          {/* Download Invoice - untuk status paid dan shipped */}
+                          {(order.status === 'paid' || order.status === 'shipped' || order.status === 'dikirim') && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => downloadInvoice(order)}
+                              className="border-primary text-primary hover:bg-primary hover:text-white"
+                            >
+                              <Download className="h-4 w-4 mr-1" />
+                              Invoice
+                            </Button>
+                          )}
+
+                          {/* Download Receipt - untuk status completed */}
+                          {(order.status === 'completed' || order.status === 'selesai') && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => downloadReceipt(order)}
+                              className="text-green-600 border-green-600 hover:bg-green-50"
+                            >
+                              <FileText className="h-4 w-4 mr-1" />
+                              Faktur
+                            </Button>
+                          )}
+
+                          {/* Rating Button - untuk status completed */}
+                          {(order.status === 'completed' || order.status === 'selesai') && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedOrderForRating(order)}
+                              className="text-yellow-600 border-yellow-600 hover:bg-yellow-50"
+                            >
+                              <Star className="h-4 w-4 mr-1" />
+                              Rating
+                            </Button>
+                          )}
+
+                          {/* Cancel Order - untuk status pending */}
                           {canCancelOrder(order) && !expired && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
@@ -418,6 +462,7 @@ export default function MyOrders() {
                                   variant="outline"
                                   size="sm"
                                   disabled={cancellingOrder === order.id}
+                                  className="text-red-600 border-red-600 hover:bg-red-50"
                                 >
                                   <XCircle className="h-4 w-4 mr-1" />
                                   Batalkan

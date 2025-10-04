@@ -130,8 +130,8 @@ export default function ProductList() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2 text-brand">Produk Kami</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold mb-2 text-brand text-center md:text-left">Produk Kami</h1>
+          <p className="text-muted-foregroun text-center md:text-left">
             Temukan makanan kucing berkualitas tinggi untuk kesehatan kucing Anda
           </p>
         </div>
