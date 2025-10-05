@@ -10,61 +10,43 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Plus, Upload, Edit, Trash2, Eye, EyeOff, GripVertical, X, Images } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { campaignService, HeroSliderItem } from '@/services/campaignService';
 
-interface SliderImage {
-  id: string;
-  title: string;
-  description: string;
-  image_url: string;
-  link_url?: string;
-  is_active: boolean;
-  order_position: number;
-  created_at: string;
-}
+
 
 const MAX_SLIDER_IMAGES = 5;
 
 export function ImageSliderManager() {
-  const [sliderImages, setSliderImages] = useState<SliderImage[]>([]);
+  const [sliderImages, setSliderImages] = useState<HeroSliderItem[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingImage, setEditingImage] = useState<SliderImage | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<SliderImage | null>(null);
+  const [editingImage, setEditingImage] = useState<HeroSliderItem | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<HeroSliderItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [imageForm, setImageForm] = useState({
     title: '',
     description: '',
     image_url: '',
     link_url: '',
+    button_text: '',
     is_active: true,
     imageFile: null as File | null,
     imagePreview: ''
   });
 
-  // Mock data for development
+  // Fetch slider images from DB
   useEffect(() => {
-    const mockData: SliderImage[] = [
-      {
-        id: '1',
-        title: 'Summer Sale 2024',
-        description: 'Diskon hingga 50% untuk semua produk kucing',
-        image_url: '/placeholder.svg',
-        link_url: '/products?category=summer-sale',
-        is_active: true,
-        order_position: 1,
-        created_at: '2024-01-01'
-      },
-      {
-        id: '2',
-        title: 'New Product Launch',
-        description: 'Makanan premium untuk kucing dewasa',
-        image_url: '/placeholder.svg',
-        link_url: '/products/premium-adult-food',
-        is_active: false,
-        order_position: 2,
-        created_at: '2024-01-02'
+    const fetchSliderImages = async () => {
+      setLoading(true);
+      try {
+        const images = await campaignService.getHeroSliderItems();
+        setSliderImages(images);
+      } catch (err) {
+        console.error('Gagal mengambil data slider hero:', err);
+      } finally {
+        setLoading(false);
       }
-    ];
-    setSliderImages(mockData);
+    };
+    fetchSliderImages();
   }, []);
 
   const resetForm = () => {
@@ -73,6 +55,7 @@ export function ImageSliderManager() {
       description: '',
       image_url: '',
       link_url: '',
+      button_text: '',
       is_active: true,
       imageFile: null,
       imagePreview: ''
@@ -93,13 +76,14 @@ export function ImageSliderManager() {
     }));
   };
 
-  const handleEdit = (image: SliderImage) => {
+  const handleEdit = (image: HeroSliderItem) => {
     setEditingImage(image);
     setImageForm({
       title: image.title,
-      description: image.description,
+      description: image.subtitle || '',
       image_url: image.image_url,
       link_url: image.link_url || '',
+      button_text: image.button_text || '',
       is_active: image.is_active,
       imageFile: null,
       imagePreview: image.image_url
@@ -110,9 +94,38 @@ export function ImageSliderManager() {
   const handleSave = async () => {
     setLoading(true);
     try {
-      // TODO: Implement actual save logic
-      console.log('Saving slider image:', imageForm);
-
+      if (editingImage) {
+        // Update existing
+        await campaignService.updateHeroSliderItem(
+          editingImage.id,
+          {
+            title: imageForm.title,
+            subtitle: imageForm.description,
+            image_url: imageForm.image_url,
+            link_url: imageForm.link_url,
+            button_text: imageForm.button_text,
+            is_active: imageForm.is_active
+          },
+          imageForm.imageFile || undefined
+        );
+      } else {
+        // Create new
+        await campaignService.createHeroSliderItem(
+          {
+            title: imageForm.title,
+            subtitle: imageForm.description,
+            image_url: imageForm.image_url,
+            link_url: imageForm.link_url,
+            button_text: imageForm.button_text,
+            is_active: imageForm.is_active,
+            order_index: sliderImages.length // add to end
+          },
+          imageForm.imageFile || undefined
+        );
+      }
+      // Refresh images
+      const images = await campaignService.getHeroSliderItems();
+      setSliderImages(images);
       setIsDialogOpen(false);
       resetForm();
     } catch (error) {
@@ -124,13 +137,11 @@ export function ImageSliderManager() {
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;
-
     setLoading(true);
     try {
-      // TODO: Implement actual delete logic
-      console.log('Deleting slider image:', deleteConfirm.id);
-
-      setSliderImages(prev => prev.filter(img => img.id !== deleteConfirm.id));
+      await campaignService.deleteHeroSliderItem(deleteConfirm.id);
+      const images = await campaignService.getHeroSliderItems();
+      setSliderImages(images);
       setDeleteConfirm(null);
     } catch (error) {
       console.error('Delete error:', error);
@@ -139,18 +150,19 @@ export function ImageSliderManager() {
     }
   };
 
-  const toggleActive = async (image: SliderImage) => {
+  const toggleActive = async (image: HeroSliderItem) => {
+    setLoading(true);
     try {
-      // TODO: Implement actual toggle logic
-      setSliderImages(prev =>
-        prev.map(img =>
-          img.id === image.id
-            ? { ...img, is_active: !img.is_active }
-            : img
-        )
+      await campaignService.updateHeroSliderItem(
+        image.id,
+        { is_active: !image.is_active }
       );
+      const images = await campaignService.getHeroSliderItems();
+      setSliderImages(images);
     } catch (error) {
       console.error('Toggle error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -220,7 +232,7 @@ export function ImageSliderManager() {
                   <div className="flex items-start justify-between">
                     <div>
                       <h3 className="font-medium text-gray-900 truncate">{image.title}</h3>
-                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">{image.description}</p>
+                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">{image.subtitle}</p>
                       {image.link_url && (
                         <p className="text-xs text-brand-primary mt-1 truncate">{image.link_url}</p>
                       )}
@@ -292,7 +304,7 @@ export function ImageSliderManager() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 py-4">
+          <div className="space-y-6 py-4 max-h-[60vh] overflow-y-auto px-2 md:px-0">
             {/* Image Upload */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Gambar <span className="text-red-500">*</span></Label>
@@ -359,6 +371,16 @@ export function ImageSliderManager() {
                   value={imageForm.link_url}
                   onChange={(e) => setImageForm(prev => ({ ...prev, link_url: e.target.value }))}
                   placeholder="/products atau https://example.com"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="button_text">Teks Tombol (Opsional)</Label>
+                <Input
+                  id="button_text"
+                  value={imageForm.button_text}
+                  onChange={(e) => setImageForm(prev => ({ ...prev, button_text: e.target.value }))}
+                  placeholder="Contoh: Lihat Promo"
                 />
               </div>
             </div>

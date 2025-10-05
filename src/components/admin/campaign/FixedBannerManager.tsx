@@ -11,17 +11,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Plus, Upload, Edit, Trash2, Eye, EyeOff, PanelLeft, X, AlignLeft, AlignRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { campaignService, FixedBanner } from '@/services/campaignService';
 
-interface FixedBanner {
-  id: string;
-  title: string;
-  description: string;
-  image_url: string;
-  link_url?: string;
-  position: 'left' | 'right';
-  is_active: boolean;
-  created_at: string;
-}
+
 
 export function FixedBannerManager() {
   const [fixedBanners, setFixedBanners] = useState<FixedBanner[]>([]);
@@ -40,31 +32,20 @@ export function FixedBannerManager() {
     imagePreview: ''
   });
 
-  // Mock data for development
+  // Fetch fixed banners from DB
   useEffect(() => {
-    const mockData: FixedBanner[] = [
-      {
-        id: '1',
-        title: 'Premium Cat Food Banner',
-        description: 'Discover our premium selection',
-        image_url: '/placeholder.svg',
-        link_url: '/products/premium',
-        position: 'left',
-        is_active: true,
-        created_at: '2024-01-01'
-      },
-      {
-        id: '2',
-        title: 'Special Offer',
-        description: 'Limited time discount',
-        image_url: '/placeholder.svg',
-        link_url: '/products/sale',
-        position: 'right',
-        is_active: false,
-        created_at: '2024-01-02'
+    const fetchBanners = async () => {
+      setLoading(true);
+      try {
+        const banners = await campaignService.getFixedBanners();
+        setFixedBanners(banners);
+      } catch (err) {
+        console.error('Gagal mengambil data fixed banner:', err);
+      } finally {
+        setLoading(false);
       }
-    ];
-    setFixedBanners(mockData);
+    };
+    fetchBanners();
   }, []);
 
   const resetForm = () => {
@@ -97,8 +78,8 @@ export function FixedBannerManager() {
   const handleEdit = (banner: FixedBanner) => {
     setEditingBanner(banner);
     setBannerForm({
-      title: banner.title,
-      description: banner.description,
+      title: banner.name,
+      description: '',
       image_url: banner.image_url,
       link_url: banner.link_url || '',
       position: banner.position,
@@ -112,9 +93,35 @@ export function FixedBannerManager() {
   const handleSave = async () => {
     setLoading(true);
     try {
-      // TODO: Implement actual save logic
-      console.log('Saving fixed banner:', bannerForm);
-
+      if (editingBanner) {
+        // Update existing
+        await campaignService.updateFixedBanner(
+          editingBanner.id,
+          {
+            name: bannerForm.title,
+            image_url: bannerForm.image_url,
+            link_url: bannerForm.link_url,
+            position: bannerForm.position,
+            is_active: bannerForm.is_active
+          },
+          bannerForm.imageFile || undefined
+        );
+      } else {
+        // Create new
+        await campaignService.createFixedBanner(
+          {
+            name: bannerForm.title,
+            image_url: bannerForm.image_url,
+            link_url: bannerForm.link_url,
+            position: bannerForm.position,
+            is_active: bannerForm.is_active
+          },
+          bannerForm.imageFile || undefined
+        );
+      }
+      // Refresh banners
+      const banners = await campaignService.getFixedBanners();
+      setFixedBanners(banners);
       setIsDialogOpen(false);
       resetForm();
     } catch (error) {
@@ -126,13 +133,11 @@ export function FixedBannerManager() {
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;
-
     setLoading(true);
     try {
-      // TODO: Implement actual delete logic
-      console.log('Deleting fixed banner:', deleteConfirm.id);
-
-      setFixedBanners(prev => prev.filter(banner => banner.id !== deleteConfirm.id));
+      await campaignService.deleteFixedBanner(deleteConfirm.id);
+      const banners = await campaignService.getFixedBanners();
+      setFixedBanners(banners);
       setDeleteConfirm(null);
     } catch (error) {
       console.error('Delete error:', error);
@@ -142,17 +147,18 @@ export function FixedBannerManager() {
   };
 
   const toggleActive = async (banner: FixedBanner) => {
+    setLoading(true);
     try {
-      // TODO: Implement actual toggle logic
-      setFixedBanners(prev =>
-        prev.map(b =>
-          b.id === banner.id
-            ? { ...b, is_active: !b.is_active }
-            : b
-        )
+      await campaignService.updateFixedBanner(
+        banner.id,
+        { is_active: !banner.is_active }
       );
+      const banners = await campaignService.getFixedBanners();
+      setFixedBanners(banners);
     } catch (error) {
       console.error('Toggle error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -267,7 +273,7 @@ export function FixedBannerManager() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 py-4">
+          <div className="space-y-6 py-4 max-h-[60vh] overflow-y-auto">
             {/* Image Upload */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Gambar Banner <span className="text-red-500">*</span></Label>
@@ -277,7 +283,8 @@ export function FixedBannerManager() {
                     <img
                       src={bannerForm.imagePreview}
                       alt="Preview"
-                      className="w-full h-48 object-cover rounded-lg"
+                      className="w-[250px] h-[600px] object-cover rounded-lg border border-gray-200 mx-auto"
+                      style={{ maxWidth: '100%', height: 'auto', aspectRatio: '250/600' }}
                     />
                     <Button
                       type="button"
@@ -309,7 +316,7 @@ export function FixedBannerManager() {
                   >
                     <Upload className="w-8 h-8 mx-auto mb-4 text-gray-400" />
                     <p className="text-sm text-gray-600">Klik untuk upload gambar banner</p>
-                    <p className="text-xs text-gray-500 mt-1">Rekomendasi: 300x600px • Max 5MB</p>
+                    <p className="text-xs text-gray-500 mt-1 font-semibold text-brand-primary">Ukuran WAJIB: 250x600px (vertikal) • Maksimal 5MB</p>
                   </div>
                 )}
               </div>
@@ -319,6 +326,7 @@ export function FixedBannerManager() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="title">Judul Banner <span className="text-red-500">*</span></Label>
+                <div className="text-xs text-gray-500 mb-1">Gambar banner harus berukuran <span className="font-semibold">250x600px</span> agar tampil optimal di blog.</div>
                 <Input
                   id="title"
                   value={bannerForm.title}
@@ -329,6 +337,7 @@ export function FixedBannerManager() {
 
               <div className="space-y-2">
                 <Label htmlFor="position">Posisi Banner <span className="text-red-500">*</span></Label>
+                <div className="text-xs text-gray-500 mb-1">Pilih sisi blog tempat banner akan ditampilkan. <span className="font-semibold">Kiri</span> untuk sidebar kiri, <span className="font-semibold">Kanan</span> untuk sidebar kanan.</div>
                 <Select
                   value={bannerForm.position}
                   onValueChange={(value: 'left' | 'right') => setBannerForm(prev => ({ ...prev, position: value }))}
@@ -356,13 +365,7 @@ export function FixedBannerManager() {
 
             <div className="space-y-2">
               <Label htmlFor="description">Deskripsi <span className="text-red-500">*</span></Label>
-              <Textarea
-                id="description"
-                value={bannerForm.description}
-                onChange={(e) => setBannerForm(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Deskripsi singkat banner..."
-                rows={2}
-              />
+              {/* No description field in backend, remove or replace with other info if needed */}
             </div>
 
             <div className="space-y-2">
@@ -391,7 +394,7 @@ export function FixedBannerManager() {
             </Button>
             <Button
               onClick={handleSave}
-              disabled={loading || !bannerForm.title || !bannerForm.description}
+              disabled={loading || !bannerForm.title}
               className="bg-brand-primary hover:bg-brand-primary/90"
             >
               {loading ? 'Menyimpan...' : (editingBanner ? 'Perbarui' : 'Simpan')}
@@ -406,7 +409,7 @@ export function FixedBannerManager() {
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus Fixed Banner?</AlertDialogTitle>
             <AlertDialogDescription>
-              Banner "{deleteConfirm?.title}" akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.
+              Banner "{deleteConfirm?.name}" akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -444,7 +447,7 @@ function BannerCard({ banner, onEdit, onDelete, onToggle }: BannerCardProps) {
           <div className="relative flex-shrink-0">
             <img
               src={banner.image_url}
-              alt={banner.title}
+              alt={banner.name}
               className="w-16 h-16 object-cover rounded-lg"
             />
             {!banner.is_active && (
@@ -458,8 +461,8 @@ function BannerCard({ banner, onEdit, onDelete, onToggle }: BannerCardProps) {
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between">
               <div>
-                <h4 className="font-medium text-gray-900 truncate">{banner.title}</h4>
-                <p className="text-sm text-gray-600 mt-1 line-clamp-2">{banner.description}</p>
+                <h4 className="font-medium text-gray-900 truncate">{banner.name}</h4>
+                {/* No description field in backend, remove or replace with other info if needed */}
                 {banner.link_url && (
                   <p className="text-xs text-brand-primary mt-1 truncate">{banner.link_url}</p>
                 )}

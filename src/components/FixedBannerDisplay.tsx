@@ -56,13 +56,14 @@ export function FixedBannerDisplay({ position, className = '' }: FixedBannerDisp
   }
 
   const BannerContent = () => (
-    <div className="relative w-full h-64 overflow-hidden rounded-lg bg-gray-50 group hover:shadow-lg transition-shadow">
+    <div className="relative mx-auto" style={{width:'300px',height:'600px',maxWidth:'100%'}}>
       <img
         src={banner.image_url}
         alt={banner.name}
-        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+        className="w-full h-full object-cover rounded-lg border border-gray-200 transition-transform group-hover:scale-105"
+        style={{aspectRatio:'300/600'}}
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-lg" />
     </div>
   );
 

@@ -11,21 +11,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Plus, Upload, Edit, Trash2, Eye, EyeOff, MessageSquare, X, Calendar, Clock, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { campaignService, PopupCampaign } from '@/services/campaignService';
 
-interface PopupCampaign {
-  id: string;
-  title: string;
-  description: string;
-  image_url: string;
-  button_text: string;
-  button_url?: string;
-  display_type: 'image' | 'text' | 'mixed';
-  show_frequency: 'once' | 'daily' | 'weekly' | 'always';
-  is_active: boolean;
-  start_date?: string;
-  end_date?: string;
-  created_at: string;
-}
+
 
 export function PopupCampaignManager() {
   const [popupCampaigns, setPopupCampaigns] = useState<PopupCampaign[]>([]);
@@ -36,66 +24,43 @@ export function PopupCampaignManager() {
   const [loading, setLoading] = useState(false);
   const [popupForm, setPopupForm] = useState({
     title: '',
-    description: '',
+    content: '', // backend uses 'content' instead of 'description'
     image_url: '',
     button_text: '',
     button_url: '',
-    display_type: 'mixed' as 'image' | 'text' | 'mixed',
-    show_frequency: 'once' as 'once' | 'daily' | 'weekly' | 'always',
+    show_frequency: 'once' as 'once' | 'daily' | 'always',
+    delay_seconds: 0,
     is_active: true,
-    start_date: '',
-    end_date: '',
     imageFile: null as File | null,
     imagePreview: ''
   });
 
-  // Mock data for development
+  // Fetch campaigns from DB
   useEffect(() => {
-    const mockData: PopupCampaign[] = [
-      {
-        id: '1',
-        title: 'Welcome Discount!',
-        description: 'Dapatkan diskon 20% untuk pembelian pertama Anda!',
-        image_url: '/placeholder.svg',
-        button_text: 'Claim Discount',
-        button_url: '/products?discount=welcome20',
-        display_type: 'mixed',
-        show_frequency: 'once',
-        is_active: true,
-        start_date: '2024-01-01',
-        end_date: '2024-12-31',
-        created_at: '2024-01-01'
-      },
-      {
-        id: '2',
-        title: 'Flash Sale Alert!',
-        description: 'Flash sale 50% OFF hanya hari ini! Jangan sampai terlewat.',
-        image_url: '/placeholder.svg',
-        button_text: 'Shop Now',
-        button_url: '/products/flash-sale',
-        display_type: 'mixed',
-        show_frequency: 'daily',
-        is_active: false,
-        start_date: '2024-01-15',
-        end_date: '2024-01-15',
-        created_at: '2024-01-14'
+    const fetchCampaigns = async () => {
+      setLoading(true);
+      try {
+        const campaigns = await campaignService.getPopupCampaigns();
+        setPopupCampaigns(campaigns);
+      } catch (err) {
+        console.error('Gagal mengambil data popup campaign:', err);
+      } finally {
+        setLoading(false);
       }
-    ];
-    setPopupCampaigns(mockData);
+    };
+    fetchCampaigns();
   }, []);
 
   const resetForm = () => {
     setPopupForm({
       title: '',
-      description: '',
+      content: '',
       image_url: '',
       button_text: '',
       button_url: '',
-      display_type: 'mixed',
       show_frequency: 'once',
+      delay_seconds: 0,
       is_active: true,
-      start_date: '',
-      end_date: '',
       imageFile: null,
       imagePreview: ''
     });
@@ -119,17 +84,15 @@ export function PopupCampaignManager() {
     setEditingPopup(popup);
     setPopupForm({
       title: popup.title,
-      description: popup.description,
-      image_url: popup.image_url,
-      button_text: popup.button_text,
+      content: popup.content,
+      image_url: popup.image_url || '',
+      button_text: popup.button_text || '',
       button_url: popup.button_url || '',
-      display_type: popup.display_type,
       show_frequency: popup.show_frequency,
+      delay_seconds: popup.delay_seconds || 0,
       is_active: popup.is_active,
-      start_date: popup.start_date || '',
-      end_date: popup.end_date || '',
       imageFile: null,
-      imagePreview: popup.image_url
+      imagePreview: popup.image_url || ''
     });
     setIsDialogOpen(true);
   };
@@ -137,9 +100,39 @@ export function PopupCampaignManager() {
   const handleSave = async () => {
     setLoading(true);
     try {
-      // TODO: Implement actual save logic
-      console.log('Saving popup campaign:', popupForm);
-
+      if (editingPopup) {
+        await campaignService.updatePopupCampaign(
+          editingPopup.id,
+          {
+            title: popupForm.title,
+            content: popupForm.content,
+            image_url: popupForm.image_url,
+            button_text: popupForm.button_text,
+            button_url: popupForm.button_url,
+            show_frequency: popupForm.show_frequency,
+            delay_seconds: popupForm.delay_seconds,
+            is_active: popupForm.is_active
+          },
+          popupForm.imageFile || undefined
+        );
+      } else {
+        await campaignService.createPopupCampaign(
+          {
+            title: popupForm.title,
+            content: popupForm.content,
+            image_url: popupForm.image_url,
+            button_text: popupForm.button_text,
+            button_url: popupForm.button_url,
+            show_frequency: popupForm.show_frequency,
+            delay_seconds: popupForm.delay_seconds,
+            is_active: popupForm.is_active
+          },
+          popupForm.imageFile || undefined
+        );
+      }
+      // Refresh campaigns
+      const campaigns = await campaignService.getPopupCampaigns();
+      setPopupCampaigns(campaigns as PopupCampaign[]);
       setIsDialogOpen(false);
       resetForm();
     } catch (error) {
@@ -151,13 +144,11 @@ export function PopupCampaignManager() {
 
   const handleDelete = async () => {
     if (!deleteConfirm) return;
-
     setLoading(true);
     try {
-      // TODO: Implement actual delete logic
-      console.log('Deleting popup campaign:', deleteConfirm.id);
-
-      setPopupCampaigns(prev => prev.filter(popup => popup.id !== deleteConfirm.id));
+      await campaignService.deletePopupCampaign(deleteConfirm.id);
+      const campaigns = await campaignService.getPopupCampaigns();
+      setPopupCampaigns(campaigns as PopupCampaign[]);
       setDeleteConfirm(null);
     } catch (error) {
       console.error('Delete error:', error);
@@ -167,17 +158,18 @@ export function PopupCampaignManager() {
   };
 
   const toggleActive = async (popup: PopupCampaign) => {
+    setLoading(true);
     try {
-      // TODO: Implement actual toggle logic
-      setPopupCampaigns(prev =>
-        prev.map(p =>
-          p.id === popup.id
-            ? { ...p, is_active: !p.is_active }
-            : p
-        )
+      await campaignService.updatePopupCampaign(
+        popup.id,
+        { is_active: !popup.is_active }
       );
+      const campaigns = await campaignService.getPopupCampaigns();
+      setPopupCampaigns(campaigns as PopupCampaign[]);
     } catch (error) {
       console.error('Toggle error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -240,20 +232,15 @@ export function PopupCampaignManager() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-900 truncate">{popup.title}</h3>
-                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">{popup.description}</p>
+                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">{popup.content}</p>
 
                       <div className="flex items-center gap-2 mt-2">
                         <Badge variant={popup.is_active ? "default" : "secondary"} className="text-xs">
                           {popup.is_active ? 'Aktif' : 'Nonaktif'}
                         </Badge>
                         <Badge variant="outline" className="text-xs">
-                          {popup.display_type === 'mixed' ? 'Gambar + Teks' :
-                            popup.display_type === 'image' ? 'Gambar Saja' : 'Teks Saja'}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
                           {popup.show_frequency === 'once' ? 'Sekali' :
-                            popup.show_frequency === 'daily' ? 'Harian' :
-                              popup.show_frequency === 'weekly' ? 'Mingguan' : 'Selalu'}
+                            popup.show_frequency === 'daily' ? 'Harian' : 'Selalu'}
                         </Badge>
                       </div>
 
@@ -264,23 +251,6 @@ export function PopupCampaignManager() {
                           </span>
                           {popup.button_url && (
                             <span className="text-brand-primary truncate">{popup.button_url}</span>
-                          )}
-                        </div>
-                      )}
-
-                      {(popup.start_date || popup.end_date) && (
-                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                          {popup.start_date && (
-                            <div className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              <span>Mulai: {new Date(popup.start_date).toLocaleDateString('id-ID')}</span>
-                            </div>
-                          )}
-                          {popup.end_date && (
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              <span>Berakhir: {new Date(popup.end_date).toLocaleDateString('id-ID')}</span>
-                            </div>
                           )}
                         </div>
                       )}
@@ -361,94 +331,73 @@ export function PopupCampaignManager() {
 
           <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto">
             {/* Basic Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Judul Pop-up <span className="text-red-500">*</span></Label>
-                <Input
-                  id="title"
-                  value={popupForm.title}
-                  onChange={(e) => setPopupForm(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Contoh: Welcome Discount!"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="display_type">Tipe Tampilan <span className="text-red-500">*</span></Label>
-                <Select
-                  value={popupForm.display_type}
-                  onValueChange={(value: 'image' | 'text' | 'mixed') => setPopupForm(prev => ({ ...prev, display_type: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="mixed">Gambar + Teks</SelectItem>
-                    <SelectItem value="image">Gambar Saja</SelectItem>
-                    <SelectItem value="text">Teks Saja</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="title">Judul Pop-up <span className="text-red-500">*</span></Label>
+              <Input
+                id="title"
+                value={popupForm.title}
+                onChange={(e) => setPopupForm(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="Contoh: Welcome Discount!"
+              />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Deskripsi <span className="text-red-500">*</span></Label>
+              <Label htmlFor="content">Deskripsi <span className="text-red-500">*</span></Label>
               <Textarea
-                id="description"
-                value={popupForm.description}
-                onChange={(e) => setPopupForm(prev => ({ ...prev, description: e.target.value }))}
+                id="content"
+                value={popupForm.content}
+                onChange={(e) => setPopupForm(prev => ({ ...prev, content: e.target.value }))}
                 placeholder="Pesan menarik untuk pop-up..."
                 rows={3}
               />
             </div>
 
             {/* Image Upload (if display_type includes image) */}
-            {(popupForm.display_type === 'image' || popupForm.display_type === 'mixed') && (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Gambar Pop-up <span className="text-red-500">*</span></Label>
-                <div className="space-y-4">
-                  {popupForm.imagePreview ? (
-                    <div className="relative">
-                      <img
-                        src={popupForm.imagePreview}
-                        alt="Preview"
-                        className="w-full h-48 object-cover rounded-lg"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        className="absolute top-2 right-2"
-                        onClick={() => setPopupForm(prev => ({
-                          ...prev,
-                          imageFile: null,
-                          imagePreview: ''
-                        }))}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div
-                      className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-brand-primary/50 transition-colors cursor-pointer"
-                      onClick={() => {
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.accept = 'image/*';
-                        input.onchange = (e) => {
-                          const file = (e.target as HTMLInputElement).files?.[0];
-                          if (file) handleImageSelect(file);
-                        };
-                        input.click();
-                      }}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Gambar Pop-up <span className="text-red-500">*</span></Label>
+              <div className="space-y-4">
+                {popupForm.imagePreview ? (
+                  <div className="relative">
+                    <img
+                      src={popupForm.imagePreview}
+                      alt="Preview"
+                      className="w-full h-48 object-cover rounded-lg"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-2 right-2"
+                      onClick={() => setPopupForm(prev => ({
+                        ...prev,
+                        imageFile: null,
+                        imagePreview: ''
+                      }))}
                     >
-                      <Upload className="w-8 h-8 mx-auto mb-4 text-gray-400" />
-                      <p className="text-sm text-gray-600">Klik untuk upload gambar pop-up</p>
-                      <p className="text-xs text-gray-500 mt-1">Rekomendasi: 800x600px • Max 5MB</p>
-                    </div>
-                  )}
-                </div>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-brand-primary/50 transition-colors cursor-pointer"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.onchange = (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (file) handleImageSelect(file);
+                      };
+                      input.click();
+                    }}
+                  >
+                    <Upload className="w-8 h-8 mx-auto mb-4 text-gray-400" />
+                    <p className="text-sm text-gray-600">Klik untuk upload gambar pop-up</p>
+                    <p className="text-xs text-gray-500 mt-1">Rekomendasi: 800x600px • Max 5MB</p>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Button Settings */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -479,7 +428,7 @@ export function PopupCampaignManager() {
                 <Label htmlFor="show_frequency">Frekuensi Tampil <span className="text-red-500">*</span></Label>
                 <Select
                   value={popupForm.show_frequency}
-                  onValueChange={(value: 'once' | 'daily' | 'weekly' | 'always') => setPopupForm(prev => ({ ...prev, show_frequency: value }))}
+                  onValueChange={(value: 'once' | 'daily' | 'always') => setPopupForm(prev => ({ ...prev, show_frequency: value }))}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -487,7 +436,6 @@ export function PopupCampaignManager() {
                   <SelectContent>
                     <SelectItem value="once">Sekali Saja</SelectItem>
                     <SelectItem value="daily">Setiap Hari</SelectItem>
-                    <SelectItem value="weekly">Setiap Minggu</SelectItem>
                     <SelectItem value="always">Selalu Muncul</SelectItem>
                   </SelectContent>
                 </Select>
@@ -503,28 +451,6 @@ export function PopupCampaignManager() {
               </div>
             </div>
 
-            {/* Schedule Settings */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="start_date">Tanggal Mulai (Opsional)</Label>
-                <Input
-                  id="start_date"
-                  type="date"
-                  value={popupForm.start_date}
-                  onChange={(e) => setPopupForm(prev => ({ ...prev, start_date: e.target.value }))}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="end_date">Tanggal Berakhir (Opsional)</Label>
-                <Input
-                  id="end_date"
-                  type="date"
-                  value={popupForm.end_date}
-                  onChange={(e) => setPopupForm(prev => ({ ...prev, end_date: e.target.value }))}
-                />
-              </div>
-            </div>
           </div>
 
           <DialogFooter>
@@ -533,7 +459,7 @@ export function PopupCampaignManager() {
             </Button>
             <Button
               onClick={handleSave}
-              disabled={loading || !popupForm.title || !popupForm.description || !popupForm.button_text}
+              disabled={loading || !popupForm.title || !popupForm.content || !popupForm.button_text}
               className="bg-brand-primary hover:bg-brand-primary/90"
             >
               {loading ? 'Menyimpan...' : (editingPopup ? 'Perbarui' : 'Simpan')}
@@ -548,18 +474,14 @@ export function PopupCampaignManager() {
           <div className="text-center space-y-4">
             {previewPopup && (
               <>
-                {(previewPopup.display_type === 'image' || previewPopup.display_type === 'mixed') && (
-                  <img
-                    src={previewPopup.image_url}
-                    alt={previewPopup.title}
-                    className="w-full h-48 object-cover rounded-lg"
-                  />
-                )}
-
+                <img
+                  src={previewPopup.image_url}
+                  alt={previewPopup.title}
+                  className="w-full h-48 object-cover rounded-lg"
+                />
                 <div className="space-y-3">
                   <h3 className="text-xl font-bold text-brand-primary">{previewPopup.title}</h3>
-                  <p className="text-gray-600">{previewPopup.description}</p>
-
+                  <p className="text-gray-600">{previewPopup.content}</p>
                   <div className="flex gap-2 justify-center">
                     <Button className="bg-brand-primary hover:bg-brand-primary/90">
                       {previewPopup.button_text}
