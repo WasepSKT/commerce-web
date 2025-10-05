@@ -70,7 +70,8 @@ All colors MUST be HSL.
     box-shadow: none !important;
   }
 
-  *:focus {
+  /* Remove unwanted focus styles but preserve form inputs */
+  *:focus:not(input):not(textarea):not(select):not(button) {
     box-shadow: none !important;
     border: none !important;
   }
@@ -165,6 +166,74 @@ All colors MUST be HSL.
     --tw-text-opacity: 1;
     color: rgb(122 19 22 / var(--tw-text-opacity));
     /* #7a1316 */
+  }
+
+  .text-brand-orange {
+    color: hsl(var(--brand-orange));
+    /* #F8DF7C */
+  }
+
+  .text-brand-brown {
+    color: hsl(var(--brand-brown));
+    /* #B37F2C */
+  }
+
+  .text-brand-primary {
+    color: hsl(var(--primary));
+    /* #7A1316 */
+  }
+
+  .text-brand-secondary {
+    color: hsl(var(--secondary));
+    /* #F8DF7C */
+  }
+
+  /* Border utilities */
+  .border-brand {
+    --tw-border-opacity: 1;
+    border-color: rgb(122 19 22 / var(--tw-border-opacity));
+    /* #7a1316 */
+  }
+
+  .border-brand-primary {
+    border-color: hsl(var(--primary));
+    /* #7A1316 */
+  }
+
+  .border-brand-brown {
+    border-color: hsl(var(--brand-brown));
+    /* #B37F2C */
+  }
+
+  /* Background utilities */
+  .bg-brand-primary {
+    background-color: hsl(var(--primary));
+    /* #7A1316 */
+  }
+
+  .bg-brand-brown {
+    background-color: hsl(var(--brand-brown));
+    /* #B37F2C */
+  }
+
+  /* Hover utilities */
+  .hover\:bg-brand-primary:hover {
+    background-color: hsl(var(--primary));
+    /* #7A1316 */
+  }
+
+  .hover\:bg-brand-primary-90:hover {
+    background-color: hsl(var(--primary) / 0.9);
+    /* #7A1316 with 90% opacity */
+  }
+
+  .bg-brand-primary-90 {
+    background-color: hsl(var(--primary) / 0.9);
+    /* #7A1316 with 90% opacity */
+  }
+
+  .hover\:text-white:hover {
+    color: rgb(255 255 255);
   }
 
   .dark {
@@ -550,5 +619,134 @@ html {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Custom scrollbar styles */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thumb-border {
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  /* Webkit scrollbar styles */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thumb-border::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 3px;
+  }
+
+  .scrollbar-thumb-border::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.5);
+  }
+
+  /* Blog Editor Heading Styles - Explicit sizing to override prose defaults */
+  .blog-editor-content h1 {
+    font-size: 2.25rem !important;
+    /* 36px - text-4xl */
+    line-height: 2.5rem !important;
+    font-weight: 800 !important;
+    font-family: 'Fredoka One', cursive !important;
+    margin-top: 2rem !important;
+    margin-bottom: 1rem !important;
+    color: #7A1316 !important;
+  }
+
+  .blog-editor-content h2 {
+    font-size: 1.875rem !important;
+    /* 30px - text-3xl */
+    line-height: 2.25rem !important;
+    font-weight: 700 !important;
+    font-family: 'Fredoka One', cursive !important;
+    margin-top: 2rem !important;
+    margin-bottom: 0.75rem !important;
+    color: #7A1316 !important;
+  }
+
+  .blog-editor-content h3 {
+    font-size: 1.5rem !important;
+    /* 24px - text-2xl */
+    line-height: 2rem !important;
+    font-weight: 600 !important;
+    font-family: 'Fredoka One', cursive !important;
+    margin-top: 1.5rem !important;
+    margin-bottom: 0.75rem !important;
+    color: #7A1316 !important;
+  }
+
+  .blog-editor-content h4 {
+    font-size: 1.25rem !important;
+    /* 20px - text-xl */
+    line-height: 1.75rem !important;
+    font-weight: 600 !important;
+    font-family: 'Fredoka One', cursive !important;
+    margin-top: 1rem !important;
+    margin-bottom: 0.5rem !important;
+    color: #7A1316 !important;
+  }
+
+  .blog-editor-content h5 {
+    font-size: 1.125rem !important;
+    /* 18px - text-lg */
+    line-height: 1.75rem !important;
+    font-weight: 600 !important;
+    font-family: 'Fredoka One', cursive !important;
+    margin-top: 1rem !important;
+    margin-bottom: 0.5rem !important;
+    color: #7A1316 !important;
+  }
+
+  .blog-editor-content h6 {
+    font-size: 1rem !important;
+    /* 16px - text-base */
+    line-height: 1.5rem !important;
+    font-weight: 600 !important;
+    font-family: 'Fredoka One', cursive !important;
+    margin-top: 1rem !important;
+    margin-bottom: 0.5rem !important;
+    color: #7A1316 !important;
+  }
+
+  /* Enhanced paragraph styling */
+  .blog-editor-content p {
+    font-size: 1rem !important;
+    line-height: 1.75rem !important;
+    font-family: 'Roboto', sans-serif !important;
+    margin-bottom: 1rem !important;
+    color: #7A1316 !important;
+  }
+
+  /* Better blockquote styling */
+  .blog-editor-content blockquote {
+    margin: 1.5rem 0 !important;
+    padding-left: 1rem !important;
+    border-left: 4px solid hsl(var(--primary)) !important;
+    font-style: italic !important;
+    color: hsl(var(--muted-foreground)) !important;
+  }
+
+  /* Enhanced list styling */
+  .blog-editor-content ul,
+  .blog-editor-content ol {
+    margin: 1rem 0 !important;
+    padding-left: 1.5rem !important;
+  }
+
+  .blog-editor-content li {
+    margin-bottom: 0.25rem !important;
+    line-height: 1.75rem !important;
+    font-family: 'Roboto', sans-serif !important;
+    color: #7A1316 !important;
   }
 }

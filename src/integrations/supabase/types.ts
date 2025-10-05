@@ -317,6 +317,206 @@ export type Database = {
           }
         ]
       }
+      hero_slider_items: {
+        Row: {
+          id: string
+          title: string
+          subtitle: string | null
+          image_url: string
+          link_url: string | null
+          button_text: string | null
+          order_index: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          subtitle?: string | null
+          image_url: string
+          link_url?: string | null
+          button_text?: string | null
+          order_index?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          subtitle?: string | null
+          image_url?: string
+          link_url?: string | null
+          button_text?: string | null
+          order_index?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      fixed_banners: {
+        Row: {
+          id: string
+          name: string
+          position: 'left' | 'right'
+          image_url: string
+          link_url: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          position: 'left' | 'right'
+          image_url: string
+          link_url?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          position?: 'left' | 'right'
+          image_url?: string
+          link_url?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      popup_campaigns: {
+        Row: {
+          id: string
+          title: string
+          content: string
+          image_url: string | null
+          button_text: string | null
+          button_url: string | null
+          show_frequency: 'once' | 'daily' | 'always'
+          delay_seconds: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          content: string
+          image_url?: string | null
+          button_text?: string | null
+          button_url?: string | null
+          show_frequency: 'once' | 'daily' | 'always'
+          delay_seconds?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          content?: string
+          image_url?: string | null
+          button_text?: string | null
+          button_url?: string | null
+          show_frequency?: 'once' | 'daily' | 'always'
+          delay_seconds?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ,
+      categories: {
+        Row: {
+          id: string
+          name: string
+          slug: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          slug: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          slug?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      ,
+      blog_categories: {
+        Row: {
+          blog_id: string
+          category_id: string
+        }
+        Insert: {
+          blog_id: string
+          category_id: string
+        }
+        Update: {
+          blog_id?: string
+          category_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_categories_blog_id_fkey"
+            columns: ["blog_id"]
+            isOneToOne: false
+            referencedRelation: "blogs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blog_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      blogs: {
+        Row: {
+          id: string
+          title: string
+          slug: string
+          content: string
+          cover_url: string | null
+          status: 'draft' | 'published'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          slug: string
+          content: string
+          cover_url?: string | null
+          status?: 'draft' | 'published'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          slug?: string
+          content?: string
+          cover_url?: string | null
+          status?: 'draft' | 'published'
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -337,7 +537,7 @@ export type Database = {
     }
     Enums: {
       order_status: "pending" | "paid" | "shipped" | "completed" | "cancelled"
-      user_role: "admin" | "customer"
+      user_role: "admin" | "customer" | "marketing" | "admin_sales"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -466,7 +666,7 @@ export const Constants = {
   public: {
     Enums: {
       order_status: ["pending", "paid", "shipped", "completed", "cancelled"],
-      user_role: ["admin", "customer"],
+      user_role: ["admin", "customer", "marketing", "admin_sales"],
     },
   },
 } as const

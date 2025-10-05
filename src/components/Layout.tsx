@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import Footer from '@/components/Footer';
+import MobileBottomNav from '@/components/MobileBottomNav';
 import { CustomerNotificationDropdown } from '@/components/CustomerNotificationDropdown';
 
 interface LayoutProps {
@@ -189,12 +190,17 @@ export function Layout({ children }: LayoutProps) {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 pt-16">
+      <main className="flex-1 pt-16 pb-16 md:pb-0">
         {children}
       </main>
 
-      {/* Footer */}
-      <Footer />
+      {/* Footer (hidden on small screens) */}
+      <div className="hidden md:block">
+        <Footer />
+      </div>
+
+      {/* Mobile bottom navigation */}
+      <MobileBottomNav />
     </div>
   );
 }

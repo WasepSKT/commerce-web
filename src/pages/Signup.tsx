@@ -25,8 +25,8 @@ interface ReferralResponse {
 
 // Interface untuk parameter RPC function (sesuai dengan yang diharapkan Supabase)
 interface ReferralParams {
-  referral_code_input: string;
-  new_user_id: string;
+  p_referred_id: string;
+  p_referral_code: string;
 }
 
 export default function Signup() {
@@ -59,6 +59,7 @@ export default function Signup() {
     // Store referral code for later use (for Google signup too)
     if (referralCode) {
       localStorage.setItem('pendingReferralCode', referralCode);
+      console.log('🔗 Referral code stored for Google signup:', referralCode);
     }
 
     const { error } = await signInWithGoogle();
@@ -69,6 +70,8 @@ export default function Signup() {
         title: "Gagal masuk",
         description: error.message,
       });
+    } else {
+      console.log('✅ Google signup successful, referral will be processed by useEffect');
     }
   };
 
@@ -129,6 +132,12 @@ export default function Signup() {
           title: "Pendaftaran berhasil!",
           description: "Silakan cek email Anda untuk konfirmasi akun",
         });
+
+        // Process referral after successful signup
+        if (referralCode) {
+          console.log('🔗 Processing referral after manual signup:', referralCode);
+          // Referral will be processed by useEffect when profile is loaded
+        }
       }
     } catch (error) {
       toast({
@@ -150,12 +159,13 @@ export default function Signup() {
   }, [referralCode]);
 
   // Handle referral after successful signup (works for both email and Google signup)
-  const handleReferral = useCallback(async (refCode: string) => {
+  const handleReferral = useCallback(async (refCode: string, retryCount = 0) => {
     console.log('=== REFERRAL DEBUG START ===');
     console.log('refCode:', refCode);
     console.log('profile:', profile);
     console.log('profile.user_id:', profile?.user_id);
     console.log('profile.id:', profile?.id);
+    console.log('retryCount:', retryCount);
 
     if (!refCode || !profile?.user_id) {
       console.log('❌ Missing refCode or profile.user_id, returning');
@@ -167,17 +177,15 @@ export default function Signup() {
     try {
       console.log('🚀 Calling supabase.rpc handle_referral_signup...');
       console.log('Parameters:', {
-        p_referred_id: profile.id,
-        p_referral_code: refCode
+        referral_code_input: refCode,
+        new_user_id: profile.user_id
       });
 
       // Call the database function with correct parameters
-      const params: ReferralParams = {
-        new_user_id: profile.id,
-        referral_code_input: refCode
-      };
-
-      const { data, error } = await supabase.rpc('handle_referral_signup', params);
+      const { data, error } = await supabase.rpc('handle_referral_signup', {
+        referral_code_input: refCode,
+        new_user_id: profile.user_id
+      });
 
       console.log('📊 RPC Response:');
       console.log('- data:', data);
@@ -187,6 +195,16 @@ export default function Signup() {
 
       if (error) {
         console.error('❌ RPC Error Details:', error);
+
+        // If it's a "function not found" error and we haven't retried too many times, retry
+        if (error.message?.includes('function') && retryCount < 2) {
+          console.log('🔄 Retrying referral in 2 seconds...');
+          setTimeout(() => {
+            void handleReferral(refCode, retryCount + 1);
+          }, 2000);
+          return;
+        }
+
         toast({
           variant: 'destructive',
           title: 'Gagal memproses referral',
@@ -213,6 +231,16 @@ export default function Signup() {
       }
     } catch (error) {
       console.error('❌ Catch Error:', error);
+
+      // Retry on network errors
+      if (retryCount < 2) {
+        console.log('🔄 Retrying referral due to network error...');
+        setTimeout(() => {
+          void handleReferral(refCode, retryCount + 1);
+        }, 2000);
+        return;
+      }
+
       toast({
         variant: 'destructive',
         title: 'Gagal memproses referral',
@@ -224,27 +252,70 @@ export default function Signup() {
 
   // Process referral after successful signup (both email and Google)
   useEffect(() => {
-    console.log('Referral effect triggered:', {
-      isAuthenticated,
-      profileUserId: profile?.user_id,
-      profileId: profile?.id,
-      pendingRef: localStorage.getItem('pendingReferralCode')
-    });
+    console.log('=== REFERRAL EFFECT TRIGGERED ===');
+    console.log('isAuthenticated:', isAuthenticated);
+    console.log('profile:', profile);
+    console.log('profile?.user_id:', profile?.user_id);
+    console.log('profile?.id:', profile?.id);
+    console.log('pendingReferralCode:', localStorage.getItem('pendingReferralCode'));
 
     if (isAuthenticated && profile?.user_id && profile?.id) {
       const pendingRef = localStorage.getItem('pendingReferralCode');
+      console.log('✅ All conditions met, processing referral...');
+      console.log('pendingRef:', pendingRef);
+
       if (pendingRef) {
-        console.log('Processing referral code:', pendingRef);
-        // Small delay to ensure profile is fully loaded
+        console.log('🔄 Processing referral code:', pendingRef);
+
+        // Retry mechanism with exponential backoff
+        const processReferralWithRetry = async (retryCount = 0) => {
+          const maxRetries = 5;
+          const baseDelay = 2000; // 2 seconds
+          const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
+
+          console.log(`Referral processing attempt ${retryCount + 1}/${maxRetries + 1}, delay: ${delay}ms`);
+
+          try {
+            await handleReferral(pendingRef);
+            localStorage.removeItem('pendingReferralCode');
+            console.log('✅ Referral processed successfully');
+          } catch (error) {
+            console.error(`❌ Referral attempt ${retryCount + 1} failed:`, error);
+
+            if (retryCount < maxRetries) {
+              console.log(`🔄 Retrying in ${delay}ms...`);
+              setTimeout(() => {
+                void processReferralWithRetry(retryCount + 1);
+              }, delay);
+            } else {
+              console.error('❌ All referral attempts failed');
+              toast({
+                variant: 'destructive',
+                title: 'Gagal memproses referral',
+                description: 'Silakan hubungi admin untuk bantuan manual.',
+              });
+              localStorage.removeItem('pendingReferralCode');
+            }
+          }
+        };
+
+        // Start processing with initial delay
         const timer = setTimeout(() => {
-          void handleReferral(pendingRef);
-          localStorage.removeItem('pendingReferralCode');
+          void processReferralWithRetry();
         }, 2000);
 
         return () => clearTimeout(timer);
+      } else {
+        console.log('❌ No pending referral code found');
       }
+    } else {
+      console.log('❌ Conditions not met:');
+      console.log('- isAuthenticated:', isAuthenticated);
+      console.log('- profile?.user_id:', profile?.user_id);
+      console.log('- profile?.id:', profile?.id);
     }
-  }, [isAuthenticated, profile, handleReferral]);
+    console.log('=== REFERRAL EFFECT END ===');
+  }, [isAuthenticated, profile, handleReferral, toast]);
 
   if (isAuthenticated) {
     return <Navigate to="/" replace />;

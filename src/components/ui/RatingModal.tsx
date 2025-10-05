@@ -93,7 +93,11 @@ export const RatingModal: React.FC<RatingModalProps> = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-primary text-primary hover:bg-primary hover:text-white"
+        >
           <Star className="h-4 w-4 mr-1" />
           Beri Rating
         </Button>

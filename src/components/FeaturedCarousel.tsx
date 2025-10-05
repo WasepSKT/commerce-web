@@ -136,7 +136,7 @@ const FeaturedCarousel: React.FC<FeaturedCarouselProps> = ({ products }) => {
     <div className="mx-auto overflow-hidden" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100">
       <div className="flex items-center justify-center mb-8 px-4">
         <div className="text-center">
-          <h2 className="text-4xl font-extrabold text-brand">Produk Regal Paw</h2>
+          <h2 className="text-4xl text-brand">Produk Regal Paw</h2>
           <p className="text-sm text-muted-foreground">Temukan Produk Terbaik untuk Kebutuhan Si Manis</p>
         </div>
       </div>

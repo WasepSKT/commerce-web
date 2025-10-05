@@ -22,7 +22,7 @@ export default function AboutSection() {
       <div className="container mx-auto px-4">
         <div className="text-center mb-8" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100">
           <p className="text-2xl font-extrabold text-[#C6982D]">Tentang Regal Paw</p>
-          <h2 className="text-3xl lg:text-4xl font-extrabold text-brand">Dedikasi Kami untuk kesehatan Kucing Indonesia</h2>
+          <h2 className="text-3xl lg:text-4xl text-brand">Dedikasi Kami untuk kesehatan Kucing Indonesia</h2>
           <p className="text-muted-foreground max-w-3xl mx-auto mt-4">
             Sejak 2024, Regal Paw menjadi pilihan utama ribuan pemilik kucing di Indonesia. Kami memahami bahwa kucing adalah bagian dari keluarga, dan mereka layak mendapatkan nutrisi terbaik.
             Dengan berkolaborasi bersama ahli nutrisi hewan dan dokter hewan berpengalaman, kami menghadirkan produk-produk berkualitas premium yang telah teruji klinis dan dipercaya oleh para profesional.

@@ -9,7 +9,7 @@ export default function ContactSection() {
     <section className="py-12 overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-4">
         <div className="overflow-hidden">
-          <h2 className="text-4xl lg:text-5xl font-extrabold text-brand text-center mb-4" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic">Hubungi Kami Hari ini</h2>
+          <h2 className="text-4xl lg:text-5xl text-brand text-center mb-4" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic">Hubungi Kami Hari ini</h2>
           <p className="text-muted-foreground mb-8 text-center max-w-2xl mx-auto" data-aos="fade-up" data-aos-duration="800" data-aos-easing="ease-out-cubic">
             Ada pertanyaan tentang produk atau ingin konsultasi nutrisi kucing? Tim ahli kami siap membantu Anda.
           </p>

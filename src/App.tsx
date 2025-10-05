@@ -19,13 +19,19 @@ import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminProductsPage from "./pages/admin/Products";
-import AdminUsersPage from "./pages/admin/Users";
+import UserManagement from "./pages/admin/UserManagement";
 import AdminCampaignPage from "./pages/admin/Campaign";
 import ReferralsPage from "./pages/admin/Referrals";
 import ReferralSettingsPage from "./pages/admin/ReferralSettings";
 import ReferralPurchasesPage from "./pages/admin/ReferralPurchases";
+import BlogPage from "./pages/Blog";
 import Payments from "./pages/admin/Payments";
 import AdminShipingsPage from "./pages/admin/Shipings";
+import AdminBlogsPage from "./pages/admin/Blogs";
+import BlogList from "./pages/BlogList";
+import BlogPost from "./pages/BlogPost";
+import TermPage from './pages/Term';
+import PrivacyPage from './pages/Privacy';
 import AdminOrders from './pages/admin/Orders';
 import AdminRoute from "./components/admin/AdminRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -55,10 +61,15 @@ export default function App() {
             <Route path="/" element={<Index />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/blog" element={<BlogPage />} />
             <Route path="/career" element={<CareerPage />} />
             <Route path="/career/openings" element={<CareerOpenings />} />
             <Route path="/career/benefits" element={<CareerBenefits />} />
             <Route path="/products" element={<ProductList />} />
+            <Route path="/blog" element={<BlogList />} />
+            <Route path="/blog/:slug" element={<BlogPost />} />
+            <Route path="/terms" element={<TermPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/auth/signup" element={<Signup />} />
@@ -113,7 +124,7 @@ export default function App() {
               path="/admin/users"
               element={
                 <AdminRoute>
-                  <AdminUsersPage />
+                  <UserManagement />
                 </AdminRoute>
               }
             />
@@ -150,10 +161,18 @@ export default function App() {
               }
             />
             <Route
-              path="/admin/shipings"
+              path="/admin/shipping"
               element={
                 <AdminRoute>
                   <AdminShipingsPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/blogs"
+              element={
+                <AdminRoute>
+                  <AdminBlogsPage />
                 </AdminRoute>
               }
             />

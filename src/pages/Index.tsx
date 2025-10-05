@@ -11,6 +11,7 @@ import ProductShowcase from '@/components/ProductShowcase';
 import AboutSection from '@/components/AboutSection';
 import ReferralCareerSection from '@/components/ReferralCareerSection';
 import TestimonialSection from '@/components/TestimonialSection';
+import BlogSection from '@/components/BlogSection';
 import ContactSection from '@/components/ContactSection';
 import CTASection from '@/components/CTASection';
 import ScrollProgress from '@/components/ui/ScrollProgress';
@@ -42,6 +43,7 @@ const Index = () => {
     { id: 'about', label: 'Tentang Kami', selector: '#about-section' },
     { id: 'referral', label: 'Karir & Referral', selector: '#referral-section' },
     { id: 'testimonials', label: 'Testimoni', selector: '#testimonials-section' },
+    { id: 'blog', label: 'Artikel', selector: '#blog-section' },
     { id: 'contact', label: 'Kontak', selector: '#contact-section' }
   ];
 
@@ -123,7 +125,7 @@ const Index = () => {
                     const v = videoRef.current;
                     if (v) {
                       v.currentTime = 0;
-                      v.muted = true;
+                      v.muted = false;
                       v.play().catch(() => { });
                     }
                   }}
@@ -147,7 +149,6 @@ const Index = () => {
                   />
                   <video
                     src={catVideo}
-                    muted
                     loop
                     playsInline
                     ref={videoRef}
@@ -170,7 +171,7 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <FadeInUp duration={800} delay={100}>
             <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold mb-4 text-brand">Mengapa Regal Paw?</h2>
+              <h2 className="text-4xl mb-4 text-brand">Mengapa Regal Paw?</h2>
               <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
                 Kami berkomitmen memberikan nutrisi terbaik untuk kucing kesayangan Anda,
                 dengan standar kualitas internasional.
@@ -290,6 +291,11 @@ const Index = () => {
         <FadeInUp duration={800} delay={200}>
           <TestimonialSection />
         </FadeInUp>
+      </section>
+
+      {/* Blog Section - Latest Articles */}
+      <section id="blog-section">
+        <BlogSection />
       </section>
 
       {/* Contact Section */}

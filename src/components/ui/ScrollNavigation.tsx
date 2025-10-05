@@ -164,8 +164,8 @@ export const ScrollNavigation: React.FC<ScrollNavigationProps> = ({
 
       <div
         className={cn(
-          // Mobile: fixed bottom-right position
-          'fixed bottom-6 right-4 z-40 flex flex-col items-center space-y-2',
+          // Mobile: fixed bottom-right position (lifted above mobile bottom nav)
+          'fixed bottom-20 right-4 z-40 flex flex-col items-center space-y-2',
           // Desktop: use position prop
           'md:top-1/2 md:-translate-y-1/2 md:bottom-auto',
           position === 'left' && 'md:left-4 md:right-auto',

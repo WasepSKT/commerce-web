@@ -1,10 +1,18 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/admin/AdminLayout';
 import EmptyState from '@/components/ui/EmptyState';
 import useDebouncedEffect from '@/hooks/useDebouncedEffect';
 import { RefreshCw } from 'lucide-react';
 import { TableSkeleton, FiltersSkeleton } from '@/components/ui/AdminSkeleton';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 
 interface Referral {
   id: string;
@@ -24,71 +32,78 @@ export default function Referrals() {
   const [search, setSearch] = useState('');
   const [fromDate, setFromDate] = useState<string | null>(null);
   const [toDate, setToDate] = useState<string | null>(null);
-  const [limit, setLimit] = useState(20);
   const [loading, setLoading] = useState(false);
   const [autoApplied, setAutoApplied] = useState(false);
   const requestIdRef = useRef(0);
   const initialLoadRef = useRef(true);
 
-  const fetchReferrals = async (reset = false) => {
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+  const [total, setTotal] = useState(0);
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total]);
+
+  const fetchReferrals = useCallback(async (reset = false) => {
     const req = ++requestIdRef.current;
     setLoading(true);
     try {
+      const start = (page - 1) * pageSize;
+      const end = start + pageSize - 1;
+
       let query = supabase
         .from('referrals')
-        .select(
-          `*, referrer:profiles!referrals_referrer_id_fkey(full_name, email), referred:profiles!referrals_referred_id_fkey(full_name, email)`
-        )
+        .select(`
+          *,
+          referrer:profiles!referrer_id(full_name, email),
+          referred:profiles!referred_id(full_name, email)
+        `, { count: 'exact' })
         .order('created_at', { ascending: false })
-        .limit(limit);
+        .range(start, end);
 
       if (search) query = query.ilike('referral_code', `%${search}%`);
       if (fromDate) query = query.gte('created_at', new Date(fromDate).toISOString());
       if (toDate) query = query.lte('created_at', new Date(toDate + 'T23:59:59').toISOString());
 
-      const { data } = await query;
+      const { data, error, count } = await query;
+
       // ignore stale responses
       if (req !== requestIdRef.current) return;
-      if (reset) setReferrals(data || []);
-      else setReferrals(data || []);
+
+      if (error) {
+        console.error('Error fetching referrals:', error);
+        setReferrals([]);
+        return;
+      }
+
+      console.log('Referrals data:', data);
+      setReferrals(data || []);
+      setTotal(count || 0);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, pageSize, search, fromDate, toDate]);
 
   useEffect(() => {
     if (initialLoadRef.current) {
       initialLoadRef.current = false;
       void fetchReferrals(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchReferrals]);
 
   useEffect(() => {
-    // Only trigger when limit changes and not initial load
+    // Reset to page 1 when search or filters change
+    if (!initialLoadRef.current) {
+      setPage(1);
+      void fetchReferrals(true);
+    }
+  }, [search, fromDate, toDate, fetchReferrals]);
+
+  // Manual search and filter handling to avoid double reload
+  const handleSearch = () => {
     if (!initialLoadRef.current) {
       void fetchReferrals(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [limit]);
-
-  // Debounce auto-apply for search and date filters
-  // Calls fetchReferrals(true) after a short pause and shows a brief "Auto-applied" indicator
-  useDebouncedEffect(() => {
-    // Only trigger when not initial load
-    if (!initialLoadRef.current) {
-      const run = async () => {
-        setAutoApplied(true);
-        try {
-          await fetchReferrals(true);
-        } finally {
-          // brief visual feedback
-          window.setTimeout(() => setAutoApplied(false), 1200);
-        }
-      };
-      void run();
-    }
-  }, [search, fromDate, toDate], 350);
+  };
 
   return (
     <AdminLayout>
@@ -153,34 +168,9 @@ export default function Referrals() {
                         <td className="px-4 py-3 text-sm font-mono">{r.referral_code}</td>
                         <td className="px-4 py-3 text-sm">
                           <div className="flex gap-2">
-                            <button
-                              className="rounded border px-2 py-1 text-sm"
-                              disabled={!!rowLoading[r.id]}
-                              onClick={async () => {
-                                if (!confirm('Mark this referral order as completed?')) return;
-                                try {
-                                  setRowLoading((s) => ({ ...s, [r.id]: true }));
-                                  type RpcResult = { data: unknown; error: unknown };
-                                  const rpcFn = (supabase.rpc as unknown) as (
-                                    name: string,
-                                    params?: Record<string, unknown>
-                                  ) => Promise<RpcResult>;
-                                  const { data, error } = await rpcFn('rpc_mark_referral_orders_completed', { order_ids: [r.referral_code] });
-                                  if (error) throw error;
-                                  // optional: refresh list or optimistic update
-                                  void fetchReferrals(true);
-                                  alert('Marked completed — updated count: ' + (data ?? 0));
-                                } catch (err: unknown) {
-                                  console.error(err);
-                                  const msg = err instanceof Error ? err.message : String(err);
-                                  alert('Failed to mark completed: ' + msg);
-                                } finally {
-                                  setRowLoading((s) => ({ ...s, [r.id]: false }));
-                                }
-                              }}
-                            >
-                              {rowLoading[r.id] ? 'Processing…' : 'Mark completed'}
-                            </button>
+                            <span className="px-3 py-1 text-xs bg-green-100 text-green-800 rounded">
+                              Active
+                            </span>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm">{r.reward_points ?? 0}</td>
@@ -191,13 +181,43 @@ export default function Referrals() {
                 </table>
               </div>
 
-              <div className="mt-3 flex justify-center">
-                <button
-                  className="rounded border px-4 py-2"
-                  onClick={() => setLimit((l) => l + 20)}
-                >
-                  Load more
-                </button>
+              <div className="mt-4 flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Menampilkan {Math.min(pageSize, referrals.length)} dari {total} referral
+                </div>
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        className={page === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      />
+                    </PaginationItem>
+
+                    {/* Show page numbers */}
+                    {Array.from({ length: Math.min(5, totalPages) }).map((_, idx) => {
+                      const p = Math.max(1, Math.min(totalPages, page - 2 + idx));
+                      return (
+                        <PaginationItem key={p}>
+                          <PaginationLink
+                            isActive={p === page}
+                            onClick={() => setPage(p)}
+                            className="cursor-pointer"
+                          >
+                            {p}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    })}
+
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        className={page === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
               </div>
             </>
           )}

@@ -23,7 +23,6 @@ interface OrderRow {
   status?: string;
   created_at: string;
   referral?: { order_id: string; referrer_id: string; amount: number; status: string } | null;
-  // lightweight shape for detail view (may be incomplete depending on typed client)
   customer_name?: string;
   customer_phone?: string;
   customer_address?: string;
@@ -73,15 +72,22 @@ export default function Payments() {
           const pQ = (supabase.from as unknown as any)('profiles').select('id, full_name').in('id', userIds as string[]);
           const pRes = (await pQ) as unknown;
           // Supabase may return { data, error } or an array; handle both safely
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const maybeError = pRes && (pRes as any).error ? (pRes as any).error : null;
+          // Type-safe error checking with proper type guards
+          const isErrorResponse = (obj: unknown): obj is { error: { message?: string } } => {
+            return obj !== null && typeof obj === 'object' && 'error' in obj;
+          };
+
+          const isDataResponse = (obj: unknown): obj is { data: unknown } => {
+            return obj !== null && typeof obj === 'object' && 'data' in obj;
+          };
+
+          const maybeError = isErrorResponse(pRes) ? pRes.error : null;
           if (maybeError) {
             // only log unexpected errors; common missing-column errors are handled by adjusting selects
             console.warn('Profiles query error (non-fatal):', maybeError?.message ?? maybeError);
           } else {
             // extract rows safely
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const data = pRes && (pRes as any).data ? (pRes as any).data : pRes;
+            const data = isDataResponse(pRes) ? pRes.data : pRes;
             let pRows: Array<Record<string, unknown>> = [];
             if (Array.isArray(data)) pRows = data as Array<Record<string, unknown>>;
             else if (data && typeof data === 'object') pRows = Object.values(data).filter(Boolean) as Array<Record<string, unknown>>;

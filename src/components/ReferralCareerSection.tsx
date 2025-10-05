@@ -16,7 +16,7 @@ export default function ReferralCareerSection() {
             easing="ease-out-cubic"
             delay="100"
           >
-            <h2 className="text-4xl font-bold text-brand mb-6">Program Referral & Karir</h2>
+            <h2 className="text-4xl text-brand mb-6">Program Referral & Karir</h2>
             <p className="text-lg text-muted-foreground max-w-xl">
               Bergabunglah dengan tim kami atau dapatkan penghasilan tambahan melalui
               program referral yang menguntungkan.

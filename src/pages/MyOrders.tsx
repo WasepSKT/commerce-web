@@ -473,6 +473,7 @@ export default function MyOrders() {
                                 {statusInfo.label}
                               </Badge>
                             </div>
+
                             {order.status === 'pending' && !expired && (
                               <div className="text-sm text-orange-600 font-medium">
                                 {getTimeRemaining(order.created_at)}
@@ -546,8 +547,8 @@ export default function MyOrders() {
                             <div className="pt-2 border-t">
                               <h4 className="font-medium mb-2 text-primary">Catatan:</h4>
                               <div className={`p-3 rounded-lg text-sm ${order.status === 'cancelled'
-                                  ? 'bg-red-50 border border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300'
-                                  : 'bg-yellow-50 border border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-300'
+                                ? 'bg-red-50 border border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300'
+                                : 'bg-yellow-50 border border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-300'
                                 }`}>
                                 {order.notes}
                               </div>
@@ -590,19 +591,15 @@ export default function MyOrders() {
 
                               {/* Rating Button - untuk status completed */}
                               {(order.status === 'completed') && order.order_items && order.order_items.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                  {order.order_items.map((item, itemIndex) => (
-                                    <RatingModal
-                                      key={itemIndex}
-                                      orderId={order.id}
-                                      productId={item.product_id}
-                                      productName={item.name || 'Produk'}
-                                      onSuccess={() => {
-                                        void fetchMyOrders();
-                                      }}
-                                    />
-                                  ))}
-                                </div>
+                                <RatingModal
+                                  key={`order-${order.id}`}
+                                  orderId={order.id}
+                                  productId={order.order_items[0].product_id}
+                                  productName={`Pesanan #${order.id.slice(0, 8)}`}
+                                  onSuccess={() => {
+                                    void fetchMyOrders();
+                                  }}
+                                />
                               )}
 
                               {/* Confirm Delivery - untuk status shipped */}

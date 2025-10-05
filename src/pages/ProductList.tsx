@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Search, Filter } from 'lucide-react';
 import { Layout } from '@/components/Layout';
+import { HeroSliderCarousel } from '@/components/HeroSliderCarousel';
 
 interface Product {
   id: string;
@@ -128,6 +129,11 @@ export default function ProductList() {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
+        {/* Hero Slider Campaign */}
+        <div className="mb-8">
+          <HeroSliderCarousel />
+        </div>
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2 text-brand text-center md:text-left">Produk Kami</h1>

@@ -83,7 +83,8 @@ export default function AdminUsersPage() {
 
       const { data, error, count } = await query;
       if (error) throw error;
-      setUsers((data as UserProfile[]) || []);
+      // Supabase may return a wider role union; cast via unknown to satisfy TypeScript
+      setUsers(((data as unknown) as UserProfile[]) || []);
       setTotal(count ?? 0);
       setLastRaw({ data, count });
     } catch (err) {
@@ -113,50 +114,62 @@ export default function AdminUsersPage() {
 
       console.log('Deleting user:', { id, user_id: userToDelete.user_id, email: userToDelete.email });
 
-      // Metode 1: Coba hapus dari Supabase Auth menggunakan Admin API
-      try {
-        const { error: authError } = await supabase.auth.admin.deleteUser(userToDelete.user_id);
+      // Hapus dari Supabase Auth terlebih dahulu (ini akan memicu CASCADE DELETE di profiles)
+      const { error: authError } = await supabase.auth.admin.deleteUser(userToDelete.user_id);
 
-        if (authError) {
-          console.warn('Auth Admin API error:', authError);
-          // Lanjut ke metode fallback
-          throw new Error(`Auth deletion failed: ${authError.message}`);
-        }
+      if (authError) {
+        console.error('Auth deletion error:', authError);
 
-        // Jika berhasil hapus dari auth, profile akan terhapus otomatis via cascade/trigger
-        toast({ title: 'Pengguna berhasil dihapus sepenuhnya' });
+        // Jika error 403 (Forbidden), coba hapus dari database saja sebagai fallback
+        if (authError.message?.includes('not allowed') || authError.status === 403) {
+          console.log('Auth deletion not allowed, trying database deletion only...');
 
-      } catch (authErr) {
-        console.warn('Auth deletion failed, trying database cleanup:', authErr);
+          // Hapus dari tabel profiles (ini akan menghapus data user)
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .delete()
+            .eq('id', userToDelete.id);
 
-        // Metode 2: Fallback - gunakan RPC function untuk hapus data dari database
-        const rpcParams = { p_user_id: userToDelete.user_id };
-        const { data: rpcResult, error: rpcError } = await supabase.rpc(
-          'admin_delete_user' as 'handle_referral_signup',
-          rpcParams as unknown as Parameters<typeof supabase.rpc>[1]
-        );
-
-        if (rpcError) {
-          console.error('RPC deletion error:', rpcError);
-          // Metode 3: Manual deletion sebagai last resort
-          const { error: profileError } = await supabase.from('profiles').delete().eq('id', id);
           if (profileError) {
-            throw new Error(`Semua metode penghapusan gagal. Auth: ${authErr}. RPC: ${rpcError.message}. Profile: ${profileError.message}`);
+            console.error('Profile deletion error:', profileError);
+            throw new Error(`Gagal menghapus data pengguna: ${profileError.message}`);
           }
 
+          console.log('User profile deleted from database (auth user still exists)');
+
+          // Tampilkan pesan bahwa user masih ada di auth
           toast({
-            title: 'Data pengguna dihapus dari database',
-            description: 'Akun auth mungkin masih ada. Silakan hubungi administrator untuk pembersihan manual.',
-            variant: 'default'
+            title: 'Pengguna berhasil dihapus dari database',
+            description: 'Data pengguna telah dihapus, tapi akun masih ada di sistem autentikasi. Silakan hapus manual dari Supabase Auth.',
+            variant: 'destructive'
           });
         } else {
-          console.log('RPC deletion result:', rpcResult);
-          toast({
-            title: 'Data pengguna berhasil dihapus',
-            description: rpcResult?.message || 'Data berhasil dihapus dari database',
-            variant: 'default'
-          });
+          throw new Error(`Gagal menghapus dari sistem autentikasi: ${authError.message}`);
         }
+      } else {
+        // Jika berhasil hapus dari auth, profile akan terhapus otomatis via CASCADE
+        console.log('User successfully deleted from auth, profile should be cascade deleted');
+
+        // Verifikasi bahwa profile juga terhapus
+        const { data: profileCheck } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', userToDelete.id)
+          .single();
+
+        if (profileCheck) {
+          console.warn('Profile still exists after auth deletion, this might indicate CASCADE is not working');
+        } else {
+          console.log('Profile successfully cascade deleted');
+        }
+      }
+
+      // Hanya tampilkan toast jika tidak ada error 403 (karena sudah ada toast khusus)
+      if (!authError || !(authError.message?.includes('not allowed') || authError.status === 403)) {
+        toast({
+          title: 'Pengguna berhasil dihapus',
+          description: 'Akun dan data pengguna telah dihapus sepenuhnya dari sistem'
+        });
       }
 
       setDeleting(null);
@@ -314,6 +327,8 @@ export default function AdminUsersPage() {
                 <SelectContent>
                   <SelectItem value="customer">customer</SelectItem>
                   <SelectItem value="admin">admin</SelectItem>
+                  <SelectItem value="marketing">marketing</SelectItem>
+                  <SelectItem value="admin_sales">admin_sales</SelectItem>
                 </SelectContent>
               </Select>
 

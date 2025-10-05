@@ -17,7 +17,7 @@ export interface UserProfile {
   latitude?: number | null;
   longitude?: number | null;
   created_at?: string | null;
-  role: 'admin' | 'customer';
+  role: 'admin' | 'customer' | 'marketing' | 'admin_sales';
   referral_code: string;
   referred_by: string | null;
   reward_points?: number;

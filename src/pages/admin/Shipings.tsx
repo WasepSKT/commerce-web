@@ -96,13 +96,38 @@ export default function Shipings() {
         <h2 className="text-lg font-medium text-primary">Kelola Pengiriman</h2>
         <p className="text-sm text-muted-foreground">Daftar pesanan yang telah dibayar. Tandai resi dan pilih jasa kirim di sini.</p>
 
-        {rows.length === 0 ? (
+        {loading ? (
+          <div className="mt-6 space-y-4">
+            <HeaderSkeleton />
+            <div className="grid gap-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="p-4 border rounded-lg">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+                      <div className="h-3 bg-gray-200 rounded w-48 animate-pulse"></div>
+                      <div className="h-3 bg-gray-200 rounded w-64 animate-pulse"></div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
+                      <div className="flex gap-2 items-center">
+                        <div className="h-8 bg-gray-200 rounded w-40 animate-pulse"></div>
+                        <div className="h-8 bg-gray-200 rounded w-44 animate-pulse"></div>
+                        <div className="h-8 bg-gray-200 rounded w-24 animate-pulse"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : rows.length === 0 ? (
           <div className="py-12">
             <EmptyState
               title="Tidak ada pesanan untuk dikirim"
               description="Tidak ada pesanan yang sudah dibayar dan siap untuk dikirim saat ini."
               lottieSrc="https://lottie.host/6ebe5320-be98-4e5d-90b5-a9f5d2f186fd/ez07wuijAR.lottie"
-              cta={{ label: loading ? 'Loading...' : 'Refresh', onClick: () => void fetchPaid() }}
+              cta={{ label: 'Refresh', onClick: () => void fetchPaid() }}
             />
           </div>
         ) : (

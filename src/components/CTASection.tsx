@@ -11,7 +11,7 @@ export default function CTASection() {
       <img src={bg} alt="background" className="absolute inset-0 w-full h-full object-cover opacity-60 blur-sm transform scale-105" />
 
       <div className="container mx-auto px-4 flex flex-col items-center text-center relative" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100">
-        <h2 className="max-w-5xl text-4xl lg:text-5xl font-extrabold mb-4 text-brand">
+        <h2 className="max-w-5xl text-4xl lg:text-5xl mb-4 text-brand">
           Berikan yang Terbaik untuk Kucing Kesayangan Anda Hari Ini!
         </h2>
         <p className="text-lg mb-8 max-w-3xl mx-auto text-black">

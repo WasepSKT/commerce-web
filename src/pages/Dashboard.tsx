@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Copy, Gift, ShoppingBag, ShoppingCart, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PopupCampaignDisplay } from '@/components/PopupCampaignDisplay';
 
 interface Order {
   id: string;
@@ -19,14 +20,17 @@ interface Order {
 }
 
 interface Referral {
-  id: string;
+  id?: string;
+  referral_id?: string;
   referral_code: string;
   reward_points: number;
   created_at: string;
-  referrer: {
+  referred?: {
     full_name: string;
     email: string;
   };
+  referred_full_name?: string;
+  referred_email?: string;
 }
 
 export default function Dashboard() {
@@ -53,20 +57,34 @@ export default function Dashboard() {
         .order('created_at', { ascending: false })
         .limit(5);
 
-      // Fetch referrals made by this user
-      const { data: referralsData } = await supabase
+      // Fetch referrals made by this user (people they referred)
+      const { data: referralsData, error: referralsError } = await supabase
         .from('referrals')
         .select(`
           *,
-          referrer:profiles!referrals_referrer_id_fkey(full_name, email)
+          referred:profiles!referrals_referred_id_fkey(full_name, email)
         `)
         .eq('referrer_id', profile?.id);
+
+      if (referralsError) {
+        console.error('Error fetching referrals:', referralsError);
+      }
+
+      // Fetch referrals where this user was referred (to get reward points from being referred)
+      const { data: referredData } = await supabase
+        .from('referrals')
+        .select('reward_points')
+        .eq('referred_id', profile?.id);
 
       // Calculate stats
       const totalOrders = ordersData?.length || 0;
       const totalSpent = ordersData?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
       const totalReferrals = referralsData?.length || 0;
-      const rewardPoints = referralsData?.reduce((sum, ref) => sum + (ref.reward_points || 0), 0) || 0;
+
+      // Calculate reward points from both referring others and being referred
+      const pointsFromReferring = referralsData?.reduce((sum, referral) => sum + (referral.reward_points || 0), 0) || 0;
+      const pointsFromBeingReferred = referredData?.reduce((sum, referral) => sum + (referral.reward_points || 0), 0) || 0;
+      const rewardPoints = pointsFromReferring + pointsFromBeingReferred;
 
       setOrders(ordersData || []);
       setReferrals(referralsData || []);
@@ -127,6 +145,9 @@ export default function Dashboard() {
 
   return (
     <Layout>
+      {/* Popup Campaign Display */}
+      <PopupCampaignDisplay onDashboardLogin={true} />
+
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2 text-brand text-center md:text-left">Dashboard</h1>
@@ -297,15 +318,19 @@ export default function Dashboard() {
                       </p>
                     ) : (
                       <div className="space-y-2">
-                        {referrals.slice(0, 3).map((referral) => (
-                          <div key={referral.id} className="flex items-center justify-between p-3 bg-muted/50 rounded">
+                        {referrals.slice(0, 3).map((referral, index) => (
+                          <div key={referral.id || referral.referral_id || index} className="flex items-center justify-between p-3 bg-muted/50 rounded">
                             <div>
-                              <p className="text-sm font-medium">{referral.referrer.full_name || referral.referrer.email}</p>
+                              <p className="text-sm font-medium">
+                                {referral.referred_full_name ||
+                                  referral.referred?.full_name ||
+                                  'User'}
+                              </p>
                               <p className="text-xs text-muted-foreground">
                                 {new Date(referral.created_at).toLocaleDateString('id-ID')}
                               </p>
                             </div>
-                            <Badge variant="secondary">+{referral.reward_points} poin</Badge>
+                            <Badge variant="secondary">+{referral.reward_points || 0} poin</Badge>
                           </div>
                         ))}
                       </div>
