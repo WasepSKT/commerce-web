@@ -1,6 +1,7 @@
 import React from 'react';
 import { Check, Handshake, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 import ResponsiveAOS from '@/components/ui/ResponsiveAOS';
 import referralImg from '@/assets/img/img-referal.png';
 
@@ -71,13 +72,14 @@ export default function ReferralCareerSection() {
               </div>
 
               <div className="mt-6">
-                <Button
-                  className="bg-white text-brand rounded-full px-6 py-3 inline-flex items-center gap-2 transform transition-transform duration-200 hover:translate-x-1 hover:bg-white hover:text-brand/90"
-                  aria-label="Daftar Sekarang"
-                >
-                  <span>Daftar Sekarang</span>
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
+                <Link to="/signup" aria-label="Daftar Sekarang">
+                  <Button
+                    className="bg-white text-brand rounded-full px-6 py-3 inline-flex items-center gap-2 transform transition-transform duration-200 hover:translate-x-1 hover:bg-white hover:text-brand/90"
+                  >
+                    <span>Daftar Sekarang</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
               </div>
             </div>
           </ResponsiveAOS>

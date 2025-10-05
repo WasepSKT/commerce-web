@@ -27,15 +27,15 @@ export default function CTASection() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto justify-center">
-          <div tabIndex={0} className="bg-white/80 rounded-2xl p-6 shadow-sm border-2 border-[#7A1316] hover:scale-105 transform transition-transform duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7A1316]/30" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="0">
+          <div tabIndex={0} className="bg-white/80 rounded-2xl p-6 shadow-sm border-2 border-[#7A1316] transform transition-transform duration-200 ease-out focus:scale-105 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7A1316]/30 cursor-pointer" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="0">
             <div className="w-12 h-12 rounded-full bg-[#7A1316] text-[#F8DF7C] flex items-center justify-center mx-auto mb-4">
               <FaTruck className="h-5 w-5" />
             </div>
-            <h3 className="font-semibold text-[#7A1316] text-center mb-2">Gratis Ongkir</h3>
-            <p className="text-sm text-[#7A1316]/80 text-center">Untuk pembelian di atas Rp 250.000</p>
+            <h3 className="font-semibold text-[#7A1316] text-center mb-2">Pengiriman Cepat</h3>
+            <p className="text-sm text-[#7A1316]/80 text-center">Dapatkan pengiriman cepat untuk pesanan Anda</p>
           </div>
 
-          <div tabIndex={0} className="bg-white/80 rounded-2xl p-6 shadow-sm border-2 border-[#7A1316] hover:scale-105 transform transition-transform duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7A1316]/30" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100">
+          <div tabIndex={0} className="bg-white/80 rounded-2xl p-6 shadow-sm border-2 border-[#7A1316] hover:scale-105 transform transition-transform duration-200 ease-out focus:scale-105 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7A1316]/30 cursor-pointer" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100">
             <div className="w-12 h-12 rounded-full bg-[#7A1316] text-[#F8DF7C] flex items-center justify-center mx-auto mb-4">
               <FaShieldAlt className="h-5 w-5" />
             </div>
@@ -43,7 +43,7 @@ export default function CTASection() {
             <p className="text-sm text-[#7A1316]/80 text-center">100% uang kembali jika tidak puas</p>
           </div>
 
-          <div tabIndex={0} className="bg-white/80 rounded-2xl p-6 shadow-sm border-2 border-[#7A1316] hover:scale-105 transform transition-transform duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7A1316]/30" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="200">
+          <div tabIndex={0} className="bg-white/80 rounded-2xl p-6 shadow-sm border-2 border-[#7A1316] hover:scale-105 transform transition-transform duration-200 ease-out focus:scale-105 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7A1316]/30 cursor-pointer" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="200">
             <div className="w-12 h-12 rounded-full bg-[#7A1316] text-[#F8DF7C] flex items-center justify-center mx-auto mb-4">
               <FaStar className="h-5 w-5" />
             </div>

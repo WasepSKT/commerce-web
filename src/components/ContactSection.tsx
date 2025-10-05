@@ -59,7 +59,7 @@ export default function ContactSection() {
                   </div>
                   <div className="flex items-center gap-3">
                     <Phone className="h-5 w-5 text-white/90" />
-                    <span>(021) 123-4567</span>
+                    <span>+62 859 3215 3777</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <MapPin className="h-5 w-5 text-white/90" />

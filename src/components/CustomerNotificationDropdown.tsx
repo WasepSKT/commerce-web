@@ -54,7 +54,8 @@ export function CustomerNotificationDropdown() {
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-80">
+      {/* On small screens, keep the dropdown compact; md+ uses the original size */}
+      <DropdownMenuContent align="end" className="w-64 md:w-80">
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>Notifikasi</span>
           {unreadCount > 0 && (
@@ -66,7 +67,7 @@ export function CustomerNotificationDropdown() {
 
         <DropdownMenuSeparator />
 
-        <div className="max-h-96 overflow-y-auto">
+        <div className="max-h-64 md:max-h-96 overflow-y-auto">
           {loading ? (
             // Loading skeleton
             <>

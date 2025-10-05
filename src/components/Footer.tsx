@@ -37,7 +37,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm text-[#FFF4A8]/90">
               <li><Link to="/products">Features</Link></li>
               <li><Link to="/products">Pricing</Link></li>
-              <li><Link to="/product-cases">Case studies</Link></li>
+              <li><Link to="/case-studies">Case studies</Link></li>
               <li><Link to="/reviews">Reviews</Link></li>
               <li><Link to="/updates">Updates</Link></li>
             </ul>
@@ -49,7 +49,6 @@ export default function Footer() {
               <li><Link to="/about">About</Link></li>
               <li><Link to="/contact">Contact us</Link></li>
               <li><Link to="/career">Careers</Link></li>
-              <li><Link to="/culture">Culture</Link></li>
               <li><Link to="/blog">Blog</Link></li>
             </ul>
           </div>
@@ -57,10 +56,7 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold text-[#F8DF7C] mb-3">Support</h4>
             <ul className="space-y-2 text-sm text-[#FFF4A8]/90">
-              <li><Link to="/help">Getting started</Link></li>
-              <li><Link to="/help">Help center</Link></li>
-              <li><Link to="/status">Server status</Link></li>
-              <li><Link to="/support">Chat support</Link></li>
+              <li><Link to="/contact">Help center</Link></li>
               <li><Link to="/report">Report a bug</Link></li>
             </ul>
           </div>

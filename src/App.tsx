@@ -32,6 +32,10 @@ import BlogList from "./pages/BlogList";
 import BlogPost from "./pages/BlogPost";
 import TermPage from './pages/Term';
 import PrivacyPage from './pages/Privacy';
+import CaseStudiesPage from './pages/CaseStudies';
+import ReviewsPage from './pages/Reviews';
+import UpdatesPage from './pages/Updates';
+import ReportBugPage from './pages/ReportBug';
 import AdminOrders from './pages/admin/Orders';
 import AdminRoute from "./components/admin/AdminRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -74,6 +78,10 @@ export default function App() {
             <Route path="/auth" element={<Auth />} />
             <Route path="/auth/signup" element={<Signup />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/case-studies" element={<CaseStudiesPage />} />
+            <Route path="/reviews" element={<ReviewsPage />} />
+            <Route path="/updates" element={<UpdatesPage />} />
+            <Route path="/report" element={<ReportBugPage />} />
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />

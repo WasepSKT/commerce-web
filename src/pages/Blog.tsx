@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { createExcerpt } from '@/lib/textUtils';
 import type { Database } from '@/integrations/supabase/types';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type BlogPost = Database['public']['Tables']['blogs']['Row'];
 
@@ -91,10 +92,33 @@ export default function Blog() {
     return (
       <BlogLayout title="Blog & Artikel">
         <div className="space-y-8">
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-brand mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Memuat artikel...</p>
+          {/* Featured skeleton */}
+          <div className="md:flex md:gap-6">
+            <div className="md:w-1/3">
+              <Skeleton className="w-full h-48 md:h-full rounded-lg" />
+            </div>
+            <div className="md:w-2/3 space-y-4">
+              <Skeleton className="h-6 w-3/4" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <div className="flex items-center gap-4">
+                <Skeleton className="h-6 w-20" />
+                <Skeleton className="h-6 w-16" />
+              </div>
+            </div>
           </div>
+
+          {/* Grid skeletons */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-3">
+                <Skeleton className="w-full h-40 rounded-lg" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            ))}
+          </div>
+          <p className="sr-only">Memuat artikel...</p>
         </div>
       </BlogLayout>
     );

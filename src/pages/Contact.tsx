@@ -55,13 +55,13 @@ export default function ContactPage() {
                   Kirim Pesan
                 </button>
                 <Button variant="ghost" asChild className="rounded-full px-5 py-2 border border-[#7A1316] text-[#7A1316]">
-                  <a href="mailto:contact@regalpaw.example">Email Kami</a>
+                  <a href="mailto:contact@regalpaw.id">Email Kami</a>
                 </Button>
               </div>
 
               <div className="mt-8 text-sm text-muted-foreground">
                 <p>Alamat kantor: Jalan Contoh No.1, Jakarta</p>
-                <p>Tel: +62 21 555-0123</p>
+                <p>Tel: +62 859 3215 3777</p>
               </div>
             </ResponsiveAnimation>
 
