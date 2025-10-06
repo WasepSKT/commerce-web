@@ -42,34 +42,35 @@ export default function Payments() {
     setLoading(true);
     try {
       // fetch pending orders
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const q = (supabase.from as unknown as any)('orders').select('*').eq('status', 'pending').order('created_at', { ascending: false }).limit(200);
-      const res = (await q) as unknown;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const orders = (res && (res as any).data ? (res as any).data : (res as any)) as OrderRow[];
+      const q = (supabase.from as unknown as { (table: string): { select: (fields: string) => { eq: (field: string, value: string) => { order: (field: string, opts: { ascending: boolean }) => { limit: (n: number) => Promise<{ data: OrderRow[]; error?: unknown }> } } } } })('orders').select('*').eq('status', 'pending').order('created_at', { ascending: false }).limit(200);
+      const res = await q;
+      const orders = (res && res.data ? res.data : []) as OrderRow[];
 
       const orderIds = orders.map((o) => String(o.id));
       const referralsMap: Record<string, { order_id: string; referrer_id: string; amount: number; status: string }> = {};
+      const referrerIds: string[] = [];
       if (orderIds.length) {
-        // supabase typings may lag for dynamic selects - narrow the lint rule locally
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const rfQ = (supabase.from as unknown as any)('referral_purchases').select('order_id, referrer_id, amount, status').in('order_id', orderIds as string[]);
-        const rfRes = (await rfQ) as unknown;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const rfRows = (rfRes && (rfRes as any).data ? (rfRes as any).data : (rfRes as any)) as Array<Record<string, unknown>>;
+        interface ReferralPurchaseRow { order_id: string; referrer_id: string; amount: number; status: string }
+        const rfQ = (supabase.from as unknown as { (table: string): { select: (fields: string) => { in: (field: string, values: string[]) => Promise<{ data: ReferralPurchaseRow[]; error?: unknown }> } } })('referral_purchases').select('order_id, referrer_id, amount, status').in('order_id', orderIds as string[]);
+        const rfRes = await rfQ;
+        const rfRows = (rfRes && rfRes.data ? rfRes.data : []) as ReferralPurchaseRow[];
         rfRows.forEach((r) => {
-          if (r.order_id) referralsMap[String(r.order_id)] = { order_id: String(r.order_id), referrer_id: String(r.referrer_id), amount: Number(r.amount), status: String(r.status) };
+          if (r.order_id) {
+            referralsMap[String(r.order_id)] = { order_id: String(r.order_id), referrer_id: String(r.referrer_id), amount: Number(r.amount), status: String(r.status) };
+            if (r.referrer_id) referrerIds.push(String(r.referrer_id));
+          }
         });
       }
 
       // If orders don't have a customer_name, try to load profile display names
       const userIds = orders.map((o) => o.user_id).filter(Boolean).map(String) as string[];
       const profileMap: Record<string, string> = {};
+      const referrerProfileMap: Record<string, { name?: string; email?: string; code?: string }> = {};
       if (userIds.length) {
         try {
           // fetch profiles for those users (avoid selecting non-existing columns)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const pQ = (supabase.from as unknown as any)('profiles').select('id, full_name').in('id', userIds as string[]);
+          interface ProfileRow { id: string; full_name?: string }
+          const pQ = (supabase.from as unknown as { <T>(table: string): { select: (fields: string) => { in: (field: string, values: string[]) => Promise<{ data: ProfileRow[]; error?: unknown }> } } })('profiles').select('id, full_name').in('id', userIds as string[]);
           const pRes = (await pQ) as unknown;
           // Supabase may return { data, error } or an array; handle both safely
           // Type-safe error checking with proper type guards
@@ -107,13 +108,58 @@ export default function Payments() {
         }
       }
 
+      // Ambil data profile referrer untuk keterangan referral
+      if (referrerIds.length) {
+        try {
+          interface ReferrerProfileRow { id: string; full_name?: string; email?: string; referral_code?: string }
+          const refPq = (supabase.from as unknown as { (table: string): { select: (fields: string) => { in: (field: string, values: string[]) => Promise<{ data: ReferrerProfileRow[]; error?: unknown }> } } })('profiles').select('id, full_name, email, referral_code').in('id', referrerIds);
+          const refPres = await refPq;
+          const isErrorResponse = (obj: unknown): obj is { error: { message?: string } } => {
+            return obj !== null && typeof obj === 'object' && 'error' in obj;
+          };
+          const isDataResponse = (obj: unknown): obj is { data: unknown } => {
+            return obj !== null && typeof obj === 'object' && 'data' in obj;
+          };
+          const maybeError = isErrorResponse(refPres) ? refPres.error : null;
+          if (!maybeError) {
+            const data = isDataResponse(refPres) ? refPres.data : refPres;
+            let pRows: ReferrerProfileRow[] = [];
+            if (Array.isArray(data)) pRows = data as ReferrerProfileRow[];
+            else if (data && typeof data === 'object') pRows = Object.values(data).filter(Boolean) as ReferrerProfileRow[];
+            pRows.filter(Boolean).forEach((rec) => {
+              if (!rec || typeof rec !== 'object' || !('id' in rec)) return;
+              const id = String(rec.id);
+              referrerProfileMap[id] = {
+                name: String(rec.full_name ?? ''),
+                email: String(rec.email ?? ''),
+                code: String(rec.referral_code ?? '')
+              };
+            });
+          }
+        } catch (err) {
+          console.warn('Failed to fetch referrer profiles', err);
+        }
+      }
+
       setRows(
-        orders.map((o) => ({
-          ...o,
-          // prefer stored customer_name, otherwise use profile name if available
-          customer_name: o.customer_name ?? (o.user_id ? profileMap[String(o.user_id)] ?? o.user_id : undefined),
-          referral: referralsMap[String(o.id)] ?? null,
-        }))
+        orders.map((o) => {
+          const referral = referralsMap[String(o.id)] ?? null;
+          let referralInfo: string | null = null;
+          if (referral && referral.referrer_id) {
+            const refProfile = referrerProfileMap[referral.referrer_id];
+            if (refProfile) {
+              referralInfo = `Referral dari ${refProfile.name || refProfile.email || refProfile.code}`;
+            } else {
+              referralInfo = `Referral dari ${referral.referrer_id}`;
+            }
+          }
+          return {
+            ...o,
+            customer_name: o.customer_name ?? (o.user_id ? profileMap[String(o.user_id)] ?? o.user_id : undefined),
+            referral,
+            referralInfo,
+          };
+        })
       );
     } finally {
       setLoading(false);
@@ -130,15 +176,13 @@ export default function Payments() {
     setLoading(true);
     try {
       // fetch single order with items
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const q = (supabase.from as unknown as any)('orders').select('*, order_items(*)').eq('id', orderId).single();
-      const res = (await q) as unknown;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let order = (res && (res as any).data ? (res as any).data : (res as any)) as OrderRow;
+      const q = (supabase.from as unknown as { (table: string): { select: (fields: string) => { eq: (field: string, value: string) => { single: () => Promise<{ data: OrderRow; error?: unknown }> } } } })('orders').select('*, order_items(*)').eq('id', orderId).single();
+      const res = await q;
+      let order = (res && res.data ? res.data : null) as OrderRow;
 
       // Enrich order items with product names by fetching from products table
       if (order.order_items && order.order_items.length > 0) {
-        const items = order.order_items as Array<Record<string, unknown>>;
+        const items = order.order_items as Array<{ id?: string; product_id?: string; name?: string; quantity?: number; price?: number; unit_price?: number }>;
         const productIds = items
           .map(item => item.product_id)
           .filter(Boolean)
@@ -146,11 +190,10 @@ export default function Payments() {
 
         if (productIds.length > 0) {
           try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const productQuery = (supabase.from as unknown as any)('products').select('id, name, price').in('id', productIds);
-            const productRes = (await productQuery) as unknown;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const products = (productRes && (productRes as any).data ? (productRes as any).data : (productRes as any)) as Array<Record<string, unknown>>;
+            interface ProductRow { id: string; name?: string; price?: number }
+            const productQuery = (supabase.from as unknown as { (table: string): { select: (fields: string) => { in: (field: string, values: string[]) => Promise<{ data: ProductRow[]; error?: unknown }> } } })('products').select('id, name, price').in('id', productIds);
+            const productRes = await productQuery;
+            const products = (productRes && productRes.data ? productRes.data : []) as ProductRow[];
 
             // Create a map of product_id to product info
             const productMap: Record<string, { name: string; price: number }> = {};
@@ -189,8 +232,7 @@ export default function Payments() {
   const markPaid = async (orderId: string) => {
     try {
       setLoading(true);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase.from as unknown as any)('orders').update({ status: 'paid' }).eq('id', orderId);
+      const { error } = await (supabase.from as unknown as { (table: string): { update: (fields: Record<string, unknown>) => { eq: (field: string, value: string) => Promise<{ error?: unknown }> } } })('orders').update({ status: 'paid' }).eq('id', orderId);
       if (error) throw error;
       toast({ title: 'Sukses', description: 'Pesanan ditandai sebagai dibayar' });
       await fetchPending();
@@ -206,8 +248,7 @@ export default function Payments() {
   const markCancelled = async (orderId: string) => {
     try {
       setLoading(true);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase.from as unknown as any)('orders').update({ status: 'cancelled' }).eq('id', orderId);
+      const { error } = await (supabase.from as unknown as { (table: string): { update: (fields: Record<string, unknown>) => { eq: (field: string, value: string) => Promise<{ error?: unknown }> } } })('orders').update({ status: 'cancelled' }).eq('id', orderId);
       if (error) throw error;
       toast({ title: 'Dibatalkan', description: 'Pesanan dibatalkan' });
       await fetchPending();
@@ -239,12 +280,10 @@ export default function Payments() {
       let orderWithItems = order;
       if (!orderWithItems.order_items || orderWithItems.order_items.length === 0) {
         try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const q = (supabase.from as unknown as any)('order_items').select('*').eq('order_id', order.id);
-          const res = (await q) as unknown;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const items = (res && (res as any).data ? (res as any).data : (res as any)) as Array<Record<string, unknown>>;
-          orderWithItems = { ...orderWithItems, order_items: items as OrderRow['order_items'] };
+          const q = (supabase.from as unknown as { (table: string): { select: (fields: string) => { eq: (field: string, value: string) => Promise<{ data: OrderRow['order_items']; error?: unknown }> } } })('order_items').select('*').eq('order_id', order.id);
+          const res = await q;
+          const items = (res && res.data ? res.data : []) as OrderRow['order_items'];
+          orderWithItems = { ...orderWithItems, order_items: items };
         } catch (err) {
           console.warn('Failed to fetch order_items for receipt; proceeding with existing items', err);
         }
@@ -355,7 +394,6 @@ export default function Payments() {
                     <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Order ID</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Customer</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Amount</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Referral</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Created</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Actions</th>
                   </tr>
@@ -366,7 +404,6 @@ export default function Payments() {
                       <td className="px-4 py-3 font-mono">{r.id}</td>
                       <td className="px-4 py-3">{r.customer_name ?? r.user_id ?? '-'}</td>
                       <td className="px-4 py-3">Rp {Number(r.total_amount ?? 0).toLocaleString('id-ID')}</td>
-                      <td className="px-4 py-3">{r.referral ? `Ya — ${r.referral.referrer_id}` : 'Tidak'}</td>
                       <td className="px-4 py-3">{new Date(r.created_at).toLocaleString()}</td>
                       <td className="px-4 py-3">
                         {/* Actions per-row: always show detail (Eye). If pending, also show Tandai Dibayar / Batal */}

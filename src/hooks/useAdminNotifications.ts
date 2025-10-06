@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useNotifications } from '@/contexts/notificationsContext';
 
 interface Order {
   id: string;
@@ -17,6 +19,8 @@ interface Order {
   [key: string]: unknown;
 }
 
+export function useAdminNotifications(isActive: boolean = true) {
+
 interface NotificationData {
   id: string;
   type: 'payment_verification' | 'shipping_pending' | 'order_cancelled';
@@ -29,12 +33,13 @@ interface NotificationData {
   notes?: string;
 }
 
-export function useAdminNotifications() {
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+  // get provider instance at top-level to satisfy hooks rules
+  const notificationsProvider = useNotifications();
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -111,12 +116,33 @@ export function useAdminNotifications() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchNotifications();
 
-    // Set up real-time subscription for orders
+    if (!isActive) return;
+    if (notificationsProvider) {
+      const listener = () => {
+        void fetchNotifications();
+      };
+      notificationsProvider.onOrderChange(listener);
+      return () => {
+        notificationsProvider.offOrderChange(listener);
+      };
+    }
+    
+
+    // Fallback to local subscription if provider not available
+    let refetchTimer: number | null = null;
+    const scheduleRefetch = () => {
+      if (refetchTimer) window.clearTimeout(refetchTimer);
+      refetchTimer = window.setTimeout(() => {
+        void fetchNotifications();
+        refetchTimer = null;
+      }, 500) as unknown as number;
+    };
+
     const subscription = supabase
       .channel('admin-notifications')
       .on(
@@ -128,16 +154,16 @@ export function useAdminNotifications() {
           filter: 'status.in.(pending,paid,cancelled)'
         },
         () => {
-          // Refetch notifications when orders change
-          fetchNotifications();
+          scheduleRefetch();
         }
       )
       .subscribe();
 
     return () => {
+      if (refetchTimer) window.clearTimeout(refetchTimer);
       subscription.unsubscribe();
     };
-  }, []);
+  }, [fetchNotifications, isActive, notificationsProvider]);
 
   const markAsRead = () => {
     setUnreadCount(0);

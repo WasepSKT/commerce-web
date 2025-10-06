@@ -57,15 +57,16 @@ export const RatingModal: React.FC<RatingModalProps> = ({
 
     setSubmitting(true);
     try {
-      const { error } = await supabase
-        .from('product_reviews')
-        .insert({
-          user_id: user.id,
-          order_id: orderId,
-          product_id: productId,
-          rating,
-          comment: comment.trim() || null,
-        });
+      // Use RPC to perform insert + mark order rated atomically
+      const rpcArgs: import('@/types/supabase').Database['public']['Functions']['insert_review_and_mark_order']['Args'] = {
+        p_user_id: user.id,
+        p_order_id: orderId,
+        p_product_id: productId,
+        p_rating: rating,
+        p_comment: comment.trim() || null
+      };
+
+      const { error } = await supabase.rpc('insert_review_and_mark_order', rpcArgs);
 
       if (error) throw error;
 
@@ -77,6 +78,8 @@ export const RatingModal: React.FC<RatingModalProps> = ({
       setOpen(false);
       setRating(0);
       setComment('');
+
+      // trigger UI refetch immediately
       onSuccess?.();
     } catch (error) {
       console.error('Error submitting review:', error);

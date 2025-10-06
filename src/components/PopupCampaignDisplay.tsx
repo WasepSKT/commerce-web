@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
-import type { Database } from '@/integrations/supabase/types';
+import type { Database } from '@/types/supabase';
 
 type PopupCampaign = Database['public']['Tables']['popup_campaigns']['Row'];
 

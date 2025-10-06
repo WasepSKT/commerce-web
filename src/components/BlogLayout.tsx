@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect, useCallback } from 'react';
 import { Layout } from '@/components/Layout';
 import { LeftFixedBanner, RightFixedBanner } from '@/components/FixedBannerDisplay';
 import { supabase } from '@/integrations/supabase/client';
-import type { Database } from '@/integrations/supabase/types';
+import type { Database } from '@/types/supabase';
 
 type BlogPost = Database['public']['Tables']['blogs']['Row'];
 

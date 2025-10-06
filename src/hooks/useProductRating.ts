@@ -54,7 +54,7 @@ export const useProductRating = (productId: string) => {
           .order('created_at', { ascending: false });
 
         // Fetch profiles separately untuk setiap review
-        let reviewsWithProfiles = [];
+        let reviewsWithProfiles: Review[] = [];
         if (reviews && reviews.length > 0) {
           const userIds = reviews.map(review => review.user_id);
           const { data: profiles } = await supabase
@@ -64,7 +64,7 @@ export const useProductRating = (productId: string) => {
 
           reviewsWithProfiles = reviews.map(review => ({
             ...review,
-            profiles: profiles?.find(profile => profile.user_id === review.user_id) || null
+            profiles: (profiles || []).find(profile => profile.user_id === review.user_id) || null
           }));
         }
 
@@ -72,11 +72,12 @@ export const useProductRating = (productId: string) => {
           throw reviewsError;
         }
 
-        const reviewList = reviews || [];
-        
+        // prefer the enriched list (with profiles) when available
+        const reviewList: Review[] = reviewsWithProfiles.length > 0 ? reviewsWithProfiles : (reviews || []);
+
         // Calculate statistics
         const totalReviews = reviewList.length;
-        const averageRating = totalReviews > 0 
+        const averageRating = totalReviews > 0
           ? reviewList.reduce((sum, review) => sum + review.rating, 0) / totalReviews
           : 0;
 

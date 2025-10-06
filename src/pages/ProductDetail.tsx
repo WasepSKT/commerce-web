@@ -24,6 +24,7 @@ import {
 import useCart from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import { StarRating, RatingDistribution } from '@/components/ui/StarRating';
+import { maskName } from '@/lib/maskName';
 import { useProductRating } from '@/hooks/useProductRating';
 
 interface Product {
@@ -565,7 +566,7 @@ export default function ProductDetail() {
                           <div className="flex items-start justify-between mb-2">
                             <div>
                               <p className="font-medium text-sm">
-                                {review.profiles?.full_name || 'Pembeli'}
+                                {maskName(review.profiles?.full_name, 1)}
                               </p>
                               <StarRating rating={review.rating} size="sm" />
                             </div>

@@ -1,5 +1,7 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useNotifications } from '@/contexts/notificationsContext';
 import { useAuth } from './useAuth';
 
 interface Order {
@@ -30,11 +32,13 @@ interface CustomerNotificationData {
   total_amount?: number;
 }
 
-export function useCustomerNotifications() {
+export function useCustomerNotifications(isActive: boolean = true) {
   const [notifications, setNotifications] = useState<CustomerNotificationData[]>([]);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
   const { user } = useAuth();
+  // provider instance (call at top-level to satisfy hooks rules)
+  const notificationsProvider = useNotifications();
 
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
@@ -137,7 +141,28 @@ export function useCustomerNotifications() {
 
     fetchNotifications();
 
-    // Set up real-time subscription for customer orders
+    if (!isActive) return;
+
+    if (notificationsProvider) {
+      const listener = () => {
+        void fetchNotifications();
+      };
+      notificationsProvider.onOrderChange(listener);
+      return () => {
+        notificationsProvider.offOrderChange(listener);
+      };
+    }
+
+    // Fallback to local subscription if provider not available
+    let refetchTimer: number | null = null;
+    const scheduleRefetch = () => {
+      if (refetchTimer) window.clearTimeout(refetchTimer);
+      refetchTimer = window.setTimeout(() => {
+        void fetchNotifications();
+        refetchTimer = null;
+      }, 500) as unknown as number;
+    };
+
     const subscription = supabase
       .channel('customer-notifications')
       .on(
@@ -149,16 +174,16 @@ export function useCustomerNotifications() {
           filter: `user_id=eq.${user.id}`
         },
         () => {
-          // Refetch notifications when orders change
-          fetchNotifications();
+          scheduleRefetch();
         }
       )
       .subscribe();
 
     return () => {
+      if (refetchTimer) window.clearTimeout(refetchTimer);
       subscription.unsubscribe();
     };
-  }, [user, fetchNotifications]);
+  }, [user, fetchNotifications, isActive, notificationsProvider]);
 
   const markAsRead = () => {
     setUnreadCount(0);

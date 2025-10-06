@@ -60,6 +60,8 @@ interface Order {
   notes?: string | null;
   created_at: string;
   updated_at: string;
+  rating?: number | null;
+  rated_at?: string | null;
   order_items: OrderItem[];
 }
 
@@ -591,15 +593,27 @@ export default function MyOrders() {
 
                               {/* Rating Button - untuk status completed */}
                               {(order.status === 'completed') && order.order_items && order.order_items.length > 0 && (
-                                <RatingModal
-                                  key={`order-${order.id}`}
-                                  orderId={order.id}
-                                  productId={order.order_items[0].product_id}
-                                  productName={`Pesanan #${order.id.slice(0, 8)}`}
-                                  onSuccess={() => {
-                                    void fetchMyOrders();
-                                  }}
-                                />
+                                order.rating == null ? (
+                                  <RatingModal
+                                    key={`order-${order.id}`}
+                                    orderId={order.id}
+                                    productId={order.order_items[0].product_id}
+                                    productName={`Pesanan #${order.id.slice(0, 8)}`}
+                                    onSuccess={() => {
+                                      void fetchMyOrders();
+                                    }}
+                                  />
+                                ) : (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled
+                                    className="border-primary text-primary disabled:opacity-50"
+                                  >
+                                    <Star className="h-4 w-4 mr-1" />
+                                    Sudah Dinilai
+                                  </Button>
+                                )
                               )}
 
                               {/* Confirm Delivery - untuk status shipped */}

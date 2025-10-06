@@ -7,7 +7,7 @@ import { Calendar, User, ArrowRight, FileText, BookOpen } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { createExcerpt } from '@/lib/textUtils';
-import type { Database } from '@/integrations/supabase/types';
+import type { Database } from '@/types/supabase';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 

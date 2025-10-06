@@ -6,6 +6,7 @@ import { Layout } from '@/components/Layout';
 import useCart from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { Database } from '@/types/supabase';
 import { useToast } from '@/hooks/use-toast';
 import EmptyState from '@/components/ui/EmptyState';
 import {
@@ -25,6 +26,18 @@ interface Product {
   image_url?: string;
   stock_quantity?: number;
 }
+
+// Type for referral_purchases table sesuai schema
+type ReferralPurchase = {
+  id?: string;
+  referrer_id: string;
+  referred_id?: string;
+  order_id: string;
+  amount: number;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+};
 
 export default function CartPage() {
   const { items, map, totalItems, update, removeItem, clear } = useCart();
@@ -235,8 +248,7 @@ export default function CartPage() {
   const createPendingOrder = async (): Promise<string> => {
     if (pendingOrderId) return pendingOrderId;
     if (creatingOrder) {
-      // wait until creatingOrder finished; poll for pendingOrderId
-      // simple polling to avoid race conditions
+      // ...existing code...
       return new Promise((resolve, reject) => {
         const start = Date.now();
         const interval = setInterval(() => {
@@ -290,6 +302,26 @@ export default function CartPage() {
           console.error('Failed rollback after item insert failure', delErr);
         }
         throw new Error('Gagal menyimpan item pesanan');
+      }
+
+      // Insert referral purchase if user was referred
+      if (profile?.referred_by) {
+        try {
+
+          const referralPayload: Database['public']['Tables']['referral_purchases']['Insert'] = {
+            order_id: orderId,
+            referrer_id: profile.referred_by,
+            referred_id: profile?.user_id ?? undefined,
+            amount: subtotal,
+            status: 'pending',
+            // created_at, updated_at will be set by DB default
+          };
+          await supabase
+            .from('referral_purchases')
+            .insert([referralPayload]);
+        } catch (refErr) {
+          console.error('Failed to insert referral purchase', refErr);
+        }
       }
 
       setPendingOrderId(orderId);

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { Database } from '@/integrations/supabase/types';
+import type { Database } from '@/types/supabase';
 
 type HeroSliderItem = Database['public']['Tables']['hero_slider_items']['Row'];
 
@@ -143,8 +143,8 @@ export function HeroSliderCarousel() {
               key={index}
               onClick={() => goToSlide(index)}
               className={`w-3 h-3 rounded-full transition-all ${index === currentIndex
-                  ? 'bg-white'
-                  : 'bg-white/50 hover:bg-white/70'
+                ? 'bg-white'
+                : 'bg-white/50 hover:bg-white/70'
                 }`}
             />
           ))}

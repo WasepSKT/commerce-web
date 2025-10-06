@@ -42,12 +42,17 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import Loading from "@/components/ui/Loading";
 import { useAuth } from "@/hooks/useAuth";
+import { useReferral } from "@/hooks/useReferral";
+import { useToast } from "@/hooks/use-toast";
+import { useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import ScrollToTopOnNav from './components/ScrollToTopOnNav';
 
 const queryClient = new QueryClient();
 
 export default function App() {
   const { loading } = useAuth();
+  useReferral();
 
   return (
     <QueryClientProvider client={queryClient}>

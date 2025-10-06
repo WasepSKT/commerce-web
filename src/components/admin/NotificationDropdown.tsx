@@ -22,7 +22,7 @@ export function NotificationDropdown() {
     if (notificationType === 'payment_verification') {
       navigate('/admin/payments');
     } else if (notificationType === 'shipping_pending') {
-      navigate('/admin/shipings');
+      navigate('/admin/shipping');
     } else {
       navigate('/admin/orders');
     }

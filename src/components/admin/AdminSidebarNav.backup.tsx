@@ -40,10 +40,11 @@ export default function AdminSidebarNav() {
 
   // Check if any referral submenu is active
   const isReferralActive = location.pathname.startsWith('/admin/referral');
-  
+
   // Get user role for permission checks
   const userRole = (profile?.role as UserRole) || 'customer';
-  
+  // Define isAdmin for sidebar permission (valid roles only)
+  const isAdmin = userRole === 'admin' || userRole === 'marketing' || userRole === 'admin_sales';
   // Check if user can access admin panel at all
   if (!isAuthenticated || !canAccessAdmin(userRole)) {
     return null;
@@ -178,16 +179,16 @@ export default function AdminSidebarNav() {
 
           {isAuthenticated && isAdmin && (
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isActive('/admin/shipings')}>
+              <SidebarMenuButton asChild isActive={isActive('/admin/shipping')}>
                 <Link
-                  to="/admin/shipings"
-                  className={`sidebar-link flex items-center gap-4 px-4 py-3 rounded-l-md transition-colors text-base ${isActive('/admin/shipings')
+                  to="/admin/shipping"
+                  className={`sidebar-link flex items-center gap-4 px-4 py-3 rounded-l-md transition-colors text-base ${isActive('/admin/shipping')
                     ? 'sidebar-link--active text-primary-foreground font-semibold'
                     : 'text-muted-foreground hover:bg-muted/10 hover:text-muted-foreground'
                     }`}
-                  aria-current={isActive('/admin/shipings') ? 'page' : undefined}
+                  aria-current={isActive('/admin/shipping') ? 'page' : undefined}
                 >
-                  <Truck className={`h-5 w-5 ${isActive('/admin/shipings') ? 'text-primary-foreground' : ''}`} />
+                  <Truck className={`h-5 w-5 ${isActive('/admin/shipping') ? 'text-primary-foreground' : ''}`} />
                   <span className="text-base">Shipings</span>
                 </Link>
               </SidebarMenuButton>
@@ -201,8 +202,8 @@ export default function AdminSidebarNav() {
                 onClick={() => setIsReferralOpen(!isReferralOpen)}
                 isActive={isReferralActive}
                 className={`sidebar-link flex items-center justify-between gap-4 px-4 py-3 rounded-l-md transition-colors text-base w-full ${isReferralActive
-                    ? 'sidebar-link--active text-primary-foreground font-semibold'
-                    : 'text-muted-foreground hover:bg-muted/10 hover:text-muted-foreground'
+                  ? 'sidebar-link--active text-primary-foreground font-semibold'
+                  : 'text-muted-foreground hover:bg-muted/10 hover:text-muted-foreground'
                   }`}
               >
                 <div className="flex items-center gap-4">
@@ -224,8 +225,8 @@ export default function AdminSidebarNav() {
                       <Link
                         to="/admin/referrals"
                         className={`sidebar-link flex items-center gap-3 pl-12 pr-4 py-2 rounded-l-md transition-colors text-sm ${location.pathname === '/admin/referrals'
-                            ? 'sidebar-link--active text-primary-foreground font-semibold'
-                            : 'text-muted-foreground hover:bg-muted/10 hover:text-muted-foreground'
+                          ? 'sidebar-link--active text-primary-foreground font-semibold'
+                          : 'text-muted-foreground hover:bg-muted/10 hover:text-muted-foreground'
                           }`}
                         aria-current={location.pathname === '/admin/referrals' ? 'page' : undefined}
                       >
@@ -240,8 +241,8 @@ export default function AdminSidebarNav() {
                       <Link
                         to="/admin/referrals/purchases"
                         className={`sidebar-link flex items-center gap-3 pl-12 pr-4 py-2 rounded-l-md transition-colors text-sm ${location.pathname === '/admin/referrals/purchases'
-                            ? 'sidebar-link--active text-primary-foreground font-semibold'
-                            : 'text-muted-foreground hover:bg-muted/10 hover:text-muted-foreground'
+                          ? 'sidebar-link--active text-primary-foreground font-semibold'
+                          : 'text-muted-foreground hover:bg-muted/10 hover:text-muted-foreground'
                           }`}
                         aria-current={location.pathname === '/admin/referrals/purchases' ? 'page' : undefined}
                       >
@@ -256,8 +257,8 @@ export default function AdminSidebarNav() {
                       <Link
                         to="/admin/referrals/settings"
                         className={`sidebar-link flex items-center gap-3 pl-12 pr-4 py-2 rounded-l-md transition-colors text-sm ${location.pathname === '/admin/referrals/settings'
-                            ? 'sidebar-link--active text-primary-foreground font-semibold'
-                            : 'text-muted-foreground hover:bg-muted/10 hover:text-muted-foreground'
+                          ? 'sidebar-link--active text-primary-foreground font-semibold'
+                          : 'text-muted-foreground hover:bg-muted/10 hover:text-muted-foreground'
                           }`}
                         aria-current={location.pathname === '/admin/referrals/settings' ? 'page' : undefined}
                       >
