@@ -22,7 +22,7 @@ export default function ReferralCareerSection() {
               Bergabunglah dengan tim kami atau dapatkan penghasilan tambahan melalui
               program referral yang menguntungkan.
             </p>
-            <div className="mt-6 flex justify-center lg:justify-start w-full">
+            <div className="mt-6 flex justify-center lg:justify-end w-full">
               <img src={referralImg} alt="Referral" className="w-full object-contain" />
             </div>
           </ResponsiveAOS>
@@ -71,7 +71,7 @@ export default function ReferralCareerSection() {
                 </div>
               </div>
 
-              <div className="mt-6">
+              <div className="mt-6 flex justify-center lg:justify-end">
                 <Link to="/signup" aria-label="Daftar Sekarang">
                   <Button
                     className="bg-white text-brand rounded-full px-6 py-3 inline-flex items-center gap-2 transform transition-transform duration-200 hover:translate-x-1 hover:bg-white hover:text-brand/90"

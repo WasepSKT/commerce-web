@@ -304,6 +304,24 @@ export default function CartPage() {
         throw new Error('Gagal menyimpan item pesanan');
       }
 
+      // Optional: decrement stock via RPC (requires server-side SECURITY DEFINER function)
+      try {
+        // If the RPC is not yet created, this will no-op with an error which we ignore
+        // Expecting a function signature like: decrement_stock_for_order(order_id uuid)
+        // The function should decrement products.stock_quantity by order_items.quantity for the given order
+        // and guard against negatives (e.g., GREATEST(stock_quantity - qty, 0)).
+        const rpc = (supabase as unknown as { rpc: (name: string, args?: Record<string, unknown>) => Promise<unknown> }).rpc;
+        const rpcRes = await rpc('decrement_stock_for_order', { order_id: orderId });
+        const resObj = rpcRes as { error?: unknown } | null;
+        if (resObj?.error) {
+          // Non-fatal if RPC missing or blocked by RLS; log only
+          // console.warn('decrement_stock_for_order RPC failed/nonexistent', resObj.error);
+        }
+      } catch (stockErr) {
+        // Non-fatal: continue flow
+        // console.warn('Failed to call decrement_stock_for_order RPC', stockErr);
+      }
+
       // Insert referral purchase if user was referred
       if (profile?.referred_by) {
         try {
@@ -322,6 +340,14 @@ export default function CartPage() {
         } catch (refErr) {
           console.error('Failed to insert referral purchase', refErr);
         }
+      }
+
+      // Clear cart on successful checkout creation
+      try {
+        clear();
+        localStorage.removeItem('rp_cart_v1');
+      } catch (_) {
+        // ignore
       }
 
       setPendingOrderId(orderId);

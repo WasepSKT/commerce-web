@@ -306,6 +306,32 @@ export default function MyOrders() {
 
       if (error) throw error;
 
+      // Best-effort: record referral purchase via RPC in case DB trigger doesn't fire
+      try {
+        type OrdRow = { id: string; user_id?: string | null; total_amount?: number | null };
+        const ordRes = await (supabase
+          .from('orders')
+          .select('id, user_id, total_amount')
+          .eq('id', orderId)
+          .single());
+        const order = ordRes && 'data' in ordRes && ordRes.data ? (ordRes.data as OrdRow) : null;
+        if (order && order.id && order.user_id) {
+          const buyerUserId = String(order.user_id);
+          const totalAmount = Number(order.total_amount || 0);
+          const { error: rpcError } = await supabase.rpc('handle_referral_purchase', {
+            order_id_input: String(order.id),
+            buyer_user_id: buyerUserId,
+            purchase_amount: totalAmount,
+          });
+          if (rpcError) {
+            // Non-fatal: just log; UI continues
+            console.warn('handle_referral_purchase RPC failed (non-fatal):', rpcError);
+          }
+        }
+      } catch (rpcErr) {
+        console.warn('Failed to call handle_referral_purchase RPC (non-fatal):', rpcErr);
+      }
+
       toast({
         title: 'Pesanan dikonfirmasi',
         description: 'Terima kasih! Pesanan Anda telah dikonfirmasi sebagai diterima.'

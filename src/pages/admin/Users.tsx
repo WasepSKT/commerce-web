@@ -255,8 +255,22 @@ export default function AdminUsersPage() {
                         <TableCell className="text-sm text-muted-foreground">{formatDateIso(u.updated_at)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-2 justify-end">
-                            <Button size="sm" variant="ghost" onClick={() => setEditing(u)}><Edit className="h-4 w-4" /></Button>
-                            <Button size="sm" variant="destructive" onClick={() => setDeleting(u)}><Trash2 className="h-4 w-4" /></Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="hover:bg-primary/10 hover:text-primary"
+                              onClick={() => setEditing(u)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              onClick={() => setDeleting(u)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>

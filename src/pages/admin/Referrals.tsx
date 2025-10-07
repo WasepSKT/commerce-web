@@ -74,8 +74,6 @@ export default function Referrals() {
         setReferrals([]);
         return;
       }
-
-      console.log('Referrals data:', data);
       setReferrals(data || []);
       setTotal(count || 0);
     } finally {

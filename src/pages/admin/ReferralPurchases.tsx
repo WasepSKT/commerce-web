@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/types/supabase';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type PurchaseRow = Database['public']['Tables']['referral_purchases']['Row'] & {
   referrer_name?: string | null;
@@ -25,7 +26,7 @@ export default function ReferralPurchases() {
   const [loading, setLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<PurchaseRow | null>(null);
-  const [confirmAction, setConfirmAction] = useState<'complete' | 'cancel' | 'refund' | null>(null);
+  const [confirmAction, setConfirmAction] = useState<'complete' | 'cancel' | null>(null);
 
   const fetchPurchases = async () => {
     setLoading(true);
@@ -77,13 +78,26 @@ export default function ReferralPurchases() {
     }
   };
 
-  const markStatus = async (orderId: string, status: string) => {
+  const markStatus = async (purchaseId: string, status: string) => {
     try {
       setLoading(true);
-      const { error } = await supabase.from('referral_purchases').update({ status }).eq('order_id', orderId);
-      if (error) throw error;
+      // Saat membatalkan komisi, cukup ubah status ke pending tanpa mengubah nilai komisi
+      const payload = { status };
+      const { data: updatedRow, error } = await supabase
+        .from('referral_purchases')
+        .update(payload)
+        .eq('id', purchaseId)
+        .select('id')
+        .single();
+      if (error) {
+        console.error('Update referral_purchases failed:', error);
+        throw error;
+      }
+      if (!updatedRow) {
+        console.warn('No row returned after update (possible RLS block or no match). purchaseId=', purchaseId);
+      }
       await fetchPurchases();
-      toast({ title: 'Berhasil', description: `Status diperbarui: ${status}` });
+      toast({ title: 'Berhasil', description: status === 'pending' ? 'Komisi dibatalkan (status kembali pending).' : `Status diperbarui: ${status}` });
     } catch (err) {
       console.error(err);
       toast({ title: 'Gagal', description: String(err) });
@@ -92,7 +106,7 @@ export default function ReferralPurchases() {
     }
   };
 
-  const markSingleWithConfirm = (p: PurchaseRow, action: 'complete' | 'cancel' | 'refund') => {
+  const markSingleWithConfirm = (p: PurchaseRow, action: 'complete' | 'cancel') => {
     setConfirmTarget(p);
     setConfirmAction(action);
     setConfirming(true);
@@ -100,13 +114,12 @@ export default function ReferralPurchases() {
 
   const confirmMarkSingle = async () => {
     if (!confirmTarget || !confirmAction) return;
-    const orderId = String(confirmTarget.order_id);
+    const purchaseId = String(confirmTarget.id);
     if (confirmAction === 'complete') {
-      await markCompleted([orderId]);
+      await markCompleted([String(confirmTarget.order_id)]);
     } else if (confirmAction === 'cancel') {
-      await markStatus(orderId, 'cancelled');
-    } else if (confirmAction === 'refund') {
-      await markStatus(orderId, 'refunded');
+      // Batalkan komisi: kembalikan ke pending
+      await markStatus(purchaseId, 'pending');
     }
     setConfirming(false);
     setConfirmTarget(null);
@@ -134,7 +147,25 @@ export default function ReferralPurchases() {
             </div>
           </div>
 
-          {purchases.length === 0 ? (
+          {loading ? (
+            <div className="rounded border divide-y">
+              <div className="p-4 flex items-center justify-between">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="grid grid-cols-5 gap-4 p-4 items-center">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-24" />
+                  <div className="flex items-center justify-end">
+                    <Skeleton className="h-8 w-28" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : purchases.length === 0 ? (
             <div className="py-12">
               <EmptyState
                 title="Tidak ada pembelian tercatat"
@@ -176,10 +207,7 @@ export default function ReferralPurchases() {
                               <div className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600" /> <span>Tandai Selesai</span></div>
                             </DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => markSingleWithConfirm(p, 'cancel')}>
-                              <div className="flex items-center gap-2"><XCircle className="w-4 h-4 text-red-600" /> <span>Batalkan</span></div>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => markSingleWithConfirm(p, 'refund')}>
-                              <div className="flex items-center gap-2"><RefreshCw className="w-4 h-4 text-yellow-600" /> <span>Tandai Refund</span></div>
+                              <div className="flex items-center gap-2"><XCircle className="w-4 h-4 text-red-600" /> <span>Batalkan Komisi (Pending)</span></div>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -196,21 +224,19 @@ export default function ReferralPurchases() {
       <Dialog open={confirming} onOpenChange={(o) => { setConfirming(o); if (!o) setConfirmTarget(null); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{confirmAction === 'cancel' ? 'Batalkan pembelian ini?' : confirmAction === 'refund' ? 'Tandai pembelian ini sebagai refund?' : 'Yakin menandai pembelian ini selesai?'}</DialogTitle>
+            <DialogTitle>{confirmAction === 'cancel' ? 'Batalkan komisi (ubah ke pending)?' : 'Yakin menandai pembelian ini selesai?'}</DialogTitle>
             <DialogDescription>
               {confirmAction === 'cancel' ? (
-                <>Anda akan membatalkan entri referral untuk order <span className="font-mono">{confirmTarget?.order_id}</span>. Tindakan ini tidak akan menghapus data, hanya mengubah status.</>
-              ) : confirmAction === 'refund' ? (
-                <>Anda akan menandai entri referral <span className="font-mono">{confirmTarget?.order_id}</span> sebagai refund. Pastikan refund sudah diproses di sistem pembayaran.</>
+                <>Status entri referral untuk order <span className="font-mono">{confirmTarget?.order_id}</span> akan dikembalikan ke <strong>pending</strong>. Agregat komisi akan disesuaikan otomatis.</>
               ) : (
-                <>Anda akan menandai pesanan referral <span className="font-mono">{confirmTarget?.order_id}</span> sebagai completed. Tindakan ini akan menjalankan proses verifikasi dan menutup entri ini.</>
+                <>Anda akan menandai pesanan referral <span className="font-mono">{confirmTarget?.order_id}</span> sebagai <strong>completed</strong>.</>
               )}
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 flex gap-2 justify-end">
             <DialogFooter>
               <Button variant="ghost" onClick={() => { setConfirming(false); setConfirmTarget(null); setConfirmAction(null); }}>Batal</Button>
-              <Button onClick={() => void confirmMarkSingle()} disabled={loading}>{loading ? 'Memproses...' : confirmAction === 'cancel' ? 'Ya, Batalkan' : confirmAction === 'refund' ? 'Ya, Tandai Refund' : 'Ya, Tandai Selesai'}</Button>
+              <Button onClick={() => void confirmMarkSingle()} disabled={loading}>{loading ? 'Memproses...' : confirmAction === 'cancel' ? 'Ya, Kembalikan ke Pending' : 'Ya, Tandai Selesai'}</Button>
             </DialogFooter>
           </div>
         </DialogContent>
