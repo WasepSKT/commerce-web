@@ -26,15 +26,17 @@ export class ReferralLevelService {
   ): Promise<{ error: Error | null }> {
     const min = parseAmount(formData.min_amount ?? '0') ?? 0;
     const max = parseAmount(formData.max_amount ?? null);
-    
-    // formData.weight is already in integer percentage format (5 for 5%), use directly
-    const weight = formData.weight ?? 5; // default 5%
+
+    // prefer commission_pct if provided (UI supplies percentage like 5). Convert to DB decimal (0.05).
+    const displayPct: number = formData.commission_pct ?? formData.weight ?? 5;
+    const commission_pct_db: number = Number(displayPct) / 100; // 5 -> 0.05
 
     const payload = {
       name: formData.name,
       min_amount: min,
       max_amount: max,
-      weight: weight, // Store as decimal (e.g., 0.05 for 5%)
+      commission_pct: commission_pct_db, // stored as decimal fraction (e.g. 0.05)
+      // legacy: do not write `weight` anymore; DB migration removed this column
       priority: Number(formData.priority ?? 0),
       active: Boolean(formData.active ?? true),
     };

@@ -169,74 +169,107 @@ DECLARE
   buyer_profile RECORD;
   referrer_profile RECORD;
   referral_settings_record RECORD;
-  purchase_reward_percentage NUMERIC;
   purchase_reward_points INTEGER;
-  result JSON;
 BEGIN
-  -- Get active referral settings
+  -- Get active referral settings (optional)
   SELECT * INTO referral_settings_record 
   FROM referral_settings 
   WHERE active = true 
   ORDER BY created_at DESC 
   LIMIT 1;
-  
+
   -- Get buyer profile and their referrer
   SELECT p.id, p.user_id, p.referred_by INTO buyer_profile 
   FROM profiles p
   WHERE p.user_id = buyer_user_id;
-  
+
   IF NOT FOUND THEN
     RETURN json_build_object('success', false, 'message', 'Buyer profile not found');
   END IF;
-  
+
   -- Check if buyer has a referrer
   IF buyer_profile.referred_by IS NULL THEN
     RETURN json_build_object('success', false, 'message', 'Buyer has no referrer');
   END IF;
-  
+
   -- Get referrer profile
   SELECT * INTO referrer_profile 
   FROM profiles 
   WHERE id = buyer_profile.referred_by;
-  
+
   IF NOT FOUND THEN
     RETURN json_build_object('success', false, 'message', 'Referrer profile not found');
   END IF;
-  
+
   -- Check minimum purchase amount requirement
-  IF referral_settings_record.min_purchase_amount IS NOT NULL THEN
-    IF purchase_amount < referral_settings_record.min_purchase_amount THEN
-      RETURN json_build_object('success', false, 'message', 'Purchase amount below minimum requirement');
-    END IF;
-  END IF;
-  
+  -- NOTE: min_purchase_amount was removed from schema; previously this checked a threshold. Keep behavior permissive here.
+
   -- Check if this order already has a referral purchase record
   IF EXISTS (SELECT 1 FROM referral_purchases WHERE order_id = order_id_input) THEN
     RETURN json_build_object('success', false, 'message', 'Order already processed for referral');
   END IF;
-  
-  -- Calculate purchase reward (percentage of purchase amount converted to points)
-  -- Assume 1% of purchase amount = reward points (or use settings if available)
+
+  -- Calculate purchase reward points (used later on approval)
   purchase_reward_points := GREATEST((purchase_amount * 0.01)::INTEGER, 1);
-  
-  -- Insert referral purchase record
+
+  -- Insert referral purchase record with status 'pending'. Admin must approve to credit the referrer.
   INSERT INTO referral_purchases (referrer_id, referred_id, order_id, amount, status)
-  VALUES (referrer_profile.id, buyer_profile.id, order_id_input, purchase_amount, 'completed');
-  
-  -- Update referrer's reward points
-  UPDATE profiles 
-  SET reward_points = COALESCE(reward_points, 0) + purchase_reward_points
-  WHERE id = referrer_profile.id;
-  
-  -- Recompute referral score (levels are based on purchase totals)
-  PERFORM fn_recompute_referrer_score(referrer_profile.id);
-  
+  VALUES (referrer_profile.id, buyer_profile.id, order_id_input, purchase_amount, 'pending');
+
   RETURN json_build_object(
-    'success', true, 
-    'message', 'Purchase referral processed successfully',
-    'reward_points', purchase_reward_points,
+    'success', true,
+    'message', 'Purchase recorded for referral approval',
     'referrer_id', referrer_profile.id,
     'purchase_amount', purchase_amount
+  );
+END;
+$$;
+
+-- New function: approve a pending referral purchase and credit reward points to the referrer
+CREATE OR REPLACE FUNCTION public.approve_referral_purchase(
+  purchase_id_input UUID
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  rp RECORD;
+  purchase_reward_points INTEGER;
+BEGIN
+  -- Load the referral purchase
+  SELECT * INTO rp FROM referral_purchases WHERE id = purchase_id_input;
+  IF NOT FOUND THEN
+    RETURN json_build_object('success', false, 'message', 'Referral purchase not found');
+  END IF;
+
+  -- If already completed, return idempotent response
+  IF rp.status = 'completed' THEN
+    RETURN json_build_object('success', false, 'message', 'Referral already approved');
+  END IF;
+
+  -- Compute reward points (same logic as when created)
+  purchase_reward_points := GREATEST((rp.amount * 0.01)::INTEGER, 1);
+
+  -- Credit referrer's reward points
+  UPDATE profiles
+  SET reward_points = COALESCE(reward_points, 0) + purchase_reward_points
+  WHERE id = rp.referrer_id;
+
+  -- Mark referral purchase as completed
+  UPDATE referral_purchases
+  SET status = 'completed', updated_at = now()
+  WHERE id = purchase_id_input;
+
+  -- Recompute referral score
+  PERFORM fn_recompute_referrer_score(rp.referrer_id);
+
+  RETURN json_build_object(
+    'success', true,
+    'message', 'Referral approved and referrer credited',
+    'referrer_id', rp.referrer_id,
+    'reward_points', purchase_reward_points
   );
 END;
 $$;

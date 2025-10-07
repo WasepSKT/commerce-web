@@ -21,7 +21,8 @@ begin
     where order_id = any(order_ids) and status <> 'completed'
     returning referrer_id
   )
-  select array_agg(distinct referrer_id) into affected_referrers from updated;
+  -- ARRAY(SELECT DISTINCT ...) avoids aggregate-context issues in some environments
+  select array(SELECT DISTINCT referrer_id FROM updated) into affected_referrers;
 
   if affected_referrers is not null then
     -- recompute for each affected referrer

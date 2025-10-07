@@ -42,7 +42,8 @@ export default function Dashboard() {
     totalOrders: 0,
     totalSpent: 0,
     totalReferrals: 0,
-    rewardPoints: 0
+    rewardPoints: 0,
+    referralCommission: 0
   });
   const { toast } = useToast();
 
@@ -86,9 +87,33 @@ export default function Dashboard() {
       const pointsFromBeingReferred = referredData?.reduce((sum, referral) => sum + (referral.reward_points || 0), 0) || 0;
       const rewardPoints = pointsFromReferring + pointsFromBeingReferred;
 
+      // Fetch referral commission total (sum of completed referral_purchases.commission_amount where user is the referrer)
+      let referralCommission = 0;
+      try {
+        const { data: commissionDataRaw, error: commissionError } = await supabase
+          .from('referral_purchases')
+          // prefer commission_amount, but do not throw if column missing in older schemas
+          .select('commission_amount, amount')
+          .match({ referrer_id: profile?.id, status: 'completed' });
+
+        if (commissionError) throw commissionError;
+
+        if (Array.isArray(commissionDataRaw)) {
+          referralCommission = commissionDataRaw.reduce((sum, r) => {
+            // r can be unknown; guard before accessing properties
+            if (!r || typeof r !== 'object') return sum;
+            const obj = r as { commission_amount?: number | string; amount?: number | string };
+            const commissionVal = obj.commission_amount ?? obj.amount ?? 0;
+            return sum + Number(commissionVal || 0);
+          }, 0);
+        }
+      } catch (e) {
+        console.error('Error fetching referral commission:', e);
+      }
+
       setOrders(ordersData || []);
       setReferrals(referralsData || []);
-      setStats({ totalOrders, totalSpent, totalReferrals, rewardPoints });
+      setStats({ totalOrders, totalSpent, totalReferrals, rewardPoints, referralCommission });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -121,6 +146,13 @@ export default function Dashboard() {
     }).format(price);
   };
 
+  const abbreviate = (n: number) => {
+    if (n >= 1000000000) return `${Math.round(n / 1000000) / 1000} Miliar`;
+    if (n >= 1000000) return `${Math.round(n / 1000000)} Juta`;
+    if (n >= 1000) return `${Math.round(n / 1000)} Ribu`;
+    return n.toString();
+  };
+
   const getStatusBadge = (status: string) => {
     const statusMap = {
       pending: { label: 'Menunggu', variant: 'secondary' as const },
@@ -148,7 +180,7 @@ export default function Dashboard() {
       {/* Popup Campaign Display */}
       <PopupCampaignDisplay onDashboardLogin={true} />
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="w-full max-w-full px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2 text-brand text-center md:text-left">Dashboard</h1>
           <p className="text-muted-foreground text-center md:text-left">
@@ -174,7 +206,7 @@ export default function Dashboard() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8 w-full max-w-full">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -192,7 +224,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Total Belanja</p>
-                    <p className="text-2xl font-bold">{formatPrice(stats.totalSpent)}</p>
+                    <p className="text-2xl font-bold" title={formatPrice(stats.totalSpent)}>{abbreviate(stats.totalSpent)}</p>
                   </div>
                   <Gift className="h-8 w-8 text-primary" />
                 </div>
@@ -219,6 +251,17 @@ export default function Dashboard() {
                     <p className="text-2xl font-bold">{stats.rewardPoints}</p>
                   </div>
                   <Gift className="h-8 w-8 text-primary" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Komisi Referral</p>
+                    <p className="text-2xl font-bold" title={formatPrice(stats.referralCommission)}>{abbreviate(stats.referralCommission)}</p>
+                  </div>
+                  <Copy className="h-8 w-8 text-primary" />
                 </div>
               </CardContent>
             </Card>

@@ -148,7 +148,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          created_at?: string
+               /* dropped: min_purchase_amount column removed from DB */
           email: string
           full_name?: string | null
           id?: string
@@ -159,7 +159,7 @@ export type Database = {
           updated_at?: string
           user_id: string
         }
-        Update: {
+               /* dropped: min_purchase_amount */
           created_at?: string
           email?: string
           full_name?: string | null
@@ -170,7 +170,7 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           user_id?: string
-        }
+               /* dropped: min_purchase_amount */
         Relationships: [
           {
             foreignKeyName: "profiles_referred_by_fkey"
@@ -190,7 +190,7 @@ export type Database = {
           reward_value: number | null
           max_per_referrer: number | null
           expiration_days: number | null
-          min_purchase_amount: number | null
+          /* min_purchase_amount column dropped from DB */
           created_at: string
           updated_at: string
         }
@@ -202,7 +202,7 @@ export type Database = {
           reward_value?: number | null
           max_per_referrer?: number | null
           expiration_days?: number | null
-          min_purchase_amount?: number | null
+          /* min_purchase_amount dropped */
           created_at?: string
           updated_at?: string
         }
@@ -214,7 +214,7 @@ export type Database = {
           reward_value?: number | null
           max_per_referrer?: number | null
           expiration_days?: number | null
-          min_purchase_amount?: number | null
+          /* min_purchase_amount dropped */
           created_at?: string
           updated_at?: string
         }

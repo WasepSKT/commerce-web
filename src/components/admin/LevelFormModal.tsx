@@ -27,8 +27,8 @@ export function LevelFormModal({
   setFormData,
   formError
 }: LevelFormModalProps) {
-  // Weight is already in percentage format (integer), use directly
-  const displayPercentage = formData.weight ?? 5;
+  // Commission percent stored as decimal percentage (e.g. 5 for 5%)
+  const displayPercentage = formData.commission_pct ?? 5;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -118,7 +118,7 @@ export function LevelFormModal({
                     value={String(displayPercentage)}
                     onChange={(e) => {
                       const percentage = Number(e.target.value);
-                      setFormData(prev => ({ ...prev, weight: percentage })); // Direct assignment since weight is percentage
+                      setFormData(prev => ({ ...prev, commission_pct: percentage }));
                     }}
                     className="h-11"
                   />

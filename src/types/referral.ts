@@ -7,7 +7,6 @@ export type Settings = {
   reward_value?: number | null;
   max_per_referrer?: number | null;
   expiration_days?: number | null;
-  min_purchase_amount?: number | null;
 };
 
 // Fix: Use 'weight' instead of 'percentage' to match database schema
@@ -16,7 +15,9 @@ export type LevelRow = {
   name: string;
   min_amount: string;
   max_amount?: string | null;
-  weight: number; // Changed from 'percentage' to 'weight'
+  // legacy 'weight' kept for backwards compatibility; prefer 'commission_pct'
+  weight?: number;
+  commission_pct?: number | null; // percentage value (e.g. 5 = 5%)
   priority: number;
   active: boolean;
 };

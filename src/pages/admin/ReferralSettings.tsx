@@ -27,7 +27,6 @@ export default function ReferralSettings() {
     reward_value: 100,
     max_per_referrer: null,
     expiration_days: null,
-    min_purchase_amount: null,
   });
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
@@ -43,7 +42,7 @@ export default function ReferralSettings() {
   const [formData, setFormData] = useState<FormData>({
     name: '',
     min_amount: '0',
-    weight: 5, // 5% as integer
+    commission_pct: 5, // 5% default (display)
     priority: 0,
     active: true
   });
@@ -86,7 +85,7 @@ export default function ReferralSettings() {
 
   // Modal helper functions
   const openAddModal = () => {
-    setFormData({ name: '', min_amount: '0', weight: 5, priority: 0, active: true }); // 5% as integer
+    setFormData({ name: '', min_amount: '0', commission_pct: 5, weight: 5, priority: 0, active: true }); // 5% as integer
     setEditingLevel(null);
     setFormError(null);
     setIsModalOpen(true);
@@ -95,7 +94,8 @@ export default function ReferralSettings() {
   const openEditModal = (level: LevelRow) => {
     setFormData({
       ...level,
-      weight: level.weight || 5, // Default 5% if weight is 0
+      // level.commission_pct in DB is decimal (0.05) -> convert to display percent
+      commission_pct: level.commission_pct !== null && level.commission_pct !== undefined ? Math.round(Number(level.commission_pct) * 100) : 5,
       priority: level.priority || 0
     });
     setEditingLevel(level);
@@ -105,7 +105,7 @@ export default function ReferralSettings() {
 
   const closeModal = () => {
     setIsModalOpen(false);
-    setFormData({ name: '', min_amount: '0', weight: 5, priority: 0, active: true });
+    setFormData({ name: '', min_amount: '0', commission_pct: 5, weight: 5, priority: 0, active: true });
     setEditingLevel(null);
     setFormError(null);
   };
@@ -118,7 +118,8 @@ export default function ReferralSettings() {
       return;
     }
 
-    if (!formData.weight || formData.weight <= 0) {
+    const displayPct = formData.commission_pct ?? formData.weight ?? 0;
+    if (!displayPct || displayPct <= 0) {
       setFormError('Percentage bonus harus lebih dari 0%');
       return;
     }
@@ -209,7 +210,6 @@ export default function ReferralSettings() {
             reward_value: data.reward_value !== null ? Number(data.reward_value) : null,
             max_per_referrer: data.max_per_referrer,
             expiration_days: data.expiration_days,
-            min_purchase_amount: data.min_purchase_amount,
           });
 
           setExpirationDate(expDate);
@@ -253,7 +253,6 @@ export default function ReferralSettings() {
         reward_value: settings.reward_value,
         max_per_referrer: settings.max_per_referrer,
         expiration_days,
-        min_purchase_amount: settings.min_purchase_amount,
       };
 
       let error;
@@ -391,11 +390,7 @@ export default function ReferralSettings() {
                 </div>
               </div>
 
-              <div>
-                <Label>Minimum purchase amount</Label>
-                <Input type="number" value={settings.min_purchase_amount ?? ''} onChange={(e) => setSettings(s => ({ ...s, min_purchase_amount: e.target.value ? Number(e.target.value) : null }))} />
-                <p className="text-xs text-muted-foreground mt-1">Jika ingin hanya memberi reward untuk pembelian minimum tertentu.</p>
-              </div>
+              {/* Minimum purchase amount removed — not used as program threshold */}
 
               <div className="flex items-center gap-2">
                 <Button onClick={handleSave} disabled={loading}>{loading ? 'Menyimpan...' : 'Simpan Pengaturan'}</Button>

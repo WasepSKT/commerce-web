@@ -59,13 +59,32 @@ export function validateRangeAgainstExisting(
   return null;
 }
 
-// Weight is stored as integer percentage in database (int4)
-// No conversion needed - weight is already in percentage format (5 = 5%)
-export function weightToPercentage(weight: number): number {
-  return weight; // Direct return since weight is already percentage
+// Commission percent utilities
+// commission_pct stored as numeric percentage (5 = 5%). Keep compatibility helpers for legacy 'weight'.
+// Convert stored DB decimal (e.g. 0.05) to display percentage (5)
+export function dbDecimalToDisplayPct(dbVal: number | undefined | null): number {
+  if (dbVal === null || dbVal === undefined) return 0;
+  return Number(dbVal) * 100;
 }
 
-// Convert percentage input to weight for storage (both are same since weight is int4 percentage)
-export function percentageToWeight(percentage: number): number {
-  return percentage; // Direct return since both are percentage format
+// Convert display percentage (e.g. 5) to DB decimal (0.05)
+export function displayPctToDbDecimal(displayPct: number | undefined | null): number {
+  const pct = displayPct ?? 0;
+  return Number(pct) / 100;
+}
+
+export function getDisplayPercentage(level: { commission_pct?: number | null; weight?: number | null } ): number {
+  if (level.commission_pct !== null && level.commission_pct !== undefined) {
+    return dbDecimalToDisplayPct(level.commission_pct);
+  }
+  return level.weight ?? 5;
+}
+
+// Get decimal fraction for calculation (e.g. 0.05)
+export function getDecimalForCalculation(level: { commission_pct?: number | null; weight?: number | null } ): number {
+  if (level.commission_pct !== null && level.commission_pct !== undefined) {
+    return Number(level.commission_pct);
+  }
+  // legacy: weight stored as integer percent
+  return (level.weight ?? 5) / 100;
 }
