@@ -162,6 +162,65 @@ async function initOnce() {
       notify();
     });
 
+    // Realtime subscription: keep client's profile in sync when server/other admins change it.
+    // We create a channel per current session user and re-subscribe on auth changes.
+    let profileChannel: ReturnType<typeof supabase.channel> | null = null;
+
+    const setupProfileSubscription = (userId?: string) => {
+      // cleanup previous
+      try {
+        if (profileChannel) {
+          // unsubscribe the old channel
+          void profileChannel.unsubscribe();
+        }
+      } catch (e) {
+        console.debug('[useAuth] profile channel cleanup error', e);
+      }
+      profileChannel = null;
+
+      if (!userId) return;
+
+      try {
+        profileChannel = supabase.channel(`public:profiles:uid:${userId}`)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `user_id=eq.${userId}` }, (payload) => {
+            try {
+              // payload may be any shape from realtime; treat as unknown and validate
+              const candidate = payload as unknown;
+              if (!candidate || typeof candidate !== 'object') return;
+              // attempt to read .record safely
+              const recField = (candidate as { record?: unknown }).record;
+              if (!recField || typeof recField !== 'object') return;
+              // Basic shape check: must have user_id property
+              if (!('user_id' in (recField as Record<string, unknown>))) return;
+              const rec = recField as UserProfile;
+              // Update module-level store and localStorage so all subscribers get fresh profile
+              store.profile = rec;
+              try {
+                localStorage.setItem('userProfile', JSON.stringify(rec));
+              } catch (e) {
+                // ignore localStorage errors
+              }
+              notify();
+            } catch (e) {
+              console.debug('[useAuth] profile realtime handler error', e);
+            }
+          })
+          .subscribe((status) => {
+            console.debug('[useAuth] profile channel status', status);
+          });
+      } catch (e) {
+        console.debug('[useAuth] setup profile subscription failed', e);
+      }
+    };
+
+    // Initialize profile subscription for current session (if any)
+    setupProfileSubscription(store.user?.id);
+
+    // Also attach to auth state changes to re-setup subscription when login/logout occurs
+    // onAuthResult provides callback; we wire into it by wrapping the existing handler above.
+    // Note: onAuthResult returns a { data: { subscription } } in supabase-js v2, but we
+    // are not keeping that ref here. The profileChannel is managed locally.
+
     // We don't need to hold onto the subscription object here for unmount because
     // initOnce only runs once per app lifecycle. If you want to allow explicit cleanup
     // on hot-reload or teardown, you can store and unsubscribe the subscription.

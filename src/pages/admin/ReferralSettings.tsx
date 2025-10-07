@@ -374,18 +374,13 @@ export default function ReferralSettings() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Max per referrer</Label>
-                  <Input type="number" value={settings.max_per_referrer ?? ''} onChange={(e) => setSettings(s => ({ ...s, max_per_referrer: e.target.value ? Number(e.target.value) : null }))} />
+                  <Input className="mt-1" type="number" value={settings.max_per_referrer ?? ''} onChange={(e) => setSettings(s => ({ ...s, max_per_referrer: e.target.value ? Number(e.target.value) : null }))} />
                   <p className="text-xs text-muted-foreground mt-1">Kosongkan untuk tak terbatas.</p>
                 </div>
 
                 <div>
                   <Label>Expiration date</Label>
-                  <input
-                    type="date"
-                    className="mt-1 block w-full rounded-md border px-3 py-2 bg-background"
-                    value={expirationDate ?? ''}
-                    onChange={(e) => setExpirationDate(e.target.value || null)}
-                  />
+                  <Input className="mt-1" type="date" value={expirationDate ?? ''} onChange={(e) => setExpirationDate(e.target.value || null)} />
                   <p className="text-xs text-muted-foreground mt-1">Pilih tanggal kadaluarsa reward (kosong = tidak kadaluarsa).</p>
                 </div>
               </div>

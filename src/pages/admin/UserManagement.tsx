@@ -298,6 +298,21 @@ export default function EnhancedUserManagement() {
         description: `Data ${formData.full_name} berhasil diperbarui`
       });
 
+      // Refetch updated profile to ensure client's cache is fresh.
+      try {
+        const { data: updatedProfile } = await supabase.from('profiles').select('*').eq('id', selectedUser.id).single();
+        if (updatedProfile) {
+          try {
+            // update localStorage so current session reflects new role immediately
+            localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
+          } catch (e) {
+            console.debug('Failed to update localStorage for userProfile', e);
+          }
+        }
+      } catch (e) {
+        console.debug('Failed to refetch updated profile', e);
+      }
+
       setEditUserOpen(false);
       resetForm();
       setSelectedUser(null);

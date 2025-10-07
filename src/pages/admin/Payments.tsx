@@ -234,6 +234,30 @@ export default function Payments() {
       setLoading(true);
       const { error } = await (supabase.from as unknown as { (table: string): { update: (fields: Record<string, unknown>) => { eq: (field: string, value: string) => Promise<{ error?: unknown }> } } })('orders').update({ status: 'paid' }).eq('id', orderId);
       if (error) throw error;
+
+      // After marking as paid, attempt to record referral purchase via DB handler (idempotent)
+      try {
+        // fetch the order row to get user_id and total_amount
+        type OrdRow = { id: string; user_id?: string | null; total_amount?: number | null };
+        const ordRes = await (supabase.from('orders').select('id, user_id, total_amount').eq('id', orderId).single());
+        const order = ordRes && 'data' in ordRes && ordRes.data ? (ordRes.data as OrdRow) : null;
+        if (order && order.id && order.user_id) {
+          const buyerUserId = String(order.user_id);
+          const totalAmount = Number(order.total_amount || 0);
+          const { data: rpcData, error: rpcError } = await supabase.rpc('handle_referral_purchase', { order_id_input: String(order.id), buyer_user_id: buyerUserId, purchase_amount: totalAmount });
+          if (rpcError) {
+            // non-fatal: log and notify admin
+            console.warn('handle_referral_purchase failed', rpcError);
+            toast({ title: 'Perhatian', description: 'Gagal mencatat referral secara otomatis (non-fatal).', variant: 'destructive' });
+          } else {
+            // On RPC success (no error) show informational toast — handler returns JSON but we don't rely on shape here
+            toast({ title: 'Info', description: 'Referral tercatat sebagai pending.' });
+          }
+        }
+      } catch (rpcErr) {
+        console.warn('Failed to call handle_referral_purchase', rpcErr);
+      }
+
       toast({ title: 'Sukses', description: 'Pesanan ditandai sebagai dibayar' });
       await fetchPending();
       setDetailOrder(null);
