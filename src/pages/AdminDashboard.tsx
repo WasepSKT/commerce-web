@@ -28,6 +28,7 @@ export default function AdminDashboard() {
 
   const [dataLoading, setDataLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [range, setRange] = useState<'weekly' | 'monthly' | 'yearly'>('weekly');
   const [stats, setStats] = useState({
     totalProducts: 0,
     totalOrders: 0,
@@ -117,25 +118,69 @@ export default function AdminDashboard() {
       }`}>{statusInfo.label}</span>;
   };
 
-  // Build revenue data for the last 7 days
+  // Build revenue data depending on selected range
   const buildRevenueSeries = () => {
-    const days = 7;
-    const now = new Date();
-    const buckets: { [k: string]: number } = {};
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(now.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      buckets[key] = 0;
+    if (range === 'weekly') {
+      const days = 7;
+      const now = new Date();
+      const buckets: { [k: string]: number } = {};
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(now.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        buckets[key] = 0;
+      }
+      for (const o of orders) {
+        const key = new Date(o.created_at).toISOString().slice(0, 10);
+        if (key in buckets) buckets[key] += Number(o.total_amount || 0);
+      }
+      return Object.entries(buckets).map(([key, value]) => ({
+        date: new Date(key).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' }),
+        revenue: value,
+      }));
     }
-    for (const o of orders) {
-      const key = new Date(o.created_at).toISOString().slice(0, 10);
-      if (key in buckets) buckets[key] += Number(o.total_amount || 0);
+
+    if (range === 'monthly') {
+      // last 12 months, aggregate by month
+      const months = 12;
+      const now = new Date();
+      const buckets: { [k: string]: number } = {};
+      for (let i = months - 1; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        buckets[key] = 0;
+      }
+      for (const o of orders) {
+        const d = new Date(o.created_at);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (key in buckets) buckets[key] += Number(o.total_amount || 0);
+      }
+      return Object.entries(buckets).map(([key, value]) => ({
+        date: new Date(key + '-01').toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }),
+        revenue: value,
+      }));
     }
-    return Object.entries(buckets).map(([key, value]) => ({
-      date: new Date(key).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' }),
-      revenue: value,
-    }));
+
+    // yearly
+    {
+      const years = 5;
+      const now = new Date();
+      const buckets: { [k: string]: number } = {};
+      for (let i = years - 1; i >= 0; i--) {
+        const y = now.getFullYear() - i;
+        const key = String(y);
+        buckets[key] = 0;
+      }
+      for (const o of orders) {
+        const d = new Date(o.created_at);
+        const key = String(d.getFullYear());
+        if (key in buckets) buckets[key] += Number(o.total_amount || 0);
+      }
+      return Object.entries(buckets).map(([key, value]) => ({
+        date: key,
+        revenue: value,
+      }));
+    }
   };
 
   // App-level loader covers the hydration phase. Render a small inline placeholder
@@ -236,7 +281,7 @@ export default function AdminDashboard() {
             />
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
-              <AdminRevenueChart data={buildRevenueSeries()} />
+              <AdminRevenueChart data={buildRevenueSeries()} range={range} onRangeChange={(r) => setRange(r)} />
               <AdminOrdersCard orders={orders} formatPrice={formatPrice} getStatusBadge={getStatusBadge} onUpdateStatus={handleUpdateOrderStatus} />
             </div>
           </>
