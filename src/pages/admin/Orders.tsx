@@ -35,25 +35,46 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(20);
+  const [totalCount, setTotalCount] = useState<number>(0);
   const [detail, setDetail] = useState<OrderRow | null>(null);
-
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      // fetch all orders
+      // Build base query with count
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const q = (supabase.from as unknown as any)('orders').select('*, order_items(*)').order('created_at', { ascending: false }).limit(500);
+      let q: any = (supabase.from as unknown as any)('orders').select('*, order_items(*)', { count: 'exact' }).order('created_at', { ascending: false });
+
+      // Apply status filter
+      if (filter && filter !== 'all') q = q.eq('status', filter);
+
+      // Apply simple search across id, customer_name, user_id
+      if (searchTerm && searchTerm.trim().length > 0) {
+        const s = `%${searchTerm.trim()}%`;
+        // supabase or syntax: field.ilike.%value%,other.ilike.%value%
+        q = q.or(`id.ilike.${s},customer_name.ilike.${s},user_id.ilike.${s}`);
+      }
+
+      // Range for pagination
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      q = q.range(from, to);
+
       const res = (await q) as unknown;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const rows = (res && (res as any).data ? (res as any).data : (res as any)) as OrderRow[];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const count = (res && (res as any).count) || 0;
       setOrders(rows || []);
+      setTotalCount(Number(count || 0));
     } catch (err) {
       console.error('Failed to fetch orders', err);
       toast({ title: 'Gagal', description: 'Gagal memuat pesanan', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [filter, searchTerm, page, pageSize, toast]);
 
   useEffect(() => { void fetchOrders(); }, [fetchOrders]);
 
@@ -328,6 +349,29 @@ export default function AdminOrders() {
             </table>
           </div>
         )}
+
+        {/* Pagination controls */}
+        <div className="mt-3 flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">Menampilkan {orders.length} dari {totalCount} pesanan</div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="ghost" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>Prev</Button>
+              <div className="text-sm">Halaman {page} / {Math.max(1, Math.ceil(totalCount / pageSize))}</div>
+              <Button size="sm" variant="ghost" onClick={() => setPage((p) => p + 1)} disabled={page >= Math.ceil(totalCount / pageSize)}>Next</Button>
+            </div>
+
+            <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
+              <SelectTrigger className="w-[96px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10 / halaman</SelectItem>
+                <SelectItem value="20">20 / halaman</SelectItem>
+                <SelectItem value="50">50 / halaman</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
         <Dialog open={!!detail} onOpenChange={(open) => { if (!open) setDetail(null); }}>
           <DialogContent>
