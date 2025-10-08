@@ -44,6 +44,8 @@ const PerformanceOptimizer: React.FC<PerformanceOptimizerProps> = ({
       // Monitor Core Web Vitals
       const observer = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
+          const debugLogs = String(import.meta.env.VITE_ENABLE_DEBUG_LOGS).toLowerCase() === 'true';
+          if (!debugLogs) continue;
           if (entry.entryType === 'largest-contentful-paint') {
             console.log('LCP:', entry.startTime);
           }

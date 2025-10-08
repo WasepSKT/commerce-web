@@ -211,7 +211,8 @@ export default function Blog() {
                         size="sm"
                         className="group"
                       >
-                        Baca Selengkapnya
+                        <span className="block md:hidden">Baca</span>
+                        <span className="hidden md:block">Baca Selengkapnya</span>
                         <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
                       </Button>
                     </a>
