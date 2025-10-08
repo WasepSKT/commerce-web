@@ -6,6 +6,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/types/supabase';
@@ -203,7 +204,18 @@ export default function ReferralPurchases() {
                       <td className="px-4 py-3 font-mono">{p.order_id}</td>
                       <td className="px-4 py-3">{p.referrer_name ?? p.referrer_id}</td>
                       <td className="px-4 py-3">Rp {Number(p.commission_amount ?? p.amount ?? 0).toLocaleString('id-ID')}</td>
-                      <td className="px-4 py-3">{p.status}</td>
+                      <td className="px-4 py-3">
+                        {
+                          (() => {
+                            const s = p.status;
+                            if (s === 'pending') return <Badge variant="secondary">Menunggu</Badge>;
+                            if (s === 'completed') return <Badge> Selesai </Badge>;
+                            if (s === 'approved') return <Badge>Disetujui</Badge>;
+                            if (s === 'cancelled') return <Badge variant="destructive">Dibatalkan</Badge>;
+                            return <Badge>{String(s)}</Badge>;
+                          })()
+                        }
+                      </td>
                       <td className="px-4 py-3">{new Date(p.created_at ?? '').toLocaleString()}</td>
                       <td className="px-4 py-3">
                         <DropdownMenu>
