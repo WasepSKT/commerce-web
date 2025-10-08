@@ -10,6 +10,8 @@ import { createExcerpt } from '@/lib/textUtils';
 import type { Database } from '@/types/supabase';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 type BlogPost = Database['public']['Tables']['blogs']['Row'];
 
@@ -141,8 +143,23 @@ export default function Blog() {
     );
   }
 
+  // Generate breadcrumb structured data
+  const breadcrumbData = generateBreadcrumbStructuredData([
+    { name: 'Beranda', url: 'https://regalpaw.id/' },
+    { name: 'Blog', url: 'https://regalpaw.id/blog' }
+  ]);
+
   return (
     <BlogLayout title="Blog & Artikel">
+      <SEOHead
+        title="Blog & Artikel - Regal Paw"
+        description="Temukan tips, informasi, dan panduan lengkap tentang perawatan dan kesehatan kucing dari para ahli Regal Paw. Artikel terbaru tentang nutrisi kucing dan tips perawatan."
+        keywords="blog kucing, tips kesehatan kucing, perawatan kucing, informasi kucing, panduan kucing, Regal Paw"
+        canonical="/blog"
+        ogType="website"
+        structuredData={breadcrumbData}
+      />
+
       <div className="space-y-8">
         {blogPosts.length > 0 && (
           <>

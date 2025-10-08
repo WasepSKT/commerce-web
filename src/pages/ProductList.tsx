@@ -11,6 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Search, Filter } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { HeroSliderCarousel } from '@/components/HeroSliderCarousel';
+import SEOHead from '@/components/seo/SEOHead';
+import { pageSEOData, generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 interface Product {
   id: string;
@@ -126,8 +128,23 @@ export default function ProductList() {
     );
   }
 
+  // Generate breadcrumb structured data
+  const breadcrumbData = generateBreadcrumbStructuredData([
+    { name: 'Beranda', url: 'https://regalpaw.id/' },
+    { name: 'Produk', url: 'https://regalpaw.id/products' }
+  ]);
+
   return (
     <Layout>
+      <SEOHead
+        title={pageSEOData.products.title}
+        description={pageSEOData.products.description}
+        keywords={pageSEOData.products.keywords}
+        canonical="/products"
+        ogType="website"
+        structuredData={breadcrumbData}
+      />
+
       <div className="container mx-auto px-4 py-8">
         {/* Hero Slider Campaign */}
         <div className="mb-8">

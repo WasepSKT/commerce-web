@@ -21,6 +21,8 @@ import {
 import { useProductCRUD, ProductForm, Product } from '@/hooks/useProductCRUD';
 import { ProductImageManager } from '@/utils/imageManagement';
 import { TableSkeleton, HeaderSkeleton } from '@/components/ui/AdminSkeleton';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -149,6 +151,14 @@ export default function AdminProductsPage() {
   if (loading && products.length === 0) {
     return (
       <AdminLayout>
+        <SEOHead
+          title="Manajemen Produk Enhanced - Admin Regal Paw"
+          description="Panel admin untuk mengelola produk makanan kucing premium. Tambah, edit, dan hapus produk dengan sistem manajemen gambar terstruktur."
+          keywords="admin produk enhanced, manajemen produk, Regal Paw, makanan kucing"
+          canonical="/admin/products-enhanced"
+          ogType="website"
+          noindex={true}
+        />
         <div className="space-y-6">
           <HeaderSkeleton />
           <div className="grid gap-4">
@@ -163,6 +173,14 @@ export default function AdminProductsPage() {
 
   return (
     <AdminLayout>
+      <SEOHead
+        title="Manajemen Produk Enhanced - Admin Regal Paw"
+        description="Panel admin untuk mengelola produk makanan kucing premium. Tambah, edit, dan hapus produk dengan sistem manajemen gambar terstruktur."
+        keywords="admin produk enhanced, manajemen produk, Regal Paw, makanan kucing"
+        canonical="/admin/products-enhanced"
+        ogType="website"
+        noindex={true}
+      />
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>

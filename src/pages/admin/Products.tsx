@@ -23,6 +23,10 @@ import {
 import { useProductCRUD, ProductForm, Product } from '@/hooks/useProductCRUD';
 import { ProductImageManager } from '@/utils/imageManagement';
 import { TableSkeleton, HeaderSkeleton } from '@/components/ui/AdminSkeleton';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
+import SEOPreview from '@/components/admin/SEOPreview';
+import { useAutoSEO } from '@/hooks/useAutoSEO';
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -35,6 +39,7 @@ export default function AdminProductsPage() {
     action: 'activate' as 'activate' | 'deactivate'
   });
   const [toggleLoading, setToggleLoading] = useState<string | null>(null);
+  const [showSEOPreview, setShowSEOPreview] = useState(false);
   const [productForm, setProductForm] = useState<ProductForm>({
     name: '',
     description: '',
@@ -45,6 +50,7 @@ export default function AdminProductsPage() {
     category: 'Dry Food',
     stock_quantity: ''
   });
+  const { generateMetaDescription, generateKeywords } = useAutoSEO();
 
   // Enhanced CRUD hook
   const {
@@ -171,6 +177,14 @@ export default function AdminProductsPage() {
   if (loading && products.length === 0) {
     return (
       <AdminLayout>
+        <SEOHead
+          title="Manajemen Produk - Admin Regal Paw"
+          description="Panel admin untuk mengelola produk makanan kucing premium. Tambah, edit, dan hapus produk dengan sistem manajemen gambar terstruktur."
+          keywords="admin produk, manajemen produk, Regal Paw, makanan kucing"
+          canonical="/admin/products"
+          ogType="website"
+          noindex={true}
+        />
         <div className="space-y-6">
           <HeaderSkeleton />
           <div className="grid gap-4">
@@ -185,6 +199,14 @@ export default function AdminProductsPage() {
 
   return (
     <AdminLayout>
+      <SEOHead
+        title="Manajemen Produk - Admin Regal Paw"
+        description="Panel admin untuk mengelola produk makanan kucing premium. Tambah, edit, dan hapus produk dengan sistem manajemen gambar terstruktur."
+        keywords="admin produk, manajemen produk, Regal Paw, makanan kucing"
+        canonical="/admin/products"
+        ogType="website"
+        noindex={true}
+      />
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
@@ -534,6 +556,39 @@ export default function AdminProductsPage() {
                       Gambar akan dioptimalkan secara otomatis untuk performa terbaik
                     </p>
                   </div>
+                </div>
+
+                {/* SEO Preview Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium text-primary flex items-center gap-2">
+                        SEO Preview
+                      </h3>
+                      <p className="text-sm text-gray-600">Lihat bagaimana produk akan muncul di hasil pencarian</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowSEOPreview(!showSEOPreview)}
+                      className="gap-2"
+                    >
+                      <Eye className="h-4 w-4" />
+                      {showSEOPreview ? 'Sembunyikan' : 'Tampilkan'} Preview
+                    </Button>
+                  </div>
+
+                  {showSEOPreview && (
+                    <SEOPreview
+                      title={productForm.name ? `${productForm.name} - ${productForm.category} Premium | Regal Paw` : 'Nama Produk - Kategori Premium | Regal Paw'}
+                      description={productForm.description || 'Deskripsi produk akan muncul di sini...'}
+                      keywords={productForm.name ? `${productForm.name}, makanan kucing ${productForm.category}, ${productForm.category}, Regal Paw, makanan kucing premium, nutrisi kucing, kesehatan kucing` : 'Keywords akan di-generate otomatis...'}
+                      ogImage={productForm.imagePreview || productForm.image_url}
+                      canonical={`/product/${productForm.name ? productForm.name.toLowerCase().replace(/\s+/g, '-') : 'nama-produk'}`}
+                      type="product"
+                    />
+                  )}
                 </div>
               </div>
             </ScrollArea>

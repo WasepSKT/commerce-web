@@ -26,6 +26,7 @@ import {
 import Footer from '@/components/Footer';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { CustomerNotificationDropdown } from '@/components/CustomerNotificationDropdown';
+import PerformanceOptimizer from '@/components/seo/PerformanceOptimizer';
 
 interface LayoutProps {
   children: ReactNode;
@@ -42,6 +43,11 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <NotificationsProvider>
+      <PerformanceOptimizer
+        preloadImages={['/regalpaw.png', '/og-image.jpg']}
+        preloadFonts={['/fonts/inter.woff2']}
+        prefetchRoutes={['/products', '/blog', '/about', '/contact']}
+      />
       <div className="min-h-screen bg-background overflow-x-hidden">
         {/* Header */}
         <header className="fixed top-0 left-0 right-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">

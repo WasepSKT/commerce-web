@@ -1,8 +1,25 @@
 import { Layout } from '@/components/Layout';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 export default function TermPage() {
+  // Generate breadcrumb structured data
+  const breadcrumbData = generateBreadcrumbStructuredData([
+    { name: 'Beranda', url: 'https://regalpaw.id/' },
+    { name: 'Syarat & Ketentuan', url: 'https://regalpaw.id/terms' }
+  ]);
+
   return (
     <Layout>
+      <SEOHead
+        title="Syarat & Ketentuan - Regal Paw"
+        description="Syarat dan ketentuan penggunaan layanan Regal Paw. Pelajari tentang penggunaan layanan, akun dan keamanan, pembayaran, pengiriman, dan pengembalian."
+        keywords="syarat ketentuan, terms of service, Regal Paw, penggunaan layanan, kebijakan"
+        canonical="/terms"
+        ogType="website"
+        structuredData={breadcrumbData}
+      />
+
       <div className="container mx-auto px-4 py-16">
         <h1 className="text-3xl font-bold text-brand mb-4">Syarat & Ketentuan</h1>
         <ul className="list-disc pl-5 mb-6 text-brand space-y-2">

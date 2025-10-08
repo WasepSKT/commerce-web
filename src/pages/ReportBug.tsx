@@ -2,10 +2,27 @@ import React from 'react';
 import { Layout } from '@/components/Layout';
 import { Bug } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 export default function ReportBugPage() {
+  // Generate breadcrumb structured data
+  const breadcrumbData = generateBreadcrumbStructuredData([
+    { name: 'Beranda', url: 'https://regalpaw.id/' },
+    { name: 'Laporkan Bug', url: 'https://regalpaw.id/report' }
+  ]);
+
   return (
     <Layout>
+      <SEOHead
+        title="Laporkan Bug / Masalah - Regal Paw"
+        description="Laporkan bug atau masalah yang Anda temukan di Regal Paw. Ikuti panduan lengkap untuk melaporkan masalah agar tim kami dapat menanggapi dengan cepat."
+        keywords="laporkan bug, report bug, masalah teknis, Regal Paw, customer support, bantuan teknis"
+        canonical="/report"
+        ogType="website"
+        structuredData={breadcrumbData}
+      />
+
       <div className="container mx-auto px-4 py-16">
         <h1 className="text-3xl font-bold mb-4 text-primary">Laporkan Bug / Masalah</h1>
 

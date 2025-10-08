@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import TiptapToolbar from '@/components/ui/TiptapToolbar';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, X, FileImage, Info, Keyboard } from 'lucide-react';
+import { Upload, X, FileImage, Info, Keyboard, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import SEOPreview from '@/components/admin/SEOPreview';
+import { useAutoSEO } from '@/hooks/useAutoSEO';
 
 interface BlogForm {
   title: string;
@@ -79,8 +81,12 @@ function EditorHelp({ isVisible, onClose }: { isVisible: boolean; onClose: () =>
 
 export default function BlogEditor({ form, onFormChange, className }: BlogEditorProps) {
   const [showHelp, setShowHelp] = useState(true);
+  const [showSEOPreview, setShowSEOPreview] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const autoSEO = useAutoSEO();
+  const { generateMetaDescription, generateKeywords } = autoSEO;
+  const makeSlug = autoSEO.generateSlug;
   // Initialize TipTap editor with better configuration
   const extensions = getDefaultExtensions();
   // Defensive: remove duplicate extension names to prevent TipTap duplicate-name warnings
@@ -245,30 +251,7 @@ export default function BlogEditor({ form, onFormChange, className }: BlogEditor
     input.click();
   }, [editor]);
 
-  // Generate slug from title with better handling
-  const generateSlug = useCallback((title: string) => {
-    return title
-      .toLowerCase()
-      .trim()
-      // Handle Indonesian characters
-      .replace(/[àáäâèéëêìíïîòóöôùúüûñç]/g, (char) => {
-        const map: { [key: string]: string } = {
-          'à': 'a', 'á': 'a', 'ä': 'a', 'â': 'a',
-          'è': 'e', 'é': 'e', 'ë': 'e', 'ê': 'e',
-          'ì': 'i', 'í': 'i', 'ï': 'i', 'î': 'i',
-          'ò': 'o', 'ó': 'o', 'ö': 'o', 'ô': 'o',
-          'ù': 'u', 'ú': 'u', 'ü': 'u', 'û': 'u',
-          'ñ': 'n', 'ç': 'c'
-        };
-        return map[char] || char;
-      })
-      // Remove special characters but keep alphanumeric and spaces
-      .replace(/[^a-z0-9\s-]/g, '')
-      // Replace multiple spaces/hyphens with single hyphen
-      .replace(/[\s-]+/g, '-')
-      // Remove leading/trailing hyphens
-      .replace(/^-+|-+$/g, '');
-  }, []);
+
 
   return (
     <div className={cn("space-y-6", className)}>
@@ -287,7 +270,7 @@ export default function BlogEditor({ form, onFormChange, className }: BlogEditor
                 ...form,
                 title,
                 // Auto-generate slug only if current slug is empty or was auto-generated
-                slug: (!form.slug || form.slug === generateSlug(form.title)) ? generateSlug(title) : form.slug
+                slug: (!form.slug || form.slug === makeSlug(form.title)) ? makeSlug(title) : form.slug
               });
             }}
             placeholder="Masukkan judul artikel..."
@@ -317,9 +300,26 @@ export default function BlogEditor({ form, onFormChange, className }: BlogEditor
 
       {/* Meta Description */}
       <div className="space-y-2">
-        <Label htmlFor="blog-meta-description" className="text-sm font-medium">
-          Meta Description
-        </Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="blog-meta-description" className="text-sm font-medium">
+            Meta Description
+          </Label>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (form.content) {
+                const autoDescription = generateMetaDescription(form.content);
+                onFormChange({ ...form, meta_description: autoDescription });
+              }
+            }}
+            disabled={!form.content}
+            className="text-xs"
+          >
+            Auto-generate
+          </Button>
+        </div>
         <textarea
           id="blog-meta-description"
           value={form.meta_description}
@@ -337,6 +337,36 @@ export default function BlogEditor({ form, onFormChange, className }: BlogEditor
           </span>
         </div>
       </div>
+
+      {/* SEO Preview Toggle */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-medium">SEO Preview</h3>
+          <p className="text-xs text-muted-foreground">Lihat bagaimana artikel akan muncul di hasil pencarian</p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setShowSEOPreview(!showSEOPreview)}
+          className="gap-2"
+        >
+          <Eye className="h-4 w-4" />
+          {showSEOPreview ? 'Sembunyikan' : 'Tampilkan'} Preview
+        </Button>
+      </div>
+
+      {/* SEO Preview */}
+      {showSEOPreview && (
+        <SEOPreview
+          title={form.title || 'Judul Artikel'}
+          description={form.meta_description || 'Deskripsi artikel akan muncul di sini...'}
+          keywords={form.title ? `${form.title}, blog kucing, tips kucing, perawatan kucing, Regal Paw` : 'Keywords akan di-generate otomatis...'}
+          ogImage={form.coverFile ? URL.createObjectURL(form.coverFile) : form.cover_url}
+          canonical={`/blog/${form.slug || 'slug-artikel'}`}
+          type="blog"
+        />
+      )}
 
       {/* Cover Image */}
       <div className="space-y-3">

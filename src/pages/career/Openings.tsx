@@ -1,14 +1,32 @@
 import React from 'react';
 import { Layout } from '@/components/Layout';
 import { Link } from 'react-router-dom';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 export default function CareerOpenings() {
   // For now openings are an empty array to show the empty state.
   // In the future this can be fetched from an API or supabase table.
   const openings: Array<{ id: string; title: string; summary: string }> = [];
 
+  // Generate breadcrumb structured data
+  const breadcrumbData = generateBreadcrumbStructuredData([
+    { name: 'Beranda', url: 'https://regalpaw.id/' },
+    { name: 'Karir', url: 'https://regalpaw.id/career' },
+    { name: 'Lowongan Tersedia', url: 'https://regalpaw.id/career/openings' }
+  ]);
+
   return (
     <Layout>
+      <SEOHead
+        title="Lowongan Tersedia - Karir di Regal Paw"
+        description="Temukan lowongan kerja terbaru di Regal Paw. Bergabunglah dengan tim yang berdedikasi untuk meningkatkan kualitas hidup hewan peliharaan. Lihat posisi yang tersedia dan kirimkan lamaran Anda."
+        keywords="lowongan kerja, karir, Regal Paw, pekerjaan, rekrutmen, HR, posisi terbuka"
+        canonical="/career/openings"
+        ogType="website"
+        structuredData={breadcrumbData}
+      />
+
       <section className="py-20">
         <div className="container mx-auto px-4">
           <h1 className="text-4xl font-extrabold text-brand mb-6 text-center">Lowongan Tersedia</h1>

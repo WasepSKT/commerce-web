@@ -26,6 +26,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { StarRating, RatingDistribution } from '@/components/ui/StarRating';
 import { maskName } from '@/lib/maskName';
 import { useProductRating } from '@/hooks/useProductRating';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateProductStructuredData, generateBreadcrumbStructuredData, generatePageTitle } from '@/utils/seoData';
 
 interface Product {
   id: string;
@@ -35,6 +37,18 @@ interface Product {
   image_url: string;
   category: string;
   stock_quantity: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  // SEO fields (auto-generated)
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string;
+  og_title?: string;
+  og_description?: string;
+  og_image?: string;
+  canonical_url?: string;
+  seo_structured_data?: Record<string, unknown>;
 }
 
 export default function ProductDetail() {
@@ -317,8 +331,47 @@ export default function ProductDetail() {
 
   const isOutOfStock = product.stock_quantity === 0;
 
+  // Use auto-generated SEO data or fallback to manual generation
+  const seoTitle = product.meta_title || generatePageTitle(product.name);
+  const seoDescription = product.meta_description || product.description;
+  const seoKeywords = product.meta_keywords || `${product.name}, makanan kucing, ${product.category}, Regal Paw, nutrisi kucing`;
+  const seoOgImage = product.og_image || product.image_url;
+  const seoCanonical = product.canonical_url || `/product/${product.id}`;
+
+  // Use auto-generated structured data or fallback to manual generation
+  const structuredData = product.seo_structured_data ?
+    [product.seo_structured_data] :
+    [generateProductStructuredData({
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      image_url: product.image_url,
+      category: product.category,
+      stock_quantity: product.stock_quantity,
+      brand: 'Regal Paw',
+      rating: ratingData?.averageRating,
+      reviewCount: ratingData?.totalReviews
+    })];
+
+  const breadcrumbData = generateBreadcrumbStructuredData([
+    { name: 'Beranda', url: 'https://regalpaw.id/' },
+    { name: 'Produk', url: 'https://regalpaw.id/products' },
+    { name: product.name, url: `https://regalpaw.id/product/${product.id}` }
+  ]);
+
   return (
     <Layout>
+      <SEOHead
+        title={seoTitle}
+        description={seoDescription}
+        keywords={seoKeywords}
+        canonical={seoCanonical}
+        ogType="product"
+        ogImage={seoOgImage}
+        structuredData={[...structuredData, breadcrumbData]}
+      />
+
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-8">

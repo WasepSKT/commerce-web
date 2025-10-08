@@ -10,6 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 import Loading from '@/components/ui/Loading';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 
 interface Order {
@@ -148,6 +150,14 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout>
+      <SEOHead
+        title="Admin Dashboard - Regal Paw"
+        description="Dashboard admin Regal Paw untuk mengelola produk, pesanan, pengguna, dan statistik penjualan. Panel kontrol lengkap untuk administrator."
+        keywords="admin dashboard, panel admin, manajemen produk, statistik penjualan, Regal Paw"
+        canonical="/admin"
+        ogType="website"
+        noindex={true}
+      />
       <div className="w-full max-w-full px-4 md:px-6 py-6 md:py-8">
         <div className="mb-4">
           <h1 className="text-2xl md:text-3xl font-bold mb-1 text-brand">Admin Dashboard</h1>

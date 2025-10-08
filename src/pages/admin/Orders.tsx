@@ -10,6 +10,8 @@ import { printFaktur } from '@/lib/fakturGenerator';
 import { RefreshCw, Search, Download, Printer, FileText, Eye } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TableSkeleton, HeaderSkeleton, FiltersSkeleton } from '@/components/ui/AdminSkeleton';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 interface OrderRow {
   id: string;
@@ -229,6 +231,14 @@ export default function AdminOrders() {
 
   return (
     <AdminLayout>
+      <SEOHead
+        title="Manajemen Pesanan - Admin Regal Paw"
+        description="Panel admin untuk mengelola pesanan makanan kucing. Lihat, update status, dan cetak invoice/resi untuk semua pesanan pelanggan."
+        keywords="admin pesanan, manajemen pesanan, Regal Paw, admin panel, invoice, resi"
+        canonical="/admin/orders"
+        ogType="website"
+        noindex={true}
+      />
       <div>
         <div className="flex items-center justify-between">
           <div>

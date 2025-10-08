@@ -18,6 +18,8 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 interface Product {
   id: string;
@@ -433,8 +435,24 @@ export default function CartPage() {
 
 
 
+  // Generate breadcrumb structured data
+  const breadcrumbData = generateBreadcrumbStructuredData([
+    { name: 'Beranda', url: 'https://regalpaw.id/' },
+    { name: 'Keranjang', url: 'https://regalpaw.id/cart' }
+  ]);
+
   return (
     <Layout>
+      <SEOHead
+        title="Keranjang Belanja - Regal Paw"
+        description="Keranjang belanja Regal Paw. Review produk makanan kucing premium yang telah Anda pilih, hitung total belanja, dan lanjutkan ke checkout dengan mudah."
+        keywords="keranjang, cart, belanja, checkout, makanan kucing, Regal Paw"
+        canonical="/cart"
+        ogType="website"
+        structuredData={breadcrumbData}
+        noindex={true}
+      />
+
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-primary">Keranjang Belanja</h1>

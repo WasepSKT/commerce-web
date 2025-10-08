@@ -17,6 +17,8 @@ import CTASection from '@/components/CTASection';
 import ScrollProgress from '@/components/ui/ScrollProgress';
 import ScrollNavigation from '@/components/ui/ScrollNavigation';
 import { ScrollAnimation, FadeInUp, FadeInScale, ParallaxScroll, ResponsiveFadeInRight } from '@/components/ui/ScrollAnimation';
+import SEOHead from '@/components/seo/SEOHead';
+import { organizationData, websiteData, pageSEOData } from '@/utils/seoData';
 
 interface Product {
   id: string;
@@ -71,6 +73,15 @@ const Index = () => {
 
   return (
     <Layout>
+      <SEOHead
+        title={pageSEOData.home.title}
+        description={pageSEOData.home.description}
+        keywords={pageSEOData.home.keywords}
+        canonical="/"
+        ogType="website"
+        structuredData={[organizationData, websiteData]}
+      />
+      
       {/* Scroll Progress Bar */}
       <ScrollProgress
         position="top"

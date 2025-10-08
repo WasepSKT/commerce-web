@@ -6,8 +6,7 @@
 
   The function attaches itself to window.generateInvoicePdf when executed in a browser.
 */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function generateInvoicePdf(order: any) {
+export async function generateInvoicePdf(order: Record<string, unknown>) {
   // dynamic import so the app doesn't break if deps are not installed
   const hasWindow = typeof window !== 'undefined';
   if (!hasWindow) throw new Error('Not in browser');

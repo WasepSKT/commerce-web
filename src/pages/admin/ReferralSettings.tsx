@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { X, Plus } from 'lucide-react';
 import { useCallback } from 'react';
 import { format } from 'date-fns';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 // Modular imports
 import { Settings, LevelRow, FormData } from '@/types/referral';
@@ -292,6 +294,14 @@ export default function ReferralSettings() {
 
   return (
     <AdminLayout>
+      <SEOHead
+        title="Pengaturan Referral - Admin Regal Paw"
+        description="Panel admin untuk mengatur program referral. Konfigurasi poin, hadiah, aturan referral, dan level komisi untuk program undang teman."
+        keywords="admin pengaturan referral, konfigurasi referral, program referral, Regal Paw, admin panel"
+        canonical="/admin/referral-settings"
+        ogType="website"
+        noindex={true}
+      />
       <div>
         <h2 className="text-lg font-medium text-primary">Referral Settings</h2>
         <p className="text-sm text-muted-foreground">Atur poin, hadiah, dan aturan program referral di sini.</p>

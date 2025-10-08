@@ -2,10 +2,28 @@ import React from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 export default function CareerBenefits() {
+  // Generate breadcrumb structured data
+  const breadcrumbData = generateBreadcrumbStructuredData([
+    { name: 'Beranda', url: 'https://regalpaw.id/' },
+    { name: 'Karir', url: 'https://regalpaw.id/career' },
+    { name: 'Keuntungan Bekerja', url: 'https://regalpaw.id/career/benefits' }
+  ]);
+
   return (
     <Layout>
+      <SEOHead
+        title="Keuntungan Bekerja di Regal Paw - Benefits & Perks"
+        description="Temukan keuntungan bekerja di Regal Paw. Kompensasi kompetitif, asuransi kesehatan, pengembangan karir, dan fleksibilitas kerja. Bergabunglah dengan tim yang peduli pada kesejahteraan karyawan."
+        keywords="keuntungan bekerja, benefits, Regal Paw, kompensasi, asuransi, pengembangan karir, fleksibilitas kerja"
+        canonical="/career/benefits"
+        ogType="website"
+        structuredData={breadcrumbData}
+      />
+
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div>

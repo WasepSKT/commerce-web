@@ -15,6 +15,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { printXPrinterReceipt } from '@/lib/receiptPrinter';
 import { TableSkeleton, HeaderSkeleton } from '@/components/ui/AdminSkeleton';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 interface OrderRow {
   id: string;
@@ -354,6 +356,14 @@ export default function Payments() {
 
   return (
     <AdminLayout>
+      <SEOHead
+        title="Kelola Pembayaran - Admin Regal Paw"
+        description="Panel admin untuk mengelola pembayaran pesanan. Verifikasi pembayaran, tandai pesanan sebagai dibayar, dan kelola status pesanan pending."
+        keywords="admin pembayaran, manajemen pembayaran, verifikasi pembayaran, Regal Paw, admin panel"
+        canonical="/admin/payments"
+        ogType="website"
+        noindex={true}
+      />
       <div>
         <h2 className="text-lg font-medium text-primary">Kelola Pembayaran</h2>
         <p className="text-sm text-muted-foreground">Daftar pesanan berstatus <em>pending</em>. Gunakan halaman ini untuk memverifikasi pembayaran — jika sebuah order adalah referral, data referral akan ditampilkan.</p>

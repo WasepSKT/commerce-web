@@ -13,6 +13,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 interface Referral {
   id: string;
@@ -105,6 +107,14 @@ export default function Referrals() {
 
   return (
     <AdminLayout>
+      <SEOHead
+        title="Manajemen Referral - Admin Regal Paw"
+        description="Panel admin untuk mengelola program referral. Lihat daftar referral yang tercatat, kode referral, dan reward points."
+        keywords="admin referral, manajemen referral, program referral, Regal Paw, admin panel"
+        canonical="/admin/referrals"
+        ogType="website"
+        noindex={true}
+      />
       <div>
         <h2 className="text-lg font-medium text-primary">Referral Management</h2>
         <p className="text-sm text-muted-foreground">Daftar referral yang tercatat.</p>
