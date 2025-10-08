@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import bgLogin from '@/assets/bg/bg-login.webp';
 import googleLogo from '@/assets/img/Google__G__logo.svg.png';
 import logoImg from '/regalpaw.png';
-import { Navigate, useSearchParams, Link } from 'react-router-dom';
+import { Navigate, useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -34,6 +34,7 @@ interface ReferralParams {
 export default function Signup() {
   const { isAuthenticated, signInWithGoogle, profile } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [referralCode, setReferralCode] = useState('');
   const [loadingGoogle, setLoadingGoogle] = useState(false);
@@ -140,6 +141,8 @@ export default function Signup() {
           console.log('🔗 Processing referral after manual signup:', referralCode);
           // Referral will be processed by useEffect when profile is loaded
         }
+        // Redirect user to login/auth page after manual signup
+        navigate('/auth', { replace: true });
       }
     } catch (error) {
       toast({

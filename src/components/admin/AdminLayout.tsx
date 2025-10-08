@@ -17,7 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import AdminSidebarNav from '@/components/admin/AdminSidebarNav';
@@ -140,7 +140,7 @@ export function AdminLayout({ active, onChange, children }: AdminLayoutProps) {
                         {profile?.role === 'admin' && (
                           <>
                             <DropdownMenuItem asChild>
-                              <a href="/admin/users" className="flex items-center cursor-pointer"><User className="mr-2 h-4 w-4" />Pengguna</a>
+                              <Link to="/admin/users" className="flex items-center cursor-pointer"><User className="mr-2 h-4 w-4" />Pengguna</Link>
                             </DropdownMenuItem>
                           </>
                         )}
@@ -149,15 +149,15 @@ export function AdminLayout({ active, onChange, children }: AdminLayoutProps) {
                         {(profile?.role === 'admin' || profile?.role === 'marketing' || profile?.role === 'admin_sales') && (
                           <>
                             <DropdownMenuItem asChild>
-                              <a href="/admin/referrals" className="flex items-center cursor-pointer"><Gift className="mr-2 h-4 w-4" />Semua Referral</a>
+                              <Link to="/admin/referrals" className="flex items-center cursor-pointer"><Gift className="mr-2 h-4 w-4" />Semua Referral</Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                              <a href="/admin/referrals/purchases" className="flex items-center cursor-pointer"><CreditCard className="mr-2 h-4 w-4" />Pembelian</a>
+                              <Link to="/admin/referrals/purchases" className="flex items-center cursor-pointer"><CreditCard className="mr-2 h-4 w-4" />Pembelian</Link>
                             </DropdownMenuItem>
                             {/* Pengaturan Referral hanya untuk admin dan marketing */}
                             {(profile?.role === 'admin' || profile?.role === 'marketing') && (
                               <DropdownMenuItem asChild>
-                                <a href="/admin/referrals/settings" className="flex items-center cursor-pointer"><Settings className="mr-2 h-4 w-4" />Pengaturan Referral</a>
+                                <Link to="/admin/referrals/settings" className="flex items-center cursor-pointer"><Settings className="mr-2 h-4 w-4" />Pengaturan Referral</Link>
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuSeparator />
