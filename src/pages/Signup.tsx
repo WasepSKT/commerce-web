@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
+import { getRoleBasedRedirect, UserRole } from '@/utils/rolePermissions';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Eye, EyeOff } from 'lucide-react';
@@ -165,7 +166,8 @@ export default function Signup() {
 
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    const dest = getRoleBasedRedirect((profile?.role as UserRole) ?? 'customer');
+    return <Navigate to={dest} replace />;
   }
 
   // Generate breadcrumb structured data

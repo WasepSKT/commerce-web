@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { canAccessAdmin, UserRole } from '@/utils/rolePermissions';
 
 export interface UserProfile {
   id: string;
@@ -251,7 +252,9 @@ export function useAuth() {
   const signInWithGoogle = async () => {
   // Use runtime origin for redirect; production origin should be configured
   // in Supabase allowed redirect URLs. No build-time VITE_APP_URL is required.
-  const redirectUrl = `${window.location.origin}/`;
+  // Redirect back to the auth page so the app can perform a role-based redirect
+  // (marketing/admin_sales should be forwarded to admin dashboard instead of '/')
+  const redirectUrl = `${window.location.origin}/auth`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -346,7 +349,12 @@ export function useAuth() {
     loading: state.loading,
     signInWithGoogle,
     signOut,
-    isAdmin: state.profile?.role === 'admin',
+  // Treat any role that can access the admin panel (admin, marketing, admin_sales)
+  // as admin for the purpose of route gating.
+  // Determine current role with proper typing to satisfy eslint/ts rules.
+  // Roles 'marketing' and 'admin_sales' are considered admin-level for routing
+  // but their visible menu items are filtered by permissions elsewhere.
+  isAdmin: canAccessAdmin((state.profile?.role as UserRole) ?? 'customer'),
     isAuthenticated: !!state.user,
     updateProfile,
   };

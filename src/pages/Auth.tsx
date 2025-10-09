@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
+import { getRoleBasedRedirect, UserRole } from '@/utils/rolePermissions';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Eye, EyeOff } from 'lucide-react';
@@ -15,7 +16,7 @@ import SEOHead from '@/components/seo/SEOHead';
 import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 export default function Auth() {
-  const { isAuthenticated, signInWithGoogle } = useAuth();
+  const { isAuthenticated, signInWithGoogle, profile } = useAuth();
   const { toast } = useToast();
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [loadingEmailLogin, setLoadingEmailLogin] = useState(false);
@@ -75,7 +76,8 @@ export default function Auth() {
   };
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    const destination = getRoleBasedRedirect((profile?.role as UserRole) ?? 'customer');
+    return <Navigate to={destination} replace />;
   }
 
   // Generate breadcrumb structured data

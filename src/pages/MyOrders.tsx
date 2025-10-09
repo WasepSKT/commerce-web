@@ -463,7 +463,7 @@ export default function MyOrders() {
           <Card className="text-center py-12">
             <CardContent>
               <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">Belum ada pesanan</h3>
+              <h3 className="text-lg font-semibold mb-2 text-primary">Belum ada pesanan</h3>
               <p className="text-muted-foreground mb-6">
                 Anda belum memiliki riwayat pesanan. Mulai berbelanja sekarang!
               </p>
