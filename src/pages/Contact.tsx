@@ -77,7 +77,7 @@ export default function ContactPage() {
               </div>
 
               <div className="mt-8 text-sm text-muted-foreground">
-                <p>Alamat kantor: Jalan Contoh No.1, Jakarta</p>
+                <p>Ruko Citra Raya Square I Blok B2A NO 17 & 18, Kec. Cikupa, Kab. Tangerang - Banten 15710</p>
                 <p>Tel: +62 859 3215 3777</p>
               </div>
             </ResponsiveAnimation>

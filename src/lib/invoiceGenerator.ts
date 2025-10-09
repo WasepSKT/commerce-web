@@ -197,7 +197,7 @@ export const generateInvoiceHTML = (order: Order): string => {
 
       <div style="margin-top:30px;padding:15px;background:#f8f9fa;border-radius:8px;text-align:center;color:#666;font-size:14px;">
         <p style="margin:0;">Terima kasih telah berbelanja di Regal Paw!</p>
-        <p style="margin:5px 0 0 0;">Untuk pertanyaan, hubungi kami di WhatsApp: +62 812-3456-7890</p>
+        <p style="margin:5px 0 0 0;">Untuk pertanyaan, hubungi kami di WhatsApp: +62 812 1675 9143</p>
       </div>
     </body>
     </html>
