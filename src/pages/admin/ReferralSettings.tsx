@@ -331,7 +331,7 @@ export default function ReferralSettings() {
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="font-medium">Program Referal (Undang Teman) — Panduan singkat</div>
-                      <div className="text-sm text-muted-foreground mt-1">Petunjuk singkat untuk mengisi formulir pengaturan program referral. Letakkan di atas pilihan Reward type agar admin memahami pengaruh tiap bidang sebelum menyimpan.</div>
+                      <div className="text-sm text-muted-foreground mt-1">Petunjuk singkat untuk mengisi formulir pengaturan program referral.</div>
                       <ul className="text-xs text-muted-foreground mt-2 list-disc ml-5">
                         <li><strong>Reward type</strong>: pilih jenis hadiah (Points, Coupon, Credit).</li>
                         <li><strong>Reward value</strong>: masukkan jumlah poin atau nominal (angka saja, tanpa 'Rp').</li>

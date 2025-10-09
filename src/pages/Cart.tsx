@@ -406,7 +406,7 @@ export default function CartPage() {
 
       message += `\nTerima kasih.`;
       if (orderId) message = `Order ID: ${orderId}\n` + message;
-      const whatsappUrl = `https://wa.me/6285891332179?text=${encodeURIComponent(message)}`;
+      const whatsappUrl = `https://wa.me/6281216759149?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
       setShowRecap(false);
     } catch (err) {
