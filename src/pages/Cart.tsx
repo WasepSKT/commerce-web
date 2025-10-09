@@ -49,6 +49,7 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true);
   const [showRecap, setShowRecap] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -370,6 +371,7 @@ export default function CartPage() {
     setShowRecap(true);
   };
 
+
   // Ensure an order exists, then redirect to WhatsApp with order details
   const proceedToWhatsApp = async () => {
     try {
@@ -404,7 +406,7 @@ export default function CartPage() {
 
       message += `\nTerima kasih.`;
       if (orderId) message = `Order ID: ${orderId}\n` + message;
-      const whatsappUrl = `https://wa.me/6281234567890?text=${encodeURIComponent(message)}`;
+      const whatsappUrl = `https://wa.me/6285891332179?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
       setShowRecap(false);
     } catch (err) {
@@ -638,6 +640,7 @@ export default function CartPage() {
           </div>
         )}
       </div>
+
     </Layout>
   );
 }

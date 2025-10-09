@@ -16,7 +16,7 @@ import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 // Modular imports
 import { Settings, LevelRow, FormData } from '@/types/referral';
-import { formatRupiah, validateRangeAgainstExisting, parseAmount, rangesOverlap } from '@/lib/referralUtils';
+import { formatRupiah, validateRangeAgainstExisting, parseAmount, rangesOverlap, dbDecimalToDisplayPct, formatPctForDisplay } from '@/lib/referralUtils';
 import { ReferralLevelService } from '@/services/referralService';
 import { LevelFormModal } from '@/components/admin/LevelFormModal';
 import { LevelDisplay } from '@/components/admin/LevelDisplay';
@@ -97,7 +97,7 @@ export default function ReferralSettings() {
     setFormData({
       ...level,
       // level.commission_pct in DB is decimal (0.05) -> convert to display percent
-      commission_pct: level.commission_pct !== null && level.commission_pct !== undefined ? Math.round(Number(level.commission_pct) * 100) : 5,
+      commission_pct: level.commission_pct !== null && level.commission_pct !== undefined ? dbDecimalToDisplayPct(Number(level.commission_pct)) : 5,
       priority: level.priority || 0
     });
     setEditingLevel(level);

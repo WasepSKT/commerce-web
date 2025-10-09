@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Edit, Trash2, Info } from 'lucide-react';
 import { LevelRow } from '@/types/referral';
-import { formatRupiah, getDisplayPercentage, getDecimalForCalculation } from '@/lib/referralUtils';
+import { formatRupiah, getDisplayPercentage, getDecimalForCalculation, formatPctForDisplay } from '@/lib/referralUtils';
 
 interface LevelDisplayProps {
   levels: LevelRow[];
@@ -43,7 +43,7 @@ export function LevelDisplay({ levels, onEditLevel, onDeleteLevel }: LevelDispla
                 <div>
                   <span className="text-muted-foreground">Percentage:</span>
                   <div className="font-medium text-primary">
-                    {getDisplayPercentage(l)}% bonus
+                    {formatPctForDisplay(getDisplayPercentage(l))}% bonus
                   </div>
                 </div>
                 <div>

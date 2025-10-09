@@ -64,13 +64,28 @@ export function validateRangeAgainstExisting(
 // Convert stored DB decimal (e.g. 0.05) to display percentage (5)
 export function dbDecimalToDisplayPct(dbVal: number | undefined | null): number {
   if (dbVal === null || dbVal === undefined) return 0;
-  return Number(dbVal) * 100;
+  // multiply by 100 then normalize to avoid floating point artifacts (e.g. 7.000000000000001)
+  const v = Number(dbVal) * 100;
+  // round to 6 decimal places then return as number
+  return Number(Number(v.toFixed(6)));
 }
 
 // Convert display percentage (e.g. 5) to DB decimal (0.05)
 export function displayPctToDbDecimal(displayPct: number | undefined | null): number {
   const pct = displayPct ?? 0;
   return Number(pct) / 100;
+}
+
+// Nicely format a percentage for UI display.
+// Returns a string without unnecessary trailing zeros: 7 -> "7", 7.5 -> "7.5", 7.25 -> "7.25"
+export function formatPctForDisplay(value: number | null | undefined): string {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return '0';
+  const n = Number(value);
+  // round to 2 decimal places for UI friendliness
+  const rounded = Number(n.toFixed(2));
+  // drop trailing .00 or .0
+  if (Number.isInteger(rounded)) return String(Math.trunc(rounded));
+  return String(rounded).replace(/(?:\.0+|(?<=\.[0-9]*?)0+)$/, (s) => s.replace(/0+$/, ''));
 }
 
 export function getDisplayPercentage(level: { commission_pct?: number | null; weight?: number | null } ): number {

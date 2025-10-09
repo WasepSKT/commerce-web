@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Info, Target, DollarSign, Settings, Calculator, CheckCircle, Save, FileText, Plus } from 'lucide-react';
 import { LevelRow, FormData } from '@/types/referral';
-import { formatRupiah } from '@/lib/referralUtils';
+import { formatRupiah, formatPctForDisplay } from '@/lib/referralUtils';
 
 interface LevelFormModalProps {
   isOpen: boolean;
@@ -197,7 +197,7 @@ export function LevelFormModal({
                       Preview Bonus
                     </div>
                     <div className="text-2xl font-bold text-primary mb-1">
-                      {formatRupiah((Number(formData.min_amount) || 100000) * (displayPercentage / 100))}
+                      {formatRupiah((Number(formData.min_amount) || 100000) * (Number(displayPercentage) / 100))}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       dari pembelian {formatRupiah(Number(formData.min_amount) || 100000)}
