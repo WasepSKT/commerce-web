@@ -36,6 +36,25 @@ const Index = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [hoveringHero, setHoveringHero] = useState(false);
 
+  // Preload hero image dynamically using the imported asset path so build hashed name is respected
+  useEffect(() => {
+    try {
+      const href = String(heroImg);
+      if (!href) return;
+      // Avoid adding duplicate preload
+      if (document.querySelector(`link[rel="preload"][href="${href}"]`)) return;
+      const l = document.createElement('link');
+      l.rel = 'preload';
+      l.as = 'image';
+      l.href = href;
+      // Insert early in head
+      const head = document.head || document.getElementsByTagName('head')[0];
+      head.insertBefore(l, head.firstChild);
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
   // Define sections for scroll navigation
   const navigationSections = [
     { id: 'hero', label: 'Beranda', selector: '#hero-section' },
@@ -81,7 +100,7 @@ const Index = () => {
         ogType="website"
         structuredData={[organizationData, websiteData]}
       />
-      
+
       {/* Scroll Progress Bar */}
       <ScrollProgress
         position="top"
@@ -156,6 +175,10 @@ const Index = () => {
                   <img
                     src={heroImg}
                     alt="Hero"
+                    width={520}
+                    height={420}
+                    loading="eager"
+                    decoding="async"
                     className={`w-full h-full object-cover ${hoveringHero ? 'hidden' : 'block'}`}
                   />
                   <video
