@@ -1,0 +1,99 @@
+name: Build and Deploy to cPanel
+
+on:
+  push:
+    branches:
+      - dev
+      - stg
+      - main
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Select deployment target and env vars
+        id: sel
+        shell: bash
+        run: |
+          BRANCH="${GITHUB_REF##*/}"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+          if [[ "$BRANCH" == "dev" ]]; then
+            echo "env=dev" >> $GITHUB_OUTPUT
+            echo "CPANEL_HOST=${{ secrets.CPANEL_HOST_DEV }}" >> $GITHUB_OUTPUT
+            echo "CPANEL_USER=${{ secrets.CPANEL_USER_DEV }}" >> $GITHUB_OUTPUT
+            echo "CPANEL_PASSWORD=${{ secrets.CPANEL_PASSWORD_DEV }}" >> $GITHUB_OUTPUT
+            echo "CPANEL_DEST=${{ secrets.CPANEL_DEST_DEV }}" >> $GITHUB_OUTPUT
+            echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL_DEV }}" >> $GITHUB_OUTPUT
+            echo "VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY_DEV }}" >> $GITHUB_OUTPUT
+            echo "VITE_SUPABASE_PROJECT_ID=${{ secrets.VITE_SUPABASE_PROJECT_ID_DEV }}" >> $GITHUB_OUTPUT
+          elif [[ "$BRANCH" == "stg" ]]; then
+            echo "env=stg" >> $GITHUB_OUTPUT
+            echo "CPANEL_HOST=${{ secrets.CPANEL_HOST_STG }}" >> $GITHUB_OUTPUT
+            echo "CPANEL_USER=${{ secrets.CPANEL_USER_STG }}" >> $GITHUB_OUTPUT
+            echo "CPANEL_PASSWORD=${{ secrets.CPANEL_PASSWORD_STG }}" >> $GITHUB_OUTPUT
+            echo "CPANEL_DEST=${{ secrets.CPANEL_DEST_STG }}" >> $GITHUB_OUTPUT
+            echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL_STG }}" >> $GITHUB_OUTPUT
+            echo "VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY_STG }}" >> $GITHUB_OUTPUT
+            echo "VITE_SUPABASE_PROJECT_ID=${{ secrets.VITE_SUPABASE_PROJECT_ID_STG }}" >> $GITHUB_OUTPUT
+          else
+            echo "env=prod" >> $GITHUB_OUTPUT
+            echo "CPANEL_HOST=${{ secrets.CPANEL_HOST_PROD }}" >> $GITHUB_OUTPUT
+            echo "CPANEL_USER=${{ secrets.CPANEL_USER_PROD }}" >> $GITHUB_OUTPUT
+            echo "CPANEL_PASSWORD=${{ secrets.CPANEL_PASSWORD_PROD }}" >> $GITHUB_OUTPUT
+            echo "CPANEL_DEST=${{ secrets.CPANEL_DEST_PROD }}" >> $GITHUB_OUTPUT
+            echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL_PROD }}" >> $GITHUB_OUTPUT
+            echo "VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY_PROD }}" >> $GITHUB_OUTPUT
+            echo "VITE_SUPABASE_PROJECT_ID=${{ secrets.VITE_SUPABASE_PROJECT_ID_PROD }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        env:
+          VITE_SUPABASE_URL: ${{ steps.sel.outputs.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ steps.sel.outputs.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_PROJECT_ID: ${{ steps.sel.outputs.VITE_SUPABASE_PROJECT_ID }}
+        run: npm run build
+
+      - name: Deploy via FTPS to cPanel
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ steps.sel.outputs.CPANEL_HOST }}
+          username: ${{ steps.sel.outputs.CPANEL_USER }}
+          password: ${{ steps.sel.outputs.CPANEL_PASSWORD }}
+          port: 21
+          protocol: ftps
+          local-dir: dist/
+          server-dir: ${{ steps.sel.outputs.CPANEL_DEST }}
+          # Keep .htaccess and other server-side files
+          dangerous-clean-slate: false
+          exclude: |
+            **/.git*
+            **/.github/**
+            **/node_modules/**
+            **/src/**
+            **/README.md
+            **/package*.json
+            **/tsconfig*.json
+            **/vite.config.*
+
+      - name: Purge Cloudflare cache (optional)
+        if: ${{ secrets.CF_ZONE_ID && secrets.CF_API_TOKEN }}
+        uses: jakejarvis/cloudflare-purge-action@v0.3.0
+        with:
+          zone: ${{ secrets.CF_ZONE_ID }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
