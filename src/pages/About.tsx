@@ -7,6 +7,8 @@ import useEmblaCarousel from 'embla-carousel-react';
 import tunaImg from '@/assets/img/Tuna.png';
 import salmonImg from '@/assets/img/salmon.png';
 import oceanfishImg from '@/assets/img/oceanfish.png';
+import SEOHead from '@/components/seo/SEOHead';
+import { pageSEOData, generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 // Simple slide data for the carousel
 const slidesData = [
@@ -198,8 +200,23 @@ function ProductCarousel() {
 }
 
 export default function AboutPage() {
+  // Generate breadcrumb structured data
+  const breadcrumbData = generateBreadcrumbStructuredData([
+    { name: 'Beranda', url: 'https://regalpaw.id/' },
+    { name: 'Tentang Kami', url: 'https://regalpaw.id/about' }
+  ]);
+
   return (
     <Layout>
+      <SEOHead
+        title={pageSEOData.about.title}
+        description={pageSEOData.about.description}
+        keywords={pageSEOData.about.keywords}
+        canonical="/about"
+        ogType="website"
+        structuredData={breadcrumbData}
+      />
+
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center mb-12" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic">

@@ -13,6 +13,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 interface Referral {
   id: string;
@@ -105,6 +107,14 @@ export default function Referrals() {
 
   return (
     <AdminLayout>
+      <SEOHead
+        title="Manajemen Referral - Admin Regal Paw"
+        description="Panel admin untuk mengelola program referral. Lihat daftar referral yang tercatat, kode referral, dan reward points."
+        keywords="admin referral, manajemen referral, program referral, Regal Paw, admin panel"
+        canonical="/admin/referrals"
+        ogType="website"
+        noindex={true}
+      />
       <div>
         <h2 className="text-lg font-medium text-primary">Referral Management</h2>
         <p className="text-sm text-muted-foreground">Daftar referral yang tercatat.</p>
@@ -153,7 +163,7 @@ export default function Referrals() {
                       <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Referrer</th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Referred</th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Code</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Actions</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Status</th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Reward</th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Created</th>
                     </tr>

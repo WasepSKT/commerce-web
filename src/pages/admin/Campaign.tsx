@@ -6,12 +6,22 @@ import { ImageSliderManager } from '@/components/admin/campaign/ImageSliderManag
 import { FixedBannerManager } from '@/components/admin/campaign/FixedBannerManager';
 import { PopupCampaignManager } from '@/components/admin/campaign/PopupCampaignManager';
 import { Images, Layout, MessageSquare } from 'lucide-react';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 export default function AdminCampaignPage() {
   const [activeTab, setActiveTab] = useState("slider");
 
   return (
     <AdminLayout>
+      <SEOHead
+        title="Manajemen Kampanye - Admin Regal Paw"
+        description="Panel admin untuk mengelola kampanye marketing. Kelola slider hero, banner tetap, dan pop-up promosi untuk meningkatkan konversi penjualan."
+        keywords="admin kampanye, manajemen kampanye, slider hero, banner promosi, pop-up, Regal Paw, admin panel"
+        canonical="/admin/campaign"
+        ogType="website"
+        noindex={true}
+      />
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">

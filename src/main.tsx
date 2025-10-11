@@ -20,8 +20,36 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// Dynamically load dotlottie webcomponent only on supported browsers to avoid runtime errors
+if (typeof window !== 'undefined' && 'customElements' in window && 'fetch' in window) {
+  // inject module script from unpkg at runtime; this avoids TypeScript trying to resolve package types
+  const script = document.createElement('script');
+  script.type = 'module';
+  script.src = 'https://unpkg.com/@lottiefiles/dotlottie-wc@0.8.1/dist/dotlottie-wc.js';
+  script.onload = () => {
+    if (String(import.meta.env.VITE_ENABLE_DEBUG_LOGS).toLowerCase() === 'true') console.log('dotlottie loaded');
+  };
+  script.onerror = (err) => {
+    if (String(import.meta.env.VITE_ENABLE_DEBUG_LOGS).toLowerCase() === 'true') console.warn('dotlottie failed to load', err);
+  };
+  document.head.appendChild(script);
+}
+
 // Start the order expiry checker
 startOrderExpiryChecker();
+
+// Register service worker for PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((registration) => {
+        if (String(import.meta.env.VITE_ENABLE_DEBUG_LOGS).toLowerCase() === 'true') console.log('SW registered: ', registration);
+      })
+      .catch((registrationError) => {
+        if (String(import.meta.env.VITE_ENABLE_DEBUG_LOGS).toLowerCase() === 'true') console.log('SW registration failed: ', registrationError);
+      });
+  });
+}
 
 createRoot(document.getElementById("root")!).render(<App />);
 

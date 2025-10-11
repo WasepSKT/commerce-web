@@ -25,6 +25,14 @@ export interface BlogPost {
   status: BlogStatus;
   created_at: string;
   updated_at: string;
+  // SEO fields (auto-generated)
+  meta_title?: string;
+  meta_keywords?: string;
+  og_title?: string;
+  og_description?: string;
+  og_image?: string;
+  canonical_url?: string;
+  seo_structured_data?: Record<string, unknown>;
 }
 
 const BLOG_BUCKET = 'blog-images';
@@ -54,15 +62,11 @@ async function deletePostImages(postId: string): Promise<void> {
 export const useBlogCRUD = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  // Bypass generated type constraints for new/non-typed tables
-  // Deliberately use any to bypass generated types for new table 'blogs'
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sb: any = supabase;
 
   const fetchPosts = useCallback(async (): Promise<BlogPost[]> => {
     setLoading(true);
     try {
-      const { data, error } = await sb
+      const { data, error } = await supabase
         .from('blogs')
         .select('*')
         .order('created_at', { ascending: false });
@@ -71,12 +75,12 @@ export const useBlogCRUD = () => {
     } finally {
       setLoading(false);
     }
-  }, [sb]);
+  }, []);
 
   const createPost = useCallback(async (form: BlogForm): Promise<BlogPost> => {
     setLoading(true);
     try {
-      const { data: inserted, error: insertError } = await sb
+      const { data: inserted, error: insertError } = await supabase
         .from('blogs')
         .insert({
           title: form.title,
@@ -93,13 +97,13 @@ export const useBlogCRUD = () => {
       let coverUrl: string | null = null;
       if (form.coverFile) {
         coverUrl = await uploadCoverImage(inserted.id, form.coverFile);
-        await sb.from('blogs').update({ cover_url: coverUrl }).eq('id', inserted.id);
+        await supabase.from('blogs').update({ cover_url: coverUrl }).eq('id', inserted.id);
       }
 
       // Insert category mappings if provided
       if (form.categories && form.categories.length > 0) {
         const mappings = form.categories.map((cId) => ({ blog_id: inserted.id, category_id: cId }));
-        await sb.from('blog_categories').insert(mappings);
+        await supabase.from('blog_categories').insert(mappings);
       }
 
       toast({ title: 'Blog berhasil dibuat' });
@@ -111,13 +115,13 @@ export const useBlogCRUD = () => {
     } finally {
       setLoading(false);
     }
-  }, [toast, sb]);
+  }, [toast]);
 
   const updatePost = useCallback(async (postId: string, form: BlogForm): Promise<BlogPost> => {
     setLoading(true);
     try {
       // Fetch current cover
-      const { data: current, error: fetchErr } = await sb
+      const { data: current, error: fetchErr } = await supabase
         .from('blogs')
         .select('cover_url')
         .eq('id', postId)
@@ -129,7 +133,7 @@ export const useBlogCRUD = () => {
         coverUrl = await uploadCoverImage(postId, form.coverFile);
       }
 
-      const { data: updated, error: updErr } = await sb
+      const { data: updated, error: updErr } = await supabase
         .from('blogs')
         .update({
           title: form.title,
@@ -147,10 +151,10 @@ export const useBlogCRUD = () => {
       // Update category mappings: remove existing mappings and insert new ones
       if (form.categories) {
         // delete existing
-        await sb.from('blog_categories').delete().eq('blog_id', postId);
+        await supabase.from('blog_categories').delete().eq('blog_id', postId);
         if (form.categories.length > 0) {
           const mappings = form.categories.map((cId) => ({ blog_id: postId, category_id: cId }));
-          await sb.from('blog_categories').insert(mappings);
+          await supabase.from('blog_categories').insert(mappings);
         }
       }
 
@@ -163,13 +167,13 @@ export const useBlogCRUD = () => {
     } finally {
       setLoading(false);
     }
-  }, [toast, sb]);
+  }, [toast]);
 
   const deletePost = useCallback(async (postId: string): Promise<void> => {
     setLoading(true);
     try {
       await deletePostImages(postId);
-      const { error } = await sb.from('blogs').delete().eq('id', postId);
+      const { error } = await supabase.from('blogs').delete().eq('id', postId);
       if (error) throw error;
       toast({ title: 'Blog dihapus' });
     } catch (e) {
@@ -179,12 +183,12 @@ export const useBlogCRUD = () => {
     } finally {
       setLoading(false);
     }
-  }, [toast, sb]);
+  }, [toast]);
 
   const togglePublish = useCallback(async (postId: string, publish: boolean): Promise<void> => {
     setLoading(true);
     try {
-      const { error } = await sb
+      const { error } = await supabase
         .from('blogs')
         .update({ status: publish ? 'published' : 'draft' })
         .eq('id', postId);
@@ -197,7 +201,7 @@ export const useBlogCRUD = () => {
     } finally {
       setLoading(false);
     }
-  }, [toast, sb]);
+  }, [toast]);
 
   return { loading, fetchPosts, createPost, updatePost, deletePost, togglePublish };
 };

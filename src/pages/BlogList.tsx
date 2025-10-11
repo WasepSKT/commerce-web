@@ -7,6 +7,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Layout } from '@/components/Layout';
 import { BookOpen, FileText, Plus, ArrowRight } from 'lucide-react';
+import SEOHead from '@/components/seo/SEOHead';
+import { pageSEOData, generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 interface BlogItem {
   id: string;
@@ -99,13 +101,28 @@ export default function BlogList() {
     </div>
   );
 
+  // Generate breadcrumb structured data
+  const breadcrumbData = generateBreadcrumbStructuredData([
+    { name: 'Beranda', url: 'https://regalpaw.id/' },
+    { name: 'Blog', url: 'https://regalpaw.id/blog' }
+  ]);
+
   return (
     <Layout>
-      <div className="container mx-auto max-w-4xl py-8 space-y-6">
+      <SEOHead
+        title={pageSEOData.blog.title}
+        description={pageSEOData.blog.description}
+        keywords={pageSEOData.blog.keywords}
+        canonical="/blog"
+        ogType="website"
+        structuredData={breadcrumbData}
+      />
+
+      <div className="container mx-auto max-w-4xl py-8 px-4 space-y-6">
         <div className="text-center md:text-left">
           <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
-            <BookOpen className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-bold text-primary">Blog</h1>
+            <BookOpen className="h-7 w-7 md:h-8 md:w-8 text-primary" />
+            <h1 className="text-2xl md:text-3xl font-bold text-primary">Blog</h1>
           </div>
           <p className="text-muted-foreground">Artikel dan update terbaru dari Regal Paw</p>
         </div>
@@ -126,20 +143,20 @@ export default function BlogList() {
         {visible.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="grid gap-6">
+          <div className="grid gap-4 md:gap-6">
             {visible.map(post => (
               <Card key={post.id} className="hover:shadow-md transition-shadow duration-200">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-xl">
+                <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-2 md:space-y-0 pb-2">
+                  <CardTitle className="text-lg md:text-xl">
                     <Link
                       to={`/blog/${post.slug}`}
                       className="text-brand hover:text-brand/80 transition-colors duration-200 flex items-center gap-2"
                     >
-                      <FileText className="h-5 w-5 text-brand" />
+                      <FileText className="h-5 w-5 text-brand hidden md:block" />
                       {post.title}
                     </Link>
                   </CardTitle>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 text-sm md:text-base">
                     {post.status === 'draft' && <Badge variant="secondary">Draft</Badge>}
                     <span className="text-xs text-muted-foreground">
                       {new Date(post.created_at).toLocaleDateString('id-ID', {
@@ -151,10 +168,10 @@ export default function BlogList() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex gap-4">
-                    <div className="w-32 h-24 rounded-lg overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
+                  <div className="flex flex-col md:flex-row gap-3 md:gap-4">
+                    <div className="w-full md:w-32 h-48 md:h-24 rounded-lg overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
                       {post.cover_url ? (
-                        <img src={post.cover_url} alt={post.title} className="w-full h-full object-cover" />
+                        <img src={post.cover_url} alt={post.title} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                       ) : (
                         <div className="text-xs text-muted-foreground text-center">
                           <FileText className="h-6 w-6 mx-auto mb-1 opacity-50" />
@@ -163,12 +180,12 @@ export default function BlogList() {
                       )}
                     </div>
                     <div className="flex-1 space-y-2">
-                      <div className="line-clamp-3 text-sm text-muted-foreground leading-relaxed">
+                      <div className="line-clamp-3 text-sm md:text-base text-muted-foreground leading-relaxed">
                         {post.meta_description ||
                           post.content.replace(/<[^>]*>/g, '').slice(0, 200) + '...'
                         }
                       </div>
-                      <Button asChild variant="blog-link" size="sm" className="group">
+                      <Button asChild variant="blog-link" size="sm" className="group w-full md:w-auto">
                         <Link to={`/blog/${post.slug}`}>
                           <BookOpen className="h-4 w-4" />
                           Baca Selengkapnya

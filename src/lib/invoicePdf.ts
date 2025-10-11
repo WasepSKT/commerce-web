@@ -6,8 +6,7 @@
 
   The function attaches itself to window.generateInvoicePdf when executed in a browser.
 */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function generateInvoicePdf(order: any) {
+export async function generateInvoicePdf(order: Record<string, unknown>) {
   // dynamic import so the app doesn't break if deps are not installed
   const hasWindow = typeof window !== 'undefined';
   if (!hasWindow) throw new Error('Not in browser');
@@ -23,14 +22,31 @@ export async function generateInvoicePdf(order: any) {
   container.style.width = '800px';
   container.style.padding = '20px';
   container.style.fontFamily = 'Arial, Helvetica, sans-serif';
+  // normalize and guard unknown fields
+  const idStr = String(order.id ?? '-');
+  const createdAtRaw = order.created_at as unknown;
+  let createdDate: Date;
+  if (createdAtRaw instanceof Date) {
+    createdDate = createdAtRaw;
+  } else if (typeof createdAtRaw === 'number' || typeof createdAtRaw === 'string') {
+    createdDate = new Date(createdAtRaw);
+  } else {
+    createdDate = new Date();
+  }
+
+  const nameStr = String(order.customer_name ?? order.user_id ?? '-');
+  const phoneStr = String(order.customer_phone ?? '-');
+  const addressStr = String(order.customer_address ?? '-');
+  const totalNum = Number((order.total_amount ?? 0) as unknown as number);
+
   container.innerHTML = `
     <h2>Invoice</h2>
-    <p>Order ID: ${order.id}</p>
-    <p>Tanggal: ${new Date(order.created_at).toLocaleString()}</p>
-    <p>Nama: ${order.customer_name ?? order.user_id ?? '-'}</p>
-    <p>Phone: ${order.customer_phone ?? '-'}</p>
-    <p>Alamat: ${order.customer_address ?? '-'}</p>
-    <p>Total: Rp ${Number(order.total_amount ?? 0).toLocaleString('id-ID')}</p>
+    <p>Order ID: ${idStr}</p>
+    <p>Tanggal: ${createdDate.toLocaleString()}</p>
+    <p>Nama: ${nameStr}</p>
+    <p>Phone: ${phoneStr}</p>
+    <p>Alamat: ${addressStr}</p>
+    <p>Total: Rp ${totalNum.toLocaleString('id-ID')}</p>
   `;
   document.body.appendChild(container);
   // render

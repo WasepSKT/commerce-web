@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import ResponsiveAnimation from '@/components/ui/ResponsiveAnimation';
 import heroContact from '@/assets/img/hero-contact.png';
 import { Link } from 'react-router-dom';
+import SEOHead from '@/components/seo/SEOHead';
+import { pageSEOData, generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 export default function ContactPage() {
   const [open, setOpen] = useState(false);
@@ -29,8 +31,23 @@ export default function ContactPage() {
     setOpen(false);
   };
 
+  // Generate breadcrumb structured data
+  const breadcrumbData = generateBreadcrumbStructuredData([
+    { name: 'Beranda', url: 'https://regalpaw.id/' },
+    { name: 'Kontak', url: 'https://regalpaw.id/contact' }
+  ]);
+
   return (
     <Layout>
+      <SEOHead
+        title={pageSEOData.contact.title}
+        description={pageSEOData.contact.description}
+        keywords={pageSEOData.contact.keywords}
+        canonical="/contact"
+        ogType="website"
+        structuredData={breadcrumbData}
+      />
+
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -60,7 +77,7 @@ export default function ContactPage() {
               </div>
 
               <div className="mt-8 text-sm text-muted-foreground">
-                <p>Alamat kantor: Jalan Contoh No.1, Jakarta</p>
+                <p>Ruko Citra Raya Square I Blok B2A NO 17 & 18, Kec. Cikupa, Kab. Tangerang - Banten 15710</p>
                 <p>Tel: +62 859 3215 3777</p>
               </div>
             </ResponsiveAnimation>

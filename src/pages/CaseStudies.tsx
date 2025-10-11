@@ -1,6 +1,8 @@
 import React from 'react';
 import { Layout } from '@/components/Layout';
 import FaqCollapse from '@/components/ui/FaqCollapse';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData, generateFAQStructuredData } from '@/utils/seoData';
 
 const FAQS = [
   {
@@ -84,8 +86,29 @@ const FAQS = [
 ];
 
 export default function CaseStudiesPage() {
+  // Generate FAQ structured data
+  const faqData = FAQS.map(faq => ({
+    question: faq.question,
+    answer: typeof faq.answer === 'string' ? faq.answer : faq.answer.props.children
+  }));
+
+  const faqStructuredData = generateFAQStructuredData(faqData);
+  const breadcrumbData = generateBreadcrumbStructuredData([
+    { name: 'Beranda', url: 'https://regalpaw.id/' },
+    { name: 'Case Studies', url: 'https://regalpaw.id/case-studies' }
+  ]);
+
   return (
     <Layout>
+      <SEOHead
+        title="Case Studies - FAQ Regal Paw"
+        description="Kumpulan kasus nyata dan solusi umum yang sering terjadi di Regal Paw. Temukan jawaban untuk pertanyaan tentang program referral, pengiriman, dan layanan pelanggan."
+        keywords="case studies, FAQ, pertanyaan umum, program referral, pengiriman, layanan pelanggan, Regal Paw"
+        canonical="/case-studies"
+        ogType="website"
+        structuredData={[faqStructuredData, breadcrumbData]}
+      />
+
       <div className="container mx-auto px-4 py-16">
         <h1 className="text-3xl font-bold mb-6 text-primary">Case Studies</h1>
 

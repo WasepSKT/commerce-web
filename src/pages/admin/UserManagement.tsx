@@ -16,6 +16,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Plus, Edit, Trash2, Users, Shield, Eye, Loader2, UserPlus } from 'lucide-react';
 import { TableSkeleton, PaginationSkeleton } from '@/components/ui/AdminSkeleton';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 // Extended user roles using Supabase types
 export type UserRole = Database['public']['Enums']['user_role'];
@@ -389,6 +391,14 @@ export default function EnhancedUserManagement() {
 
   return (
     <AdminLayout>
+      <SEOHead
+        title="Manajemen Pengguna - Admin Regal Paw"
+        description="Panel admin untuk mengelola pengguna dan atur role akses. Tambah, edit, dan hapus pengguna dengan sistem manajemen yang aman dan terstruktur."
+        keywords="admin manajemen pengguna, role akses, tambah pengguna, Regal Paw, admin panel"
+        canonical="/admin/user-management"
+        ogType="website"
+        noindex={true}
+      />
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">

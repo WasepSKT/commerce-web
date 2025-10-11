@@ -40,10 +40,10 @@ export async function loadKodepos(): Promise<NormLocations> {
 
   const norm: NormLocations = {};
   for (const item of list as Array<KodeposRow>) {
-    // normalize keys by trimming whitespace
-    const provinceRaw = (item.province || item.provinsi || 'Unknown') as string;
-    const cityRaw = (item.city || item.kabupaten || item.kota || 'Unknown City') as string;
-    const districtRaw = (item.district || item.kecamatan || 'Unknown District') as string;
+    // normalize keys by trimming whitespace; skip rows missing essential fields
+    const provinceRaw = (item.province || item.provinsi || '') as string;
+    const cityRaw = (item.city || item.kabupaten || item.kota || '') as string;
+    const districtRaw = (item.district || item.kecamatan || '') as string;
     const subRaw = (item.subdistrict || item.desa || item.kelurahan || '') as string;
     const postal = (item.postal_code || item.kodepos || '') as string;
 
@@ -52,10 +52,20 @@ export async function loadKodepos(): Promise<NormLocations> {
     const district = districtRaw.trim();
     const sub = subRaw.trim();
 
+    // ignore rows that don't have at least province, city and district
+    if (!province || !city || !district) continue;
+    // ignore empty subdistrict names (we don't want blank entries)
+    if (!sub) continue;
+
     if (!norm[province]) norm[province] = {};
     if (!norm[province][city]) norm[province][city] = {};
     if (!norm[province][city][district]) norm[province][city][district] = [];
-    norm[province][city][district].push({ name: sub, postal });
+
+    // avoid duplicates
+    const existing = norm[province][city][district];
+    if (!existing.some(s => s.name === sub && s.postal === postal)) {
+      existing.push({ name: sub, postal });
+    }
   }
 
   try {
@@ -69,7 +79,8 @@ export async function loadKodepos(): Promise<NormLocations> {
 
 export function getProvincesFromCache(): string[] {
   const m = fromCache();
-  return m ? Object.keys(m) : [];
+  if (!m) return [];
+  return Object.keys(m).sort((a, b) => a.localeCompare(b, 'id'));
 }
 
 function findKeyInsensitive(obj: Record<string, unknown> | undefined, key: string): string | undefined {
@@ -83,7 +94,7 @@ export function getCitiesFromCache(province: string): string[] {
   if (!m) return [];
   const provKey = findKeyInsensitive(m, province);
   if (!provKey) return [];
-  return Object.keys(m[provKey]);
+  return Object.keys(m[provKey]).sort((a, b) => a.localeCompare(b, 'id'));
 }
 
 export function getDistrictsFromCache(province: string, city: string): string[] {
@@ -94,7 +105,7 @@ export function getDistrictsFromCache(province: string, city: string): string[] 
   const cities = m[provKey] as Record<string, Record<string, Subdistrict[]>>;
   const cityKey = findKeyInsensitive(cities, city);
   if (!cityKey) return [];
-  return Object.keys(cities[cityKey]);
+  return Object.keys(cities[cityKey]).sort((a, b) => a.localeCompare(b, 'id'));
 }
 
 export function getSubdistrictsFromCache(province: string, city: string, district: string): Subdistrict[] {
@@ -108,5 +119,8 @@ export function getSubdistrictsFromCache(province: string, city: string, distric
   const districts = cities[cityKey] as Record<string, Subdistrict[]>;
   const distKey = findKeyInsensitive(districts, district);
   if (!distKey) return [];
-  return districts[distKey];
+  // return subdistricts sorted by name and deduped
+  const subs = districts[distKey] || [];
+  const unique = Array.from(new Map(subs.map(s => [s.name, s])).values());
+  return unique.sort((a, b) => a.name.localeCompare(b.name, 'id'));
 }

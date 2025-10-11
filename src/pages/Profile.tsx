@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Subdistrict } from '@/lib/loadKodepos';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,8 @@ const getWin = () => window as unknown as (Window & { _profile_map_ref?: Profile
 export default function ProfilePage() {
   const { profile, updateProfile } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [full_name, setFullName] = useState(profile?.full_name ?? '');
   const [phone, setPhone] = useState(profile?.phone ?? '');
   const [phoneError, setPhoneError] = useState<string | null>(null);
@@ -117,6 +120,11 @@ export default function ProfilePage() {
         toast({ title: 'Beberapa field tidak disimpan', description: `Field: ${res.skipped.join(', ')} tidak ditemukan di server dan diabaikan.` });
       } else {
         toast({ title: 'Profil diperbarui' });
+        // If a `next` param exists and is a safe internal path, navigate to it
+        const next = searchParams.get('next');
+        if (next && typeof next === 'string' && next.startsWith('/')) {
+          navigate(next);
+        }
       }
     }
   };
@@ -206,7 +214,7 @@ export default function ProfilePage() {
                   setPhone(e.target.value);
                   const norm = normalizePhone(e.target.value);
                   setPhoneError(isValidIndoPhone(norm) ? null : 'Nomor telepon tidak valid');
-                }} placeholder="contoh: 081234567890" />
+                }} placeholder="contoh: 087890" />
                 {phoneError ? <p className="mt-1 text-sm text-destructive">{phoneError}</p> : null}
               </div>
 

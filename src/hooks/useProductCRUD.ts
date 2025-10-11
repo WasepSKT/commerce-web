@@ -26,6 +26,15 @@ export interface Product {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // SEO fields (auto-generated)
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string;
+  og_title?: string;
+  og_description?: string;
+  og_image?: string;
+  canonical_url?: string;
+  seo_structured_data?: Record<string, unknown>;
 }
 
 export const useProductCRUD = () => {

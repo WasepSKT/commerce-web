@@ -17,6 +17,8 @@ import CTASection from '@/components/CTASection';
 import ScrollProgress from '@/components/ui/ScrollProgress';
 import ScrollNavigation from '@/components/ui/ScrollNavigation';
 import { ScrollAnimation, FadeInUp, FadeInScale, ParallaxScroll, ResponsiveFadeInRight } from '@/components/ui/ScrollAnimation';
+import SEOHead from '@/components/seo/SEOHead';
+import { organizationData, websiteData, pageSEOData } from '@/utils/seoData';
 
 interface Product {
   id: string;
@@ -33,6 +35,25 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [hoveringHero, setHoveringHero] = useState(false);
+
+  // Preload hero image dynamically using the imported asset path so build hashed name is respected
+  useEffect(() => {
+    try {
+      const href = String(heroImg);
+      if (!href) return;
+      // Avoid adding duplicate preload
+      if (document.querySelector(`link[rel="preload"][href="${href}"]`)) return;
+      const l = document.createElement('link');
+      l.rel = 'preload';
+      l.as = 'image';
+      l.href = href;
+      // Insert early in head
+      const head = document.head || document.getElementsByTagName('head')[0];
+      head.insertBefore(l, head.firstChild);
+    } catch (e) {
+      // ignore
+    }
+  }, []);
 
   // Define sections for scroll navigation
   const navigationSections = [
@@ -71,6 +92,15 @@ const Index = () => {
 
   return (
     <Layout>
+      <SEOHead
+        title={pageSEOData.home.title}
+        description={pageSEOData.home.description}
+        keywords={pageSEOData.home.keywords}
+        canonical="/"
+        ogType="website"
+        structuredData={[organizationData, websiteData]}
+      />
+
       {/* Scroll Progress Bar */}
       <ScrollProgress
         position="top"
@@ -145,6 +175,10 @@ const Index = () => {
                   <img
                     src={heroImg}
                     alt="Hero"
+                    width={520}
+                    height={420}
+                    loading="eager"
+                    decoding="async"
                     className={`w-full h-full object-cover ${hoveringHero ? 'hidden' : 'block'}`}
                   />
                   <video

@@ -15,6 +15,8 @@ import {
   SelectItem,
   SelectValue,
 } from '@/components/ui/select';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 interface OrderItem {
   id?: string;
@@ -92,6 +94,14 @@ export default function Shipings() {
 
   return (
     <AdminLayout>
+      <SEOHead
+        title="Kelola Pengiriman - Admin Regal Paw"
+        description="Panel admin untuk mengelola pengiriman pesanan. Tandai resi, pilih jasa kirim, dan update status pengiriman untuk pesanan yang telah dibayar."
+        keywords="admin pengiriman, manajemen pengiriman, resi, jasa kirim, Regal Paw, admin panel"
+        canonical="/admin/shipings"
+        ogType="website"
+        noindex={true}
+      />
       <div>
         <h2 className="text-lg font-medium text-primary">Kelola Pengiriman</h2>
         <p className="text-sm text-muted-foreground">Daftar pesanan yang telah dibayar. Tandai resi dan pilih jasa kirim di sini.</p>

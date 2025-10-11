@@ -66,9 +66,12 @@ export const printXPrinterReceipt = (order: OrderForReceipt): void => {
     <head>
       <meta name="viewport" content="width=device-width,initial-scale=1" />
       <style>
-        @page { size: 100mm 150mm; margin: 6mm; }
-        body{font-family: Arial, Helvetica, sans-serif; font-size:12px; padding:0; margin:0; color:#000}
-        .receipt { width: 100mm; max-width:100mm; box-sizing:border-box; padding:6px }
+  /* Use exact A6 paper size: 105mm x 148mm */
+  @page { size: 105mm 148mm; margin: 6mm; }
+  html, body { width: 105mm; height: 148mm; padding: 0; margin: 0; }
+  body{font-family: Arial, Helvetica, sans-serif; font-size:12px; padding:0; margin:0; color:#000}
+  /* Content area equals A6 minus 2*margin (6mm) */
+  .receipt { width: calc(105mm - 12mm); height: calc(148mm - 12mm); max-width: calc(105mm - 12mm); box-sizing:border-box; padding:6mm; overflow: hidden; }
         .header{display:flex; justify-content:space-between; align-items:center; gap:8px}
         .logo img{max-height:36px; filter:grayscale(1)}
         .barcode img{max-height:60px}
@@ -93,7 +96,7 @@ export const printXPrinterReceipt = (order: OrderForReceipt): void => {
 
         <div style="margin-top:6px">
           <div class="seller">Regal Paw</div>
-          <div class="address">Jalan Contoh No.1, Kota Contoh — Telp: 0812-3456-7890</div>
+          <div class="address">Ruko Citra Raya Square I Blok B2A NO 17 & 18, Kec. Cikupa, Kab. Tangerang - Banten 15710 — Telp: (+62) 812 1675 9143</div>
         </div>
 
         <hr/>
@@ -126,6 +129,27 @@ export const printXPrinterReceipt = (order: OrderForReceipt): void => {
           <div class="small" style="margin-top:8px">Terima kasih telah berbelanja di Regal Paw</div>
         </div>
       </div>
+      <script>
+        // Scale receipt to fit A6 page if content is taller than page
+        (function(){
+          function mmToPx(mm){ return mm * (96/25.4); }
+          var availHeightPx = mmToPx(148 - 12); // page height minus margins (mm->px)
+          var availWidthPx = mmToPx(105 - 12);
+          var receipt = document.querySelector('.receipt');
+          if(!receipt) return;
+          var contentH = receipt.scrollHeight;
+          var contentW = receipt.scrollWidth;
+          if(contentH > availHeightPx || contentW > availWidthPx){
+            var scale = Math.min(availWidthPx / contentW, availHeightPx / contentH);
+            if(scale < 1){
+              receipt.style.transformOrigin = 'top left';
+              receipt.style.transform = 'scale(' + scale + ')';
+              // keep the document width equal to page width to avoid extra pages
+              document.body.style.width = (availWidthPx) + 'px';
+            }
+          }
+        })();
+      </script>
     </body>
     </html>
   `;

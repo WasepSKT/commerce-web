@@ -71,7 +71,7 @@ export const generateFakturHTML = (order: OrderForFaktur): string => {
           padding-bottom: 20px;
         }
         .logo {
-          max-width: 180px;
+          max-width: 250px;
           height: auto;
           margin-bottom: 10px;
         }
@@ -87,6 +87,7 @@ export const generateFakturHTML = (order: OrderForFaktur): string => {
           margin-bottom: 20px;
         }
         .faktur-title {
+        text-align: center;
           font-size: 20px;
           font-weight: bold;
           color: #7A1316;
@@ -160,19 +161,43 @@ export const generateFakturHTML = (order: OrderForFaktur): string => {
           font-size: 12px;
           color: #666;
         }
+        /* place signatures below floated totals and split 50/50 */
         .signature-section {
+          clear: both; /* ensure below subtotal/total float */
           display: flex;
           justify-content: space-between;
-          margin-top: 40px;
+          gap: 20px;
+          margin-top: 60px; /* space from totals */
+          align-items: flex-start;
+          width: 100%;
+          box-sizing: border-box;
         }
         .signature-box {
-          text-align: center;
-          width: 200px;
+          box-sizing: border-box;
         }
+        /* exact 50/50 columns (minus gap) */
+        .signature-left, .signature-right {
+          width: calc(50% - 10px);
+          min-width: 160px;
+        }
+        /* left column content aligned left, right column aligned right */
+        .signature-left { text-align: left; margin-top: 20px; }
+        .signature-right { text-align: right;margin-top: 20px; }
+        /* signature line stays inside its column and aligns to start/end */
         .signature-line {
           border-top: 1px solid #333;
-          margin-top: 60px;
-          padding-top: 5px;
+          margin-top: 56px;
+          padding-top: 6px;
+          min-height: 48px;
+          display: block;
+          width: 70%;
+        }
+        .signature-left .signature-line { margin-left: 0; margin-right: auto; }
+        .signature-right .signature-line { margin-left: auto; margin-right: 0; }
+        @media (max-width: 640px) {
+          .signature-section { flex-direction: column; gap: 12px; }
+          .signature-left, .signature-right { width: 100%; }
+          .signature-line { width: 100%; margin-top: 28px; }
         }
         @media print {
           body { padding: 10px; }
@@ -183,16 +208,15 @@ export const generateFakturHTML = (order: OrderForFaktur): string => {
     <body>
       <div class="header">
         <img src="/regalpaw.png" alt="Regal Paw Logo" class="logo" />
-        <div class="company-name">REGAL PAW</div>
         <div class="company-info">
-          Toko Perlengkapan & Makanan Hewan Premium<br/>
-          Jalan Contoh No. 123, Jakarta Selatan<br/>
-          Telp: (021) 1234-5678 | Email: info@regalpaw.com<br/>
+          Toko Makanan Kucing Premium<br/>
+          Ruko Citra Raya Square I Blok B2A NO 17 & 18, Kec. Cikupa, Kab. Tangerang - Banten 15710<br/>
+          Telp: (+62) 812 1675 9143 | Email: info@regalpaw.com<br/>
           NPWP: 12.345.678.9-123.000
         </div>
       </div>
 
-      <div class="faktur-title">📄 FAKTUR PENJUALAN</div>
+      <div class="faktur-title">FAKTUR PENJUALAN</div>
       
       <div class="faktur-info">
         <div class="faktur-left">
@@ -252,14 +276,14 @@ export const generateFakturHTML = (order: OrderForFaktur): string => {
       </div>
 
       <div class="signature-section">
-        <div class="signature-box">
+        <div class="signature-box signature-left">
           <div>Hormat Kami,</div>
           <div class="signature-line">
             <strong>REGAL PAW</strong><br/>
             Admin
           </div>
         </div>
-        <div class="signature-box">
+        <div class="signature-box signature-right">
           <div>Penerima,</div>
           <div class="signature-line">
             <strong>${order.customer_name ?? 'Customer'}</strong><br/>

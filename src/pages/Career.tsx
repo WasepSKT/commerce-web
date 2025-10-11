@@ -4,10 +4,27 @@ import { Button } from '@/components/ui/button';
 import ResponsiveAnimation from '@/components/ui/ResponsiveAnimation';
 import heroImg from '@/assets/img/hero-career.png';
 import { Link } from 'react-router-dom';
+import SEOHead from '@/components/seo/SEOHead';
+import { pageSEOData, generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 export default function CareerPage() {
+  // Generate breadcrumb structured data
+  const breadcrumbData = generateBreadcrumbStructuredData([
+    { name: 'Beranda', url: 'https://regalpaw.id/' },
+    { name: 'Karir', url: 'https://regalpaw.id/career' }
+  ]);
+
   return (
     <Layout>
+      <SEOHead
+        title={pageSEOData.career.title}
+        description={pageSEOData.career.description}
+        keywords={pageSEOData.career.keywords}
+        canonical="/career"
+        ogType="website"
+        structuredData={breadcrumbData}
+      />
+
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 items-center gap-12">

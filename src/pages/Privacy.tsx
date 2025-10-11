@@ -1,8 +1,25 @@
 import { Layout } from '@/components/Layout';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 export default function PrivacyPage() {
+  // Generate breadcrumb structured data
+  const breadcrumbData = generateBreadcrumbStructuredData([
+    { name: 'Beranda', url: 'https://regalpaw.id/' },
+    { name: 'Kebijakan Privasi', url: 'https://regalpaw.id/privacy' }
+  ]);
+
   return (
     <Layout>
+      <SEOHead
+        title="Kebijakan Privasi - Regal Paw"
+        description="Kebijakan privasi Regal Paw. Pelajari bagaimana kami mengumpulkan, menggunakan, dan melindungi data pribadi Anda. Transparansi dalam perlindungan privasi pelanggan."
+        keywords="kebijakan privasi, privacy policy, perlindungan data, Regal Paw, keamanan data"
+        canonical="/privacy"
+        ogType="website"
+        structuredData={breadcrumbData}
+      />
+
       <div className="container mx-auto px-4 py-16">
         <h1 className="text-3xl font-bold text-brand mb-4">Kebijakan Privasi</h1>
         <ul className="list-disc pl-5 mb-6 text-brand space-y-2">

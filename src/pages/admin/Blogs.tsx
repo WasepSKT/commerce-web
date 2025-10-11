@@ -11,6 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Skeleton } from '@/components/ui/skeleton';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 export default function AdminBlogsPage() {
   const { loading, fetchPosts, createPost, updatePost, deletePost, togglePublish } = useBlogCRUD();
@@ -170,6 +172,14 @@ export default function AdminBlogsPage() {
 
   return (
     <AdminLayout>
+      <SEOHead
+        title="Manajemen Blog - Admin Regal Paw"
+        description="Panel admin untuk mengelola artikel blog dan konten. Buat, edit, dan publikasikan artikel blog dengan editor rich text yang lengkap."
+        keywords="admin blog, manajemen blog, artikel blog, Regal Paw, admin panel, editor blog"
+        canonical="/admin/blogs"
+        ogType="website"
+        noindex={true}
+      />
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>

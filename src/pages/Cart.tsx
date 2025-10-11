@@ -18,6 +18,8 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 interface Product {
   id: string;
@@ -47,6 +49,7 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true);
   const [showRecap, setShowRecap] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -368,6 +371,7 @@ export default function CartPage() {
     setShowRecap(true);
   };
 
+
   // Ensure an order exists, then redirect to WhatsApp with order details
   const proceedToWhatsApp = async () => {
     try {
@@ -402,7 +406,7 @@ export default function CartPage() {
 
       message += `\nTerima kasih.`;
       if (orderId) message = `Order ID: ${orderId}\n` + message;
-      const whatsappUrl = `https://wa.me/6281234567890?text=${encodeURIComponent(message)}`;
+      const whatsappUrl = `https://wa.me/6281216759149?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
       setShowRecap(false);
     } catch (err) {
@@ -433,8 +437,24 @@ export default function CartPage() {
 
 
 
+  // Generate breadcrumb structured data
+  const breadcrumbData = generateBreadcrumbStructuredData([
+    { name: 'Beranda', url: 'https://regalpaw.id/' },
+    { name: 'Keranjang', url: 'https://regalpaw.id/cart' }
+  ]);
+
   return (
     <Layout>
+      <SEOHead
+        title="Keranjang Belanja - Regal Paw"
+        description="Keranjang belanja Regal Paw. Review produk makanan kucing premium yang telah Anda pilih, hitung total belanja, dan lanjutkan ke checkout dengan mudah."
+        keywords="keranjang, cart, belanja, checkout, makanan kucing, Regal Paw"
+        canonical="/cart"
+        ogType="website"
+        structuredData={breadcrumbData}
+        noindex={true}
+      />
+
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-primary">Keranjang Belanja</h1>
@@ -620,6 +640,7 @@ export default function CartPage() {
           </div>
         )}
       </div>
+
     </Layout>
   );
 }

@@ -178,7 +178,7 @@ export default function AdminSidebarNav() {
                     <SidebarMenuSubButton asChild isActive={location.pathname === '/admin/referrals'}>
                       <Link
                         to="/admin/referrals"
-                        className={`sidebar-link flex items-center gap-3 pl-12 pr-4 py-2 rounded-l-md transition-colors text-sm ${location.pathname === '/admin/referrals'
+                        className={`sidebar-link flex items-center gap-3 pl-8 pr-4 py-2 rounded-l-md transition-colors text-sm ${location.pathname === '/admin/referrals'
                           ? 'sidebar-link--active text-primary-foreground font-semibold'
                           : 'text-muted-foreground hover:bg-muted/10 hover:text-muted-foreground'
                           }`}
@@ -194,7 +194,7 @@ export default function AdminSidebarNav() {
                     <SidebarMenuSubButton asChild isActive={location.pathname === '/admin/referrals/purchases'}>
                       <Link
                         to="/admin/referrals/purchases"
-                        className={`sidebar-link flex items-center gap-3 pl-12 pr-4 py-2 rounded-l-md transition-colors text-sm ${location.pathname === '/admin/referrals/purchases'
+                        className={`sidebar-link flex items-center gap-3 pl-8 pr-4 py-2 rounded-l-md transition-colors text-sm ${location.pathname === '/admin/referrals/purchases'
                           ? 'sidebar-link--active text-primary-foreground font-semibold'
                           : 'text-muted-foreground hover:bg-muted/10 hover:text-muted-foreground'
                           }`}
@@ -210,7 +210,7 @@ export default function AdminSidebarNav() {
                     <SidebarMenuSubButton asChild isActive={location.pathname === '/admin/referrals/settings'}>
                       <Link
                         to="/admin/referrals/settings"
-                        className={`sidebar-link flex items-center gap-3 pl-12 pr-4 py-2 rounded-l-md transition-colors text-sm ${location.pathname === '/admin/referrals/settings'
+                        className={`sidebar-link flex items-center gap-3 pl-8 pr-4 py-2 rounded-l-md transition-colors text-sm ${location.pathname === '/admin/referrals/settings'
                           ? 'sidebar-link--active text-primary-foreground font-semibold'
                           : 'text-muted-foreground hover:bg-muted/10 hover:text-muted-foreground'
                           }`}

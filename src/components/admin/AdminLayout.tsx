@@ -8,7 +8,7 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import { User, AlertTriangle, Settings, LogOut } from 'lucide-react';
+import { User, AlertTriangle, Settings, LogOut, Gift, CreditCard } from 'lucide-react';
 import { NotificationDropdown } from '@/components/admin/NotificationDropdown';
 import {
   DropdownMenu,
@@ -17,7 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import AdminSidebarNav from '@/components/admin/AdminSidebarNav';
@@ -136,13 +136,33 @@ export function AdminLayout({ active, onChange, children }: AdminLayoutProps) {
                           </div>
                         </div>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <a href="/admin/settings" className="flex items-center cursor-pointer"><Settings className="mr-2 h-4 w-4" />Pengaturan</a>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <a href="/admin/users" className="flex items-center cursor-pointer"><User className="mr-2 h-4 w-4" />Pengguna</a>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
+                        {/* Role-based menu: only admin sees Pengguna; remove general Settings link as requested */}
+                        {profile?.role === 'admin' && (
+                          <>
+                            <DropdownMenuItem asChild>
+                              <Link to="/admin/users" className="flex items-center cursor-pointer"><User className="mr-2 h-4 w-4" />Pengguna</Link>
+                            </DropdownMenuItem>
+                          </>
+                        )}
+
+                        {/* Referral quick links: visible to admin, marketing, admin_sales */}
+                        {(profile?.role === 'admin' || profile?.role === 'marketing' || profile?.role === 'admin_sales') && (
+                          <>
+                            <DropdownMenuItem asChild>
+                              <Link to="/admin/referrals" className="flex items-center cursor-pointer"><Gift className="mr-2 h-4 w-4" />Semua Referral</Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link to="/admin/referrals/purchases" className="flex items-center cursor-pointer"><CreditCard className="mr-2 h-4 w-4" />Pembelian</Link>
+                            </DropdownMenuItem>
+                            {/* Pengaturan Referral hanya untuk admin dan marketing */}
+                            {(profile?.role === 'admin' || profile?.role === 'marketing') && (
+                              <DropdownMenuItem asChild>
+                                <Link to="/admin/referrals/settings" className="flex items-center cursor-pointer"><Settings className="mr-2 h-4 w-4" />Pengaturan Referral</Link>
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
                         <DropdownMenuItem className="cursor-pointer" onSelect={() => setLogoutOpen(true)}>
                           <span className="flex items-center"><LogOut className="mr-2 h-4 w-4" />Keluar</span>
                         </DropdownMenuItem>

@@ -30,6 +30,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 import { Label } from '@/components/ui/label';
 import {
   Collapsible,
@@ -405,8 +407,24 @@ export default function MyOrders() {
     return <Navigate to="/auth" replace />;
   }
 
+  // Generate breadcrumb structured data
+  const breadcrumbData = generateBreadcrumbStructuredData([
+    { name: 'Beranda', url: 'https://regalpaw.id/' },
+    { name: 'Pesanan Saya', url: 'https://regalpaw.id/my-orders' }
+  ]);
+
   return (
     <Layout>
+      <SEOHead
+        title="Pesanan Saya - Regal Paw"
+        description="Kelola dan lacak pesanan makanan kucing premium Anda di Regal Paw. Lihat status pengiriman, konfirmasi penerimaan, dan unduh invoice."
+        keywords="pesanan, order, tracking, pengiriman, invoice, Regal Paw, makanan kucing"
+        canonical="/my-orders"
+        ogType="website"
+        structuredData={breadcrumbData}
+        noindex={true}
+      />
+
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2 text-brand text-center md:text-left">Pesanan Saya</h1>
@@ -445,7 +463,7 @@ export default function MyOrders() {
           <Card className="text-center py-12">
             <CardContent>
               <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">Belum ada pesanan</h3>
+              <h3 className="text-lg font-semibold mb-2 text-primary">Belum ada pesanan</h3>
               <p className="text-muted-foreground mb-6">
                 Anda belum memiliki riwayat pesanan. Mulai berbelanja sekarang!
               </p>

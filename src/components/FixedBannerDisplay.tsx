@@ -43,7 +43,7 @@ export function FixedBannerDisplay({ position, className = '' }: FixedBannerDisp
 
   if (loading) {
     return (
-      <div className={`w-full h-64 bg-gray-100 rounded-lg animate-pulse ${className}`}>
+      <div className={`hidden md:block w-full h-64 bg-gray-100 rounded-lg animate-pulse ${className}`}>
         <div className="h-full flex items-center justify-center text-gray-400">
           Loading banner...
         </div>
@@ -68,7 +68,7 @@ export function FixedBannerDisplay({ position, className = '' }: FixedBannerDisp
   );
 
   return (
-    <div className={`w-full ${className}`}>
+    <div className={`hidden md:block w-full ${className}`}>
       {banner.link_url ? (
         <a
           href={banner.link_url}

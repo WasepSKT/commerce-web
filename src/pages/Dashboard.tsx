@@ -10,6 +10,8 @@ import { Copy, Gift, ShoppingBag, ShoppingCart, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PopupCampaignDisplay } from '@/components/PopupCampaignDisplay';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 interface Order {
   id: string;
@@ -175,8 +177,24 @@ export default function Dashboard() {
     return <Navigate to="/auth" replace />;
   }
 
+  // Generate breadcrumb structured data
+  const breadcrumbData = generateBreadcrumbStructuredData([
+    { name: 'Beranda', url: 'https://regalpaw.id/' },
+    { name: 'Dashboard', url: 'https://regalpaw.id/dashboard' }
+  ]);
+
   return (
     <Layout>
+      <SEOHead
+        title="Dashboard - Regal Paw"
+        description="Dashboard pribadi Regal Paw. Kelola pesanan, lihat statistik referral, dan pantau komisi Anda. Akses semua fitur akun dalam satu tempat."
+        keywords="dashboard, akun pribadi, pesanan, referral, komisi, Regal Paw"
+        canonical="/dashboard"
+        ogType="website"
+        structuredData={breadcrumbData}
+        noindex={true}
+      />
+
       {/* Popup Campaign Display */}
       <PopupCampaignDisplay onDashboardLogin={true} />
 

@@ -28,6 +28,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 import { useToast } from '@/hooks/use-toast';
 import { TableSkeleton, PaginationSkeleton } from '@/components/ui/AdminSkeleton';
 
@@ -208,6 +210,14 @@ export default function AdminUsersPage() {
   return (
     <div className="w-full">
       <AdminLayout>
+        <SEOHead
+          title="Manajemen Pengguna - Admin Regal Paw"
+          description="Panel admin untuk mengelola pengguna dan peran. Lihat, edit, dan hapus akun pengguna dengan sistem manajemen yang aman."
+          keywords="admin pengguna, manajemen pengguna, Regal Paw, admin panel"
+          canonical="/admin/users"
+          ogType="website"
+          noindex={true}
+        />
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold mb-1 text-primary">User Management</h1>

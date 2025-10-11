@@ -63,7 +63,7 @@ export function HeroSliderCarousel() {
 
   if (loading) {
     return (
-      <div className="relative h-96 bg-gradient-to-r from-brand-primary/10 to-brand-primary/5 rounded-lg animate-pulse">
+      <div className="relative h-[20vh] md:h-96 bg-gradient-to-r from-brand-primary/10 to-brand-primary/5 rounded-lg animate-pulse">
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-brand-primary/40">Loading...</div>
         </div>
@@ -78,7 +78,7 @@ export function HeroSliderCarousel() {
   const currentItem = sliderItems[currentIndex];
 
   return (
-    <div className="relative h-96 overflow-hidden rounded-lg bg-gradient-to-r from-brand-primary/10 to-brand-primary/5 group">
+    <div className="relative h-[20vh] md:h-96 overflow-hidden rounded-lg bg-gradient-to-r from-brand-primary/10 to-brand-primary/5 group">
       {/* Background Image */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-700"
@@ -88,21 +88,21 @@ export function HeroSliderCarousel() {
       </div>
 
       {/* Content */}
-      <div className="relative h-full flex items-center justify-center text-center text-white px-8">
+      <div className="relative h-full flex items-center justify-center text-center text-white px-4 md:px-8">
         <div className="max-w-3xl">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-lg">
+          <h1 className="text-xl md:text-5xl font-bold mb-2 md:mb-4 drop-shadow-lg">
             {currentItem.title}
           </h1>
           {currentItem.subtitle && (
-            <p className="text-lg md:text-xl mb-6 drop-shadow-md opacity-90">
+            <p className="hidden md:block text-lg md:text-xl mb-6 drop-shadow-md opacity-90">
               {currentItem.subtitle}
             </p>
           )}
           {(currentItem.button_text && currentItem.link_url) && (
             <Button
               asChild
-              size="lg"
-              className="bg-brand-primary hover:bg-brand-primary/90 text-white px-8 py-3 text-lg font-medium drop-shadow-lg"
+              size="sm"
+              className="bg-brand-primary hover:bg-brand-primary/90 text-white px-4 py-2 text-sm md:px-8 md:py-3 md:text-lg font-medium drop-shadow-lg"
             >
               <a href={currentItem.link_url}>
                 {currentItem.button_text}

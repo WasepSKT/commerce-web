@@ -11,10 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { X, Plus } from 'lucide-react';
 import { useCallback } from 'react';
 import { format } from 'date-fns';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 
 // Modular imports
 import { Settings, LevelRow, FormData } from '@/types/referral';
-import { formatRupiah, validateRangeAgainstExisting, parseAmount, rangesOverlap } from '@/lib/referralUtils';
+import { formatRupiah, validateRangeAgainstExisting, parseAmount, rangesOverlap, dbDecimalToDisplayPct, formatPctForDisplay } from '@/lib/referralUtils';
 import { ReferralLevelService } from '@/services/referralService';
 import { LevelFormModal } from '@/components/admin/LevelFormModal';
 import { LevelDisplay } from '@/components/admin/LevelDisplay';
@@ -95,7 +97,7 @@ export default function ReferralSettings() {
     setFormData({
       ...level,
       // level.commission_pct in DB is decimal (0.05) -> convert to display percent
-      commission_pct: level.commission_pct !== null && level.commission_pct !== undefined ? Math.round(Number(level.commission_pct) * 100) : 5,
+      commission_pct: level.commission_pct !== null && level.commission_pct !== undefined ? dbDecimalToDisplayPct(Number(level.commission_pct)) : 5,
       priority: level.priority || 0
     });
     setEditingLevel(level);
@@ -292,6 +294,14 @@ export default function ReferralSettings() {
 
   return (
     <AdminLayout>
+      <SEOHead
+        title="Pengaturan Referral - Admin Regal Paw"
+        description="Panel admin untuk mengatur program referral. Konfigurasi poin, hadiah, aturan referral, dan level komisi untuk program undang teman."
+        keywords="admin pengaturan referral, konfigurasi referral, program referral, Regal Paw, admin panel"
+        canonical="/admin/referral-settings"
+        ogType="website"
+        noindex={true}
+      />
       <div>
         <h2 className="text-lg font-medium text-primary">Referral Settings</h2>
         <p className="text-sm text-muted-foreground">Atur poin, hadiah, dan aturan program referral di sini.</p>
@@ -321,7 +331,7 @@ export default function ReferralSettings() {
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="font-medium">Program Referal (Undang Teman) — Panduan singkat</div>
-                      <div className="text-sm text-muted-foreground mt-1">Petunjuk singkat untuk mengisi formulir pengaturan program referral. Letakkan di atas pilihan Reward type agar admin memahami pengaruh tiap bidang sebelum menyimpan.</div>
+                      <div className="text-sm text-muted-foreground mt-1">Petunjuk singkat untuk mengisi formulir pengaturan program referral.</div>
                       <ul className="text-xs text-muted-foreground mt-2 list-disc ml-5">
                         <li><strong>Reward type</strong>: pilih jenis hadiah (Points, Coupon, Credit).</li>
                         <li><strong>Reward value</strong>: masukkan jumlah poin atau nominal (angka saja, tanpa 'Rp').</li>

@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Layout } from '@/components/Layout';
 import { ArrowLeft, Calendar, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import SEOHead from '@/components/seo/SEOHead';
+import { generateBlogPostStructuredData, generateBreadcrumbStructuredData, generatePageTitle } from '@/utils/seoData';
 
 interface BlogItem {
   id: string;
@@ -14,6 +16,15 @@ interface BlogItem {
   cover_url: string | null;
   status: 'draft' | 'published';
   created_at: string;
+  updated_at: string;
+  // SEO fields (auto-generated)
+  meta_title?: string;
+  meta_keywords?: string;
+  og_title?: string;
+  og_description?: string;
+  og_image?: string;
+  canonical_url?: string;
+  seo_structured_data?: Record<string, unknown>;
 }
 
 export default function BlogPost() {
@@ -33,27 +44,11 @@ export default function BlogPost() {
     load();
   }, [slug]);
 
-  // Update page title and meta description for SEO
-  useEffect(() => {
-    if (post) {
-      document.title = `${post.title} - Regal Purrfect Shop`;
-
-      // Update meta description
-      let metaDescription = document.querySelector('meta[name="description"]');
-      if (!metaDescription) {
-        metaDescription = document.createElement('meta');
-        metaDescription.setAttribute('name', 'description');
-        document.head.appendChild(metaDescription);
-      }
-      metaDescription.setAttribute('content', post.meta_description ||
-        `${post.content.replace(/<[^>]*>/g, '').substring(0, 150)}...`);
-    }
-
-    return () => {
-      // Reset to default title when component unmounts
-      document.title = 'Regal Purrfect Shop';
-    };
-  }, [post]);
+  // Generate excerpt from content
+  const generateExcerpt = (content: string, maxLength: number = 160) => {
+    const textContent = content.replace(/<[^>]*>/g, '');
+    return textContent.length <= maxLength ? textContent : textContent.substring(0, maxLength) + '...';
+  };
 
   if (!post) {
     return (
@@ -72,9 +67,47 @@ export default function BlogPost() {
 
   const readingTime = Math.max(1, Math.ceil(post.content.replace(/<[^>]*>/g, '').length / 200));
 
+  // Use auto-generated SEO data or fallback to manual generation
+  const seoTitle = post.meta_title || generatePageTitle(post.title);
+  const seoDescription = post.meta_description || generateExcerpt(post.content);
+  const seoKeywords = post.meta_keywords || `${post.title}, blog kucing, tips kucing, perawatan kucing, Regal Paw`;
+  const seoOgImage = post.og_image || post.cover_url;
+  const seoCanonical = post.canonical_url || `/blog/${post.slug}`;
+
+  // Use auto-generated structured data or fallback to manual generation
+  const structuredData = post.seo_structured_data ?
+    [post.seo_structured_data] :
+    [generateBlogPostStructuredData({
+      id: post.id,
+      title: post.title,
+      slug: post.slug,
+      content: post.content,
+      cover_url: post.cover_url,
+      created_at: post.created_at,
+      updated_at: post.updated_at,
+      author: 'Regal Paw Team',
+      excerpt: seoDescription
+    })];
+
+  const breadcrumbData = generateBreadcrumbStructuredData([
+    { name: 'Beranda', url: 'https://regalpaw.id/' },
+    { name: 'Blog', url: 'https://regalpaw.id/blog' },
+    { name: post.title, url: `https://regalpaw.id/blog/${post.slug}` }
+  ]);
+
   return (
     <Layout>
-      <div className="container mx-auto max-w-4xl py-8">
+      <SEOHead
+        title={seoTitle}
+        description={seoDescription}
+        keywords={seoKeywords}
+        canonical={seoCanonical}
+        ogType="article"
+        ogImage={seoOgImage}
+        structuredData={[...structuredData, breadcrumbData]}
+      />
+
+      <div className="container mx-auto max-w-4xl py-8 px-4">
         {/* Back Navigation */}
         <div className="mb-8">
           <Button variant="ghost" asChild className="gap-2">
@@ -86,8 +119,8 @@ export default function BlogPost() {
         </div>
 
         {/* Article Header */}
-        <header className="space-y-6 mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-primary leading-tight">
+        <header className="space-y-4 md:space-y-6 mb-6 md:mb-8">
+          <h1 className="text-2xl md:text-4xl font-bold text-primary leading-tight">
             {post.title}
           </h1>
 
@@ -111,7 +144,9 @@ export default function BlogPost() {
               <img
                 src={post.cover_url}
                 alt={post.title}
-                className="w-full h-64 md:h-96 object-cover"
+                className="w-full h-48 md:h-96 object-cover"
+                loading="lazy"
+                decoding="async"
               />
             </div>
           )}
@@ -119,7 +154,7 @@ export default function BlogPost() {
 
         {/* Article Content */}
         <article
-          className="prose prose-lg max-w-none blog-editor-content"
+          className="prose prose-base md:prose-lg max-w-none blog-editor-content px-1 md:px-0"
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
 
