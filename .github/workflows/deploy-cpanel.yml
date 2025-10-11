@@ -11,6 +11,10 @@ jobs:
   build-and-deploy:
     name: Build and Deploy
     runs-on: ubuntu-latest
+    env:
+      # Optional Cloudflare cache purge (leave empty if not used)
+      CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
+      CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
 
     steps:
       - name: Checkout repository
@@ -91,9 +95,9 @@ jobs:
             **/vite.config.*
 
       - name: Purge Cloudflare cache (optional)
-        if: ${{ secrets.CF_ZONE_ID && secrets.CF_API_TOKEN }}
+        if: ${{ env.CF_ZONE_ID != '' && env.CF_API_TOKEN != '' }}
         uses: jakejarvis/cloudflare-purge-action@v0.3.0
         with:
-          zone: ${{ secrets.CF_ZONE_ID }}
+          zone: ${{ env.CF_ZONE_ID }}
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
