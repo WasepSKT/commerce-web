@@ -38,7 +38,9 @@ jobs:
             echo "CPANEL_HOST=${{ secrets.CPANEL_HOST_DEV }}" >> $GITHUB_OUTPUT
             echo "CPANEL_USER=${{ secrets.CPANEL_USER_DEV }}" >> $GITHUB_OUTPUT
             echo "CPANEL_PASSWORD=${{ secrets.CPANEL_PASSWORD_DEV }}" >> $GITHUB_OUTPUT
-            echo "CPANEL_DEST=${{ secrets.CPANEL_DEST_DEV }}" >> $GITHUB_OUTPUT
+            dest="${{ secrets.CPANEL_DEST_DEV }}"
+            if [[ "$dest" != */ ]]; then dest="$dest/"; fi
+            echo "CPANEL_DEST=$dest" >> $GITHUB_OUTPUT
             echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL_DEV }}" >> $GITHUB_OUTPUT
             echo "VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY_DEV }}" >> $GITHUB_OUTPUT
             echo "VITE_SUPABASE_PROJECT_ID=${{ secrets.VITE_SUPABASE_PROJECT_ID_DEV }}" >> $GITHUB_OUTPUT
@@ -47,7 +49,9 @@ jobs:
             echo "CPANEL_HOST=${{ secrets.CPANEL_HOST_STG }}" >> $GITHUB_OUTPUT
             echo "CPANEL_USER=${{ secrets.CPANEL_USER_STG }}" >> $GITHUB_OUTPUT
             echo "CPANEL_PASSWORD=${{ secrets.CPANEL_PASSWORD_STG }}" >> $GITHUB_OUTPUT
-            echo "CPANEL_DEST=${{ secrets.CPANEL_DEST_STG }}" >> $GITHUB_OUTPUT
+            dest="${{ secrets.CPANEL_DEST_STG }}"
+            if [[ "$dest" != */ ]]; then dest="$dest/"; fi
+            echo "CPANEL_DEST=$dest" >> $GITHUB_OUTPUT
             echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL_STG }}" >> $GITHUB_OUTPUT
             echo "VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY_STG }}" >> $GITHUB_OUTPUT
             echo "VITE_SUPABASE_PROJECT_ID=${{ secrets.VITE_SUPABASE_PROJECT_ID_STG }}" >> $GITHUB_OUTPUT
@@ -56,7 +60,9 @@ jobs:
             echo "CPANEL_HOST=${{ secrets.CPANEL_HOST_PROD }}" >> $GITHUB_OUTPUT
             echo "CPANEL_USER=${{ secrets.CPANEL_USER_PROD }}" >> $GITHUB_OUTPUT
             echo "CPANEL_PASSWORD=${{ secrets.CPANEL_PASSWORD_PROD }}" >> $GITHUB_OUTPUT
-            echo "CPANEL_DEST=${{ secrets.CPANEL_DEST_PROD }}" >> $GITHUB_OUTPUT
+            dest="${{ secrets.CPANEL_DEST_PROD }}"
+            if [[ "$dest" != */ ]]; then dest="$dest/"; fi
+            echo "CPANEL_DEST=$dest" >> $GITHUB_OUTPUT
             echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL_PROD }}" >> $GITHUB_OUTPUT
             echo "VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY_PROD }}" >> $GITHUB_OUTPUT
             echo "VITE_SUPABASE_PROJECT_ID=${{ secrets.VITE_SUPABASE_PROJECT_ID_PROD }}" >> $GITHUB_OUTPUT
