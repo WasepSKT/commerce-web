@@ -38,8 +38,9 @@ if (typeof window !== 'undefined' && 'customElements' in window && 'fetch' in wi
 // Start the order expiry checker
 startOrderExpiryChecker();
 
-// Register service worker for PWA
-if ('serviceWorker' in navigator) {
+// Register service worker for PWA (optional, gated by env)
+const ENABLE_PWA = String(import.meta.env.VITE_ENABLE_PWA ?? 'false').toLowerCase() === 'true';
+if (ENABLE_PWA && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {
@@ -49,6 +50,24 @@ if ('serviceWorker' in navigator) {
         if (String(import.meta.env.VITE_ENABLE_DEBUG_LOGS).toLowerCase() === 'true') console.log('SW registration failed: ', registrationError);
       });
   });
+}
+// If PWA disabled, proactively unregister any existing service workers and clear old caches
+if (!ENABLE_PWA && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations?.().then((regs) => {
+    regs.forEach((r) => r.unregister());
+    if (String(import.meta.env.VITE_ENABLE_DEBUG_LOGS).toLowerCase() === 'true') console.log('Unregistered existing service workers');
+  }).catch(() => {});
+  // Best-effort cache cleanup for our app caches to avoid stale CSS/JS
+  const cacheStorage: CacheStorage | undefined = (typeof window !== 'undefined' && 'caches' in window)
+    ? (window as unknown as { caches?: CacheStorage }).caches
+    : undefined;
+  cacheStorage?.keys()?.then((keys) => {
+    keys.forEach((k) => {
+      if (/regal-paw/i.test(k)) {
+        cacheStorage.delete(k).catch(() => {});
+      }
+    });
+  }).catch(() => {});
 }
 
 createRoot(document.getElementById("root")!).render(<App />);
