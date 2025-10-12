@@ -74,6 +74,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify required env vars
+        env:
+          VITE_SUPABASE_URL: ${{ steps.sel.outputs.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ steps.sel.outputs.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        shell: bash
+        run: |
+          missing=0
+          for var in VITE_SUPABASE_URL VITE_SUPABASE_PUBLISHABLE_KEY; do
+            if [[ -z "${!var}" ]]; then
+              echo "::error ::$var is not set for environment ${{ steps.sel.outputs.env }}. Configure it in GitHub Secrets (e.g., ${var}_DEV/STG/PROD).";
+              missing=1
+            fi
+          done
+          if [[ $missing -ne 0 ]]; then exit 1; fi
+          echo "All required env vars present."
+
       - name: Build
         env:
           VITE_SUPABASE_URL: ${{ steps.sel.outputs.VITE_SUPABASE_URL }}
