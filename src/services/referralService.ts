@@ -1,77 +1,322 @@
-// Service for Referral Level API operations
 import { supabase } from '@/integrations/supabase/client';
-import { LevelRow, FormData } from '@/types/referral';
-import { parseAmount } from '@/lib/referralUtils';
+import { 
+  ReferralResponse, 
+  ReferralValidation, 
+  ReferralProcessResult, 
+  ReferralStats,
+  ReferralLevel,
+  ReferralSettings,
+  ReferralRecord
+} from '@/types/referral';
+import { 
+  REFERRAL_CONFIG, 
+  REFERRAL_ERROR_MESSAGES, 
+  REFERRAL_SUCCESS_MESSAGES 
+} from '@/constants/referral';
 
-export class ReferralLevelService {
-  // Fetch all referral levels
-  static async fetchLevels(): Promise<{ data: LevelRow[] | null; error: Error | null }> {
+export class ReferralService {
+  /**
+   * Validate referral code
+   */
+  static async validateReferralCode(code: string): Promise<ReferralValidation> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
-        .from('referral_levels')
-        .select('*')
-        .order('priority', { ascending: false });
-      
-      return { data: data as LevelRow[], error };
+      if (!code || code.trim().length < REFERRAL_CONFIG.MIN_REFERRAL_CODE_LENGTH) {
+        return {
+          isValid: false,
+          error: REFERRAL_ERROR_MESSAGES.INVALID_CODE
+        };
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, referral_code')
+        .eq('referral_code', code.trim())
+        .single();
+
+      if (error || !data) {
+        return {
+          isValid: false,
+          error: REFERRAL_ERROR_MESSAGES.INVALID_CODE
+        };
+      }
+
+      return {
+        isValid: true,
+        referrerId: data.id,
+        referrerName: data.full_name
+      };
     } catch (error) {
-      return { data: null, error };
+      console.error('Referral validation error:', error);
+      return {
+        isValid: false,
+        error: REFERRAL_ERROR_MESSAGES.SYSTEM_ERROR
+      };
     }
   }
 
-  // Save (create or update) referral level
-  static async saveLevel(
-    formData: FormData, 
-    editingLevel: LevelRow | null
-  ): Promise<{ error: Error | null }> {
-    const min = parseAmount(formData.min_amount ?? '0') ?? 0;
-    const max = parseAmount(formData.max_amount ?? null);
-
-    // prefer commission_pct if provided (UI supplies percentage like 5). Convert to DB decimal (0.05).
-    const displayPct: number = formData.commission_pct ?? formData.weight ?? 5;
-    const commission_pct_db: number = Number(displayPct) / 100; // 5 -> 0.05
-
-    const payload = {
-      name: formData.name,
-      min_amount: min,
-      max_amount: max,
-      commission_pct: commission_pct_db, // stored as decimal fraction (e.g. 0.05)
-      // legacy: do not write `weight` anymore; DB migration removed this column
-      priority: Number(formData.priority ?? 0),
-      active: Boolean(formData.active ?? true),
-    };
-
+  /**
+   * Process referral signup with corrected logic
+   * Only referrer gets points, referee gets no points
+   */
+  static async processReferralSignup(
+    referralCode: string, 
+    userId: string
+  ): Promise<ReferralProcessResult> {
     try {
+      console.log('[REFERRAL SERVICE] Processing referral:', { referralCode, userId });
+
+      // Validate inputs
+      if (!referralCode || !userId) {
+        return {
+          success: false,
+          error: REFERRAL_ERROR_MESSAGES.INVALID_CODE
+        };
+      }
+
+      // Call the updated database function
+      const { data, error } = await supabase.rpc('handle_referral_signup', {
+        referral_code_input: referralCode.trim(),
+        new_user_id: userId
+      });
+
+      if (error) {
+        console.error('[REFERRAL SERVICE] RPC Error:', error);
+        return {
+          success: false,
+          error: error.message || REFERRAL_ERROR_MESSAGES.SYSTEM_ERROR
+        };
+      }
+
+      // Parse response
+      const response = data as ReferralResponse;
+      
+      if (response.success) {
+        return {
+          success: true,
+          referralId: response.referral_id,
+          pointsAwarded: response.referrer_points || 0,
+          message: REFERRAL_SUCCESS_MESSAGES.REFERRAL_SUCCESS
+        };
+      } else {
+        return {
+          success: false,
+          error: response.error || response.message || REFERRAL_ERROR_MESSAGES.SYSTEM_ERROR
+        };
+      }
+    } catch (error) {
+      console.error('[REFERRAL SERVICE] Unexpected error:', error);
+      return {
+        success: false,
+        error: REFERRAL_ERROR_MESSAGES.SYSTEM_ERROR
+      };
+    }
+  }
+
+  /**
+   * Get referral statistics for a user
+   */
+  static async getReferralStats(userId: string): Promise<ReferralStats | null> {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select(`
+          referral_code,
+          referral_points,
+          referred_invites_count,
+          referral_levels(name, commission_pct)
+        `)
+        .eq('user_id', userId)
+        .single();
+
+      if (error || !data) {
+        return null;
+      }
+
+      // Get total referrals count
+      const { count } = await supabase
+        .from('referrals')
+        .select('*', { count: 'exact', head: true })
+        .eq('referrer_id', data.id);
+
+      return {
+        total_referrals: count || 0,
+        total_points_earned: data.referral_points || 0,
+        active_referrals: data.referred_invites_count || 0,
+        referral_code: data.referral_code,
+        level: data.referral_levels?.name,
+        commission_rate: data.referral_levels?.commission_pct
+      };
+    } catch (error) {
+      console.error('Error fetching referral stats:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get referral history for a user
+   */
+  static async getReferralHistory(userId: string): Promise<ReferralRecord[]> {
+    try {
+      const { data, error } = await supabase
+        .from('referrals')
+        .select(`
+          *,
+          referred_profile:profiles!referrals_referred_id_fkey(
+            full_name,
+            email,
+            created_at
+          )
+        `)
+        .eq('referrer_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching referral history:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching referral history:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get referral levels
+   */
+  static async getReferralLevels(): Promise<ReferralLevel[]> {
+    try {
+      const { data, error } = await supabase
+        .from('referral_levels')
+        .select('*')
+        .eq('active', true)
+        .order('priority', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching referral levels:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching referral levels:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get referral settings
+   */
+  static async getReferralSettings(): Promise<ReferralSettings | null> {
+    try {
+      const { data, error } = await supabase
+        .from('referral_settings')
+        .select('*')
+        .eq('active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) {
+        console.error('Error fetching referral settings:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error fetching referral settings:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Generate unique referral code for user
+   */
+  static generateReferralCode(userId: string, userName?: string): string {
+    const timestamp = Date.now().toString(36);
+    const randomStr = Math.random().toString(36).substring(2, 6);
+    const userPrefix = userName ? userName.substring(0, 3).toUpperCase() : 'REF';
+    
+    return `${userPrefix}${timestamp}${randomStr}`.toUpperCase();
+  }
+
+  /**
+   * Check if user can use referral code
+   */
+  static async canUseReferralCode(userId: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .from('referrals')
+        .select('id')
+        .eq('referred_id', userId)
+        .limit(1);
+
+      if (error) {
+        console.error('Error checking referral eligibility:', error);
+        return false;
+      }
+
+      // If no referral record exists, user can use referral code
+      return !data || data.length === 0;
+    } catch (error) {
+      console.error('Error checking referral eligibility:', error);
+      return false;
+    }
+  }
+}
+
+// Legacy ReferralLevelService for backward compatibility
+export class ReferralLevelService {
+  static async fetchLevels(): Promise<{ data: ReferralLevel[] | null; error: Error | null }> {
+    try {
+      const levels = await ReferralService.getReferralLevels();
+      return { data: levels, error: null };
+    } catch (error) {
+      return { data: null, error: error as Error };
+    }
+  }
+
+  static async saveLevel(
+    formData: any, 
+    editingLevel: ReferralLevel | null
+  ): Promise<{ error: Error | null }> {
+    try {
+      const payload = {
+        name: formData.name,
+        min_amount: Number(formData.min_amount) || 0,
+        max_amount: formData.max_amount ? Number(formData.max_amount) : null,
+        commission_pct: Number(formData.commission_pct) / 100 || 0.05,
+        priority: Number(formData.priority) || 0,
+        active: Boolean(formData.active ?? true),
+      };
+
       if (editingLevel) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from('referral_levels')
           .update(payload)
           .eq('id', editingLevel.id);
         return { error };
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from('referral_levels')
           .insert(payload);
         return { error };
       }
     } catch (error) {
-      return { error };
+      return { error: error as Error };
     }
   }
 
-  // Delete referral level
   static async deleteLevel(levelId: string): Promise<{ error: Error | null }> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('referral_levels')
         .delete()
         .eq('id', levelId);
       return { error };
     } catch (error) {
-      return { error };
+      return { error: error as Error };
     }
   }
 }

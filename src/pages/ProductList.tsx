@@ -34,7 +34,7 @@ export default function ProductList() {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const categories = ['all', 'Dry Food', 'Wet Food', 'Kitten Food'];
+  const categories = ['all', 'Makanan Hewan', 'Kebutuhan Dasar', 'Perawatan & Kesehatan', 'Aksesoris', 'Camilan & Treats'];
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -68,15 +68,34 @@ export default function ProductList() {
     return matchesSearch && matchesCategory;
   });
 
-  const addToCart = (product: Product) => {
+  const addToCart = async (product: Product) => {
     const currentQuantity = cart[product.id] || 0;
-    if (currentQuantity >= product.stock_quantity) {
+    const requestedQuantity = currentQuantity + 1;
+    
+    if (requestedQuantity > product.stock_quantity) {
       toast({
         variant: "destructive",
         title: "Stok tidak mencukupi",
-        description: "Jumlah yang dipilih melebihi stok yang tersedia.",
+        description: `Stok ${product.name} hanya tersisa ${product.stock_quantity} unit`,
       });
       return;
+    }
+
+    // Double-check stock availability with real-time data
+    try {
+      const { StockService } = await import('@/services/stockService');
+      const stockCheck = await StockService.checkStockAvailability(product.id, requestedQuantity);
+      if (!stockCheck.available) {
+        toast({
+          variant: "destructive",
+          title: "Stok tidak tersedia",
+          description: stockCheck.error || `Stok ${product.name} tidak mencukupi`,
+        });
+        return;
+      }
+    } catch (error) {
+      console.warn('Failed to check stock availability:', error);
+      // Continue with cart addition if stock check fails
     }
 
     add(product.id, 1);
@@ -215,7 +234,7 @@ export default function ProductList() {
             <p className="text-muted-foreground">Tidak ada produk yang ditemukan.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
             {filteredProducts.map(product => (
               <ProductCard
                 key={product.id}

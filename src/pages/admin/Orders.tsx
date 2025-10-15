@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { printXPrinterReceipt } from '@/lib/receiptPrinter';
@@ -39,6 +40,7 @@ export default function AdminOrders() {
   const [pageSize, setPageSize] = useState<number>(20);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [detail, setDetail] = useState<OrderRow | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
@@ -92,15 +94,16 @@ export default function AdminOrders() {
     return statusMatch && searchMatch;
   });
 
-  const getStatusInIndonesian = (status?: string): string => {
-    switch (status) {
-      case 'pending': return 'Menunggu';
-      case 'paid': return 'Dibayar';
-      case 'shipped': return 'Dikirim';
-      case 'completed': return 'Selesai';
-      case 'cancelled': return 'Dibatalkan';
-      default: return status ?? 'Tidak Diketahui';
-    }
+  const getStatusBadge = (status?: string) => {
+    const map: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
+      pending: { label: 'Menunggu', variant: 'secondary' },
+      paid: { label: 'Dibayar', variant: 'default' },
+      shipped: { label: 'Dikirim', variant: 'outline' },
+      completed: { label: 'Selesai', variant: 'secondary' },
+      cancelled: { label: 'Dibatalkan', variant: 'destructive' },
+    };
+    const info = status ? (map[status] || map['pending']) : map['pending'];
+    return <Badge variant={info.variant}>{info.label}</Badge>;
   };
 
   const fetchOrderWithProductNames = async (orderId: string): Promise<OrderRow | null> => {
@@ -145,7 +148,7 @@ export default function AdminOrders() {
   };
 
   const openDetail = async (orderId: string) => {
-    setLoading(true);
+    setDetailLoading(true);
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const q = (supabase.from as unknown as any)('orders').select('*, order_items(*)').eq('id', orderId).single();
@@ -188,7 +191,7 @@ export default function AdminOrders() {
       console.error('Failed to fetch order detail', err);
       toast({ title: 'Gagal', description: 'Gagal memuat detail pesanan', variant: 'destructive' });
     } finally {
-      setLoading(false);
+      setDetailLoading(false);
     }
   };
 
@@ -319,7 +322,7 @@ export default function AdminOrders() {
                     <td className="px-4 py-3 font-mono">{o.id}</td>
                     <td className="px-4 py-3">{o.customer_name ?? o.user_id ?? '-'}</td>
                     <td className="px-4 py-3">Rp {Number(o.total_amount ?? 0).toLocaleString('id-ID')}</td>
-                    <td className="px-4 py-3">{getStatusInIndonesian(o.status)}</td>
+                    <td className="px-4 py-3">{getStatusBadge(o.status)}</td>
                     <td className="px-4 py-3 text-xs max-w-32 truncate" title={o.notes || '-'}>
                       {o.notes ? (
                         <span className={o.status === 'cancelled' ? 'text-red-600' : 'text-gray-600'}>
@@ -331,9 +334,10 @@ export default function AdminOrders() {
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
                         <Button
+                          type="button"
                           size="sm"
                           variant="outline"
-                          onClick={() => void openDetail(String(o.id))}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); void openDetail(String(o.id)); }}
                           className="border-primary text-primary hover:bg-primary hover:text-white"
                         >
                           <Eye className="mr-1 h-4 w-4" />Detail
@@ -409,8 +413,7 @@ export default function AdminOrders() {
                     </p>
                   </div>
                 )}
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setDetail(null)}>Tutup</Button>
+                <div className="flex gap-2 justify-end">
                   {(detail.status === 'dikirim' || detail.status === 'shipped') && (
                     <Button
                       variant="outline"
@@ -429,6 +432,7 @@ export default function AdminOrders() {
                       <FileText className="mr-2 h-4 w-4" />Download Faktur
                     </Button>
                   )}
+                  <Button variant="outline" onClick={() => setDetail(null)}>Tutup</Button>
                 </div>
               </div>
             ) : null}

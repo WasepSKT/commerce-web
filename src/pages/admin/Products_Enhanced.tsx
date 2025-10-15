@@ -17,6 +17,7 @@ import {
   AlertDialogDescription,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogFooter,
 } from '@/components/ui/alert-dialog';
 import { useProductCRUD, ProductForm, Product } from '@/hooks/useProductCRUD';
 import { ProductImageManager } from '@/utils/imageManagement';
@@ -34,8 +35,8 @@ export default function AdminProductsPage() {
     description: '',
     price: '',
     image_url: '',
-    imageFile: null,
-    imagePreview: '',
+    imageFiles: [],
+    imagePreviews: [],
     category: 'Dry Food',
     stock_quantity: ''
   });
@@ -51,11 +52,6 @@ export default function AdminProductsPage() {
     toggleProductStatus
   } = useProductCRUD();
 
-  // Load products on component mount
-  useEffect(() => {
-    loadProducts();
-  }, []);
-
   const loadProducts = useCallback(async () => {
     try {
       const data = await fetchProducts();
@@ -65,14 +61,19 @@ export default function AdminProductsPage() {
     }
   }, [fetchProducts]);
 
+  // Load products on component mount
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
+
   const resetForm = () => {
     setProductForm({
       name: '',
       description: '',
       price: '',
       image_url: '',
-      imageFile: null,
-      imagePreview: '',
+      imageFiles: [],
+      imagePreviews: [],
       category: 'Dry Food',
       stock_quantity: ''
     });
@@ -91,8 +92,8 @@ export default function AdminProductsPage() {
 
     setProductForm((prev) => ({
       ...prev,
-      imageFile: file,
-      imagePreview: URL.createObjectURL(file)
+      imageFiles: [file, ...(prev.imageFiles || []).slice(1)].slice(0, 4),
+      imagePreviews: [URL.createObjectURL(file), ...(prev.imagePreviews || []).slice(1)].slice(0, 4),
     }));
   };
 
@@ -114,13 +115,14 @@ export default function AdminProductsPage() {
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
+    const previews = product.image_url ? [product.image_url] : [];
     setProductForm({
       name: product.name,
       description: product.description,
       price: product.price.toString(),
       image_url: product.image_url,
-      imageFile: null,
-      imagePreview: product.image_url,
+      imageFiles: [],
+      imagePreviews: previews,
       category: product.category,
       stock_quantity: product.stock_quantity.toString()
     });
@@ -366,10 +368,10 @@ export default function AdminProductsPage() {
                       if (file) handleImageSelect(file);
                     }}
                   >
-                    {productForm.imagePreview ? (
+                    {(productForm.imagePreviews && productForm.imagePreviews[0]) ? (
                       <div className="relative w-full max-w-md">
                         <img
-                          src={productForm.imagePreview}
+                          src={productForm.imagePreviews[0]}
                           alt="Preview"
                           className="w-full h-48 object-cover rounded-lg"
                         />
@@ -380,8 +382,8 @@ export default function AdminProductsPage() {
                           className="absolute top-2 right-2"
                           onClick={() => setProductForm(prev => ({
                             ...prev,
-                            imageFile: null,
-                            imagePreview: ''
+                            imageFiles: [],
+                            imagePreviews: []
                           }))}
                         >
                           <Trash2 className="w-4 h-4" />

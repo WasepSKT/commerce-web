@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 
 interface Order {
   id: string;
@@ -14,15 +14,14 @@ interface Props {
   orders: Order[];
   formatPrice: (n: number) => string;
   getStatusBadge: (s: string) => JSX.Element;
-  onUpdateStatus: (id: string, status: Order['status']) => void;
 }
 
-export default function AdminOrdersCard({ orders, formatPrice, getStatusBadge, onUpdateStatus }: Props) {
+export default function AdminOrdersCard({ orders, formatPrice, getStatusBadge }: Props) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle style={{ color: 'hsl(var(--primary))' }}>Kelola Pesanan</CardTitle>
-        <CardDescription>Update status pesanan pelanggan</CardDescription>
+        <CardTitle style={{ color: 'hsl(var(--primary))' }}>Pesanan Terbaru</CardTitle>
+        <CardDescription>Daftar pesanan terbaru</CardDescription>
       </CardHeader>
       <CardContent className="max-h-[28rem] overflow-y-auto">
         <div className="space-y-3">
@@ -37,20 +36,7 @@ export default function AdminOrdersCard({ orders, formatPrice, getStatusBadge, o
                 </div>
                 {getStatusBadge(order.status)}
               </div>
-              <div className="flex space-x-2">
-                <Select value={order.status} onValueChange={(status) => onUpdateStatus(order.id, status as Order['status'])}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Menunggu</SelectItem>
-                    <SelectItem value="paid">Dibayar</SelectItem>
-                    <SelectItem value="shipped">Dikirim</SelectItem>
-                    <SelectItem value="completed">Selesai</SelectItem>
-                    <SelectItem value="cancelled">Dibatalkan</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* controls dihapus; status dikelola otomatis oleh webhook */}
             </div>
           ))}
         </div>

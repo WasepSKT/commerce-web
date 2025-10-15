@@ -26,8 +26,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { StarRating, RatingDistribution } from '@/components/ui/StarRating';
 import { maskName } from '@/lib/maskName';
 import { useProductRating } from '@/hooks/useProductRating';
+import { ProductCard } from '@/components/ProductCard';
 import SEOHead from '@/components/seo/SEOHead';
 import { generateProductStructuredData, generateBreadcrumbStructuredData, generatePageTitle } from '@/utils/seoData';
+import computePriceAfterDiscount from '@/utils/price';
 
 interface Product {
   id: string;
@@ -35,11 +37,19 @@ interface Product {
   description: string;
   price: number;
   image_url: string;
+  image_gallery?: string[];
   category: string;
   stock_quantity: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // explicit spec columns (may be null)
+  brand?: string | null;
+  product_type?: string | null;
+  pet_type?: string | null;
+  origin_country?: string | null;
+  expiry_date?: string | null;
+  age_category?: string | null;
   // SEO fields (auto-generated)
   meta_title?: string;
   meta_description?: string;
@@ -61,9 +71,10 @@ export default function ProductDetail() {
   const { isAuthenticated, profile } = useAuth();
   const navigateTo = useNavigate();
   const { ratingData, loading: ratingLoading } = useProductRating(id || '');
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isProductInfoOpen, setIsProductInfoOpen] = useState(false);
-  const [paymentOpen, setPaymentOpen] = useState(false);
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
 
@@ -77,6 +88,13 @@ export default function ProductDetail() {
   const LENS_WIDTH = 0; // unused
   const LENS_HEIGHT = 0; // unused
   const ZOOM = 2; // 2x zoom
+  // main image index for gallery selection
+  const [mainIndex, setMainIndex] = useState(0);
+
+  // Reset main index whenever product changes so cover (image_url) is selected by default
+  useEffect(() => {
+    setMainIndex(0);
+  }, [product?.image_url, product?.image_gallery]);
 
   const fetchProduct = useCallback(async (productId: string) => {
     try {
@@ -104,6 +122,34 @@ export default function ProductDetail() {
   useEffect(() => {
     if (id) void fetchProduct(id);
   }, [id, fetchProduct]);
+
+  // fetch related products after product is loaded
+  useEffect(() => {
+    const fetchRelated = async () => {
+      if (!product) return;
+      setRelatedLoading(true);
+      try {
+        // Simple generic fetch: get 4 active products excluding current product, no category filtering
+        // Use explicit select list and assert the response shape to avoid using `any`.
+        const res = await supabase
+          .from('products')
+          .select('id,name,price,image_url,stock_quantity,discount_percent')
+          .neq('id', product.id)
+          .eq('is_active', true)
+          .limit(4) as unknown as { data?: Product[]; error?: unknown };
+
+        const items = (res?.data ?? []) as Product[];
+        setRelatedProducts(Array.isArray(items) ? items.slice(0, 4) : []);
+      } catch (err) {
+        console.error('Failed to fetch related products', err);
+        setRelatedProducts([]);
+      } finally {
+        setRelatedLoading(false);
+      }
+    };
+
+    void fetchRelated();
+  }, [product]);
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -124,6 +170,12 @@ export default function ProductDetail() {
     }
     setCreatingOrder(true);
     try {
+      // Validate stock before creating order
+      const { StockService } = await import('@/services/stockService');
+      const stockCheck = await StockService.checkStockAvailability(product.id, quantity);
+      if (!stockCheck.available) {
+        throw new Error(stockCheck.error || 'Stok tidak mencukupi');
+      }
       // Orders table expects specific columns (customer_address, user_id, etc.).
       // Insert the order row first, then insert items into order_items.
 
@@ -159,20 +211,44 @@ export default function ProductDetail() {
       }
 
       // Insert order items into `order_items` table (separate table expected)
+      const priceInfo = computePriceAfterDiscount({ price: product.price, discount_percent: (product as Product & { discount_percent?: number }).discount_percent ?? 0 });
       const itemsPayload = [
         {
           order_id: id,
           product_id: product.id,
           quantity,
           price: product.price,
+          unit_price: priceInfo.discounted,
+          discount_percent: priceInfo.discountPercent,
         },
       ];
 
+      // Decrement stock after successful order creation
+      const stockResult = await StockService.decrementStockForOrder(id);
+      if (!stockResult.success) {
+        console.warn('Failed to decrement stock:', stockResult.error);
+        // Non-fatal: continue flow, stock can be managed manually
+      }
+
       // Insert items into order_items and request the inserted rows back so we can verify success
-      const itemsRes = await supabase.from('order_items').insert(itemsPayload).select();
+      // Some deployments may not yet have `discount_percent` column in `order_items`.
+      // Try inserting with discount_percent first; if the server returns an error indicating the column
+      // is missing (PGRST204), retry without it.
+      type PostgrestError = { code?: string; message?: string; details?: unknown };
+      let itemsRes: unknown = await supabase.from('order_items').insert(itemsPayload).select();
       // normalize items response
-      const itemsError = (itemsRes as unknown as { error?: unknown })?.error ?? null;
-      const itemsData = (itemsRes as unknown as { data?: unknown })?.data ?? itemsRes;
+      let itemsError = (itemsRes as unknown as { error?: unknown })?.error ?? null;
+      let itemsData = (itemsRes as unknown as { data?: unknown })?.data ?? itemsRes;
+
+      // If server responded with PGRST204 or a message about missing column, retry without discount_percent
+      const errObj = itemsError as PostgrestError | null;
+      if (errObj && (errObj.code === 'PGRST204' || (errObj.message && String(errObj.message).includes("Could not find the 'discount_percent' column")))) {
+        console.warn('Detected missing discount_percent column, retrying insert without that field', errObj);
+        const fallbackPayload = itemsPayload.map(({ order_id, product_id, quantity, price, unit_price }) => ({ order_id, product_id, quantity, price, unit_price }));
+        itemsRes = await supabase.from('order_items').insert(fallbackPayload).select();
+        itemsError = (itemsRes as unknown as { error?: unknown })?.error ?? null;
+        itemsData = (itemsRes as unknown as { data?: unknown })?.data ?? itemsRes;
+      }
       if (itemsError || !itemsData || (Array.isArray(itemsData) && itemsData.length === 0)) {
         console.error('Failed to insert order items', itemsError ?? itemsRes);
         // attempt to rollback the created order to avoid dangling pending orders without items
@@ -238,13 +314,14 @@ export default function ProductDetail() {
       navigateTo(`/profile?next=/product/${id}`);
       return;
     }
-
+    // Close confirmation modal and navigate to Checkout page in dry-run mode (testing)
+    // so we do NOT persist orders/order_items from the client during integration tests.
     setConfirmOpen(false);
-    setPaymentOpen(true);
+    navigateTo(`/checkout?product_id=${product?.id}&quantity=${quantity}&dry_run=1&from_product=1`);
   };
 
-  // Ensure order exists (create if missing), then build message and redirect to WhatsApp.
-  const redirectToWhatsApp = async () => {
+  // Ensure order exists (create if missing), then navigate to Checkout page
+  const proceedToCheckout = async () => {
     if (!product || !profile) return;
     try {
       let usedOrderId = pendingOrderId;
@@ -252,40 +329,19 @@ export default function ProductDetail() {
         const id = await createPendingOrder();
         usedOrderId = id ?? null;
         if (id) {
-          // show a small toast so user sees the created Order ID even when redirected
           toast({ title: 'Pesanan disimpan', description: `Order ID: ${id}` });
         }
       }
 
-      let message = `Halo, saya ${profile.full_name ?? ''} ingin memesan:\n\n`;
-      message += `${product.name}\nJumlah: ${quantity}\nHarga: ${formatPrice(product.price * quantity)}\n\n`;
-      message += `Total: ${formatPrice(product.price * quantity)}\n\n`;
-      message += `📋 *DETAIL PENGIRIMAN:*\n`;
-      message += `Nama penerima: ${profile.full_name}\n`;
-      message += `No. HP/WA: ${profile.phone}\n`;
-      message += `\n📍 *ALAMAT LENGKAP:*\n`;
-      message += `${profile.address || ''}\n`;
-      if (profile.subdistrict) message += `${profile.subdistrict}, `;
-      if (profile.district) message += `${profile.district}\n`;
-      if (profile.city) message += `${profile.city}, `;
-      if (profile.province) message += `${profile.province}\n`;
-      if (profile.postal_code) message += `Kode Pos: ${profile.postal_code}\n`;
-
-      // Add Google Maps share link if coordinates are available
-      if (profile.latitude && profile.longitude) {
-        const googleMapsUrl = `https://www.google.com/maps?q=${profile.latitude},${profile.longitude}`;
-        message += `\n📍 *LOKASI PENERIMA:*\n${googleMapsUrl}\n`;
+      if (usedOrderId) {
+        // navigate to Checkout page where shipping & payment selection occurs
+        navigateTo(`/checkout?order_id=${usedOrderId}`);
+      } else {
+        throw new Error('Gagal membuat order');
       }
-
-      message += `\nTerima kasih.`;
-      if (usedOrderId) message = `Order ID: ${usedOrderId}\n` + message;
-
-      const whatsappUrl = `https://wa.me/6281234567890?text=${encodeURIComponent(message)}`;
-      window.open(whatsappUrl, '_blank');
-      setPaymentOpen(false);
     } catch (err) {
-      console.error('Failed to create order before redirect', err);
-      let message = 'Gagal membuat pesanan sebelum redirect.';
+      console.error('Failed to create order before navigating to checkout', err);
+      let message = 'Gagal membuat pesanan sebelum melanjutkan ke checkout.';
       if (typeof err === 'object' && err) {
         const maybe = err as { message?: unknown };
         if (maybe.message) message = String(maybe.message);
@@ -354,6 +410,10 @@ export default function ProductDetail() {
       reviewCount: ratingData?.totalReviews
     })];
 
+  // compute effective per-unit price considering product-level discount
+  const productDiscountPercent = (product as Product & { discount_percent?: number }).discount_percent ?? 0;
+  const effectiveUnitPrice = Math.round(product.price * (1 - (productDiscountPercent || 0) / 100));
+
   const breadcrumbData = generateBreadcrumbStructuredData([
     { name: 'Beranda', url: 'https://regalpaw.id/' },
     { name: 'Produk', url: 'https://regalpaw.id/products' },
@@ -372,7 +432,7 @@ export default function ProductDetail() {
         structuredData={[...structuredData, breadcrumbData]}
       />
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-8">
           <Link to="/" className="hover:text-primary">Beranda</Link>
@@ -392,20 +452,19 @@ export default function ProductDetail() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Product Image */}
           <div className="space-y-4">
-            <div
-              className={`relative overflow-hidden rounded-lg ${/* ensure cursor styles change when hovering */ ''}`}
-            >
-              {/* Zoom-enabled image: on desktop shows a lens that follows the cursor */}
+            <div className="relative overflow-hidden rounded-lg">
+              {/* Main square image (1:1) */}
               <div
                 ref={containerRef}
-                className="w-full h-96 bg-gray-100 relative overflow-hidden"
+                className="w-full aspect-square bg-gray-100 relative overflow-hidden"
+                style={{ cursor: 'zoom-in' }}
+                onMouseEnter={() => setLensVisible(true)}
                 onMouseMove={(e) => {
                   const img = imgRef.current;
                   if (!img) return;
                   const rect = img.getBoundingClientRect();
                   const x = e.clientX - rect.left;
                   const y = e.clientY - rect.top;
-                  // clamp
                   const cx = Math.max(0, Math.min(x, rect.width));
                   const cy = Math.max(0, Math.min(y, rect.height));
                   const px = (cx / rect.width) * 100;
@@ -415,48 +474,100 @@ export default function ProductDetail() {
                   setLensVisible(true);
                 }}
                 onMouseLeave={() => setLensVisible(false)}
-                style={{ cursor: 'zoom-in' }}
               >
-                <img
-                  ref={imgRef}
-                  src={product.image_url}
-                  alt={product.name}
-                  className="w-full h-96 object-cover transform-gpu"
-                  style={{
-                    transformOrigin: `${bgPos.x}% ${bgPos.y}%`,
-                    transform: lensVisible ? `scale(${ZOOM})` : 'none',
-                    transition: 'transform 0.08s linear',
-                  }}
-                  onError={(e) => {
-                    e.currentTarget.src = 'https://images.unsplash.com/photo-1548681528-6a5c45b66b42?w=600';
-                  }}
-                />
+                {(() => {
+                  // Build gallery ensuring image_url (cover) is first
+                  const galleryRaw = Array.isArray(product.image_gallery) ? product.image_gallery.slice() : [];
+                  const gallery = (() => {
+                    const g = galleryRaw.filter(Boolean);
+                    if (product.image_url) {
+                      // ensure image_url is first and not duplicated
+                      const idx = g.indexOf(product.image_url);
+                      if (idx !== -1) g.splice(idx, 1);
+                      g.unshift(product.image_url);
+                    }
+                    return g;
+                  })();
+
+                  const clampedIndex = Math.min(Math.max(mainIndex, 0), Math.max(gallery.length - 1, 0));
+                  const main = gallery[clampedIndex] ?? 'https://images.unsplash.com/photo-1548681528-6a5c45b66b42?w=600';
+                  return (
+                    <img
+                      ref={imgRef}
+                      src={main}
+                      alt={product.name}
+                      className="w-full h-full object-cover transform-gpu"
+                      style={{
+                        transformOrigin: `${bgPos.x}% ${bgPos.y}%`,
+                        transform: lensVisible ? `scale(${ZOOM})` : 'none',
+                        transition: 'transform 0.08s linear',
+                      }}
+                      onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1548681528-6a5c45b66b42?w=600'; }}
+                    />
+                  );
+                })()}
               </div>
 
+              {/* Discount badge on image (more visible) */}
+              {(() => {
+                const discount = (product as Product & { discount_percent?: number }).discount_percent ?? 0;
+                if (typeof discount === 'number' && discount > 0) {
+                  return (
+                    <div className="absolute top-3 right-3 z-20">
+                      <span className="inline-block bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded-md shadow-lg">
+                        {`Diskon ${discount}%`}
+                      </span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
               {isOutOfStock && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                  <Badge variant="destructive" className="text-lg p-2">
-                    Stok Habis
-                  </Badge>
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center pointer-events-none">
+                  <Badge variant="destructive" className="text-lg p-2">Stok Habis</Badge>
                 </div>
               )}
             </div>
 
-            {/* Product Features */}
-            <div className="grid grid-cols-3 gap-4">
-              <Card className="text-center p-3">
-                <Shield className="h-6 w-6 text-primary mx-auto mb-2" />
-                <p className="text-xs text-muted-foreground">Kualitas Terjamin</p>
-              </Card>
-              <Card className="text-center p-3">
-                <Truck className="h-6 w-6 text-primary mx-auto mb-2" />
-                <p className="text-xs text-muted-foreground">Pengiriman Cepat</p>
-              </Card>
-              <Card className="text-center p-3">
-                <Package className="h-6 w-6 text-primary mx-auto mb-2" />
-                <p className="text-xs text-muted-foreground">Kemasan Aman</p>
-              </Card>
-            </div>
+            {/* Thumbnails (show only if more than 1 image) */}
+            {(() => {
+              // Rebuild gallery with cover first (same logic as main image above)
+              const galleryRaw = Array.isArray(product.image_gallery) ? product.image_gallery.slice() : [];
+              const gallery = (() => {
+                const g = galleryRaw.filter(Boolean);
+                if (product.image_url) {
+                  const idx = g.indexOf(product.image_url);
+                  if (idx !== -1) g.splice(idx, 1);
+                  g.unshift(product.image_url);
+                }
+                return g;
+              })();
+              if (gallery.length <= 1) return null;
+              const list = gallery.slice(0, 4);
+              return (
+                <div className="flex items-center gap-3">
+                  {list.map((src, i) => {
+                    const selected = i === Math.min(mainIndex, list.length - 1);
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setMainIndex(i)}
+                        className={`w-20 h-20 rounded-md overflow-hidden border ${selected ? 'border-primary ring-2 ring-primary/30' : 'border-gray-200 hover:border-primary/60'} transition-colors`}
+                      >
+                        <img
+                          src={src}
+                          alt={`thumb-${i}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1548681528-6a5c45b66b42?w=400'; }}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Product Details */}
@@ -481,48 +592,26 @@ export default function ProductDetail() {
                 </span>
               </div>
 
-              <p className="text-4xl font-bold text-primary mb-4">
-                {formatPrice(product.price)}
-              </p>
-
-              <p className="text-muted-foreground leading-relaxed mb-6">
-                {product.description}
-              </p>
-
-              {/* Collapsible Product Info */}
-              <Collapsible open={isProductInfoOpen} onOpenChange={setIsProductInfoOpen} className="mb-6">
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-primary/10 hover:text-primary">
-                    <span className="text-sm font-medium">Informasi Produk</span>
-                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isProductInfoOpen ? 'transform rotate-180' : ''
-                      }`} />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="mt-3">
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Kategori:</span>
-                          <p className="font-medium">{product.category}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Stok:</span>
-                          <p className="font-medium">{product.stock_quantity} unit</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Berat:</span>
-                          <p className="font-medium">1.5 kg</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Asal:</span>
-                          <p className="font-medium">Import</p>
-                        </div>
+              {(() => {
+                const discount = (product as Product & { discount_percent?: number }).discount_percent ?? 0;
+                const hasDiscount = typeof discount === 'number' && discount > 0;
+                const discountedPrice = hasDiscount ? Math.round(product.price * (1 - discount / 100)) : product.price;
+                return (
+                  <div className="mb-4">
+                    {hasDiscount ? (
+                      <div>
+                        <div className="text-lg text-muted-foreground line-through font-medium">{formatPrice(product.price)}</div>
+                        <div className="text-4xl font-bold text-primary">{formatPrice(discountedPrice)}</div>
+                        <div className="text-sm text-red-600 font-semibold">Diskon {discount}%</div>
                       </div>
-                    </CardContent>
-                  </Card>
-                </CollapsibleContent>
-              </Collapsible>
+                    ) : (
+                      <div className="text-4xl font-bold text-primary">{formatPrice(product.price)}</div>
+                    )}
+                  </div>
+                );
+              })()}
+
+
 
               <div className="flex items-center space-x-2 mb-6">
                 <span className="text-sm">Stok tersedia:</span>
@@ -541,6 +630,7 @@ export default function ProductDetail() {
                     <Button
                       variant="outline"
                       size="sm"
+                      className="border-primary text-primary hover:bg-transparent hover:text-primary"
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     >
                       -
@@ -549,6 +639,7 @@ export default function ProductDetail() {
                     <Button
                       variant="outline"
                       size="sm"
+                      className="border-primary text-primary hover:bg-transparent hover:text-primary"
                       onClick={() => setQuantity(Math.min(product.stock_quantity, quantity + 1))}
                     >
                       +
@@ -556,24 +647,97 @@ export default function ProductDetail() {
                   </div>
                 </div>
 
-                <div className="flex flex-col space-y-3">
-                  <Button
-                    size="lg"
-                    className="w-full"
-                    onClick={handleAddToCart}
-                  >
-                    <ShoppingCart className="mr-2 h-5 w-5" />
-                    Checkout - {formatPrice(product.price * quantity)}
-                  </Button>
+                <div className="flex flex-col gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="w-full border-primary text-primary hover:bg-transparent hover:text-primary"
+                      onClick={() => {
+                        if (!isAuthenticated) {
+                          navigateTo(`/auth?next=/product/${id}`);
+                          return;
+                        }
+                        add(product.id, quantity);
+                        toast({ title: 'Ditambahkan ke Keranjang', description: `${product.name} x${quantity}` });
+                      }}
+                    >
+                      <ShoppingCart className="mr-2 h-5 w-5" />
+                      Masukkan Keranjang
+                    </Button>
 
-                  <p className="text-xs text-center text-muted-foreground">
-                    Klik untuk memulai proses checkout — Anda akan diminta konfirmasi dan pembayaran sebelum diarahkan ke WhatsApp.
-                  </p>
+                    <Button
+                      size="lg"
+                      className="w-full"
+                      onClick={() => {
+                        if (!isAuthenticated) {
+                          navigateTo(`/auth?next=/product/${id}`);
+                          return;
+                        }
+                        handleAddToCart();
+                      }}
+                    >
+                      Checkout - {formatPrice(effectiveUnitPrice * quantity)}
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
 
           </div>
+        </div>
+
+        {/* Spesifikasi Produk - Full Width */}
+        <div className="mt-10">
+          <Card>
+            <CardContent className="p-6">
+              <h2 className="text-lg font-semibold mb-3 text-primary">Spesifikasi Produk</h2>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Kategori:</span>
+                  <p className="font-medium">{product.category}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Stok:</span>
+                  <p className="font-medium">{product.stock_quantity} unit</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Merek:</span>
+                  <p className="font-medium">{product.brand ?? '-'}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Jenis Produk:</span>
+                  <p className="font-medium">{product.product_type ?? '-'}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Jenis Hewan:</span>
+                  <p className="font-medium">{product.pet_type ?? '-'}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Negara Asal:</span>
+                  <p className="font-medium">{product.origin_country ?? '-'}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Tanggal Kadaluarsa:</span>
+                  <p className="font-medium">{product.expiry_date ?? '-'}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Usia:</span>
+                  <p className="font-medium">{product.age_category ?? '-'}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Deskripsi Produk - Full Width */}
+        <div className="mt-10">
+          <Card>
+            <CardContent className="p-6">
+              <h2 className="text-lg font-semibold mb-3 text-primary">Deskripsi Produk</h2>
+              <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{product.description}</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Reviews Section - Full Width */}
@@ -653,6 +817,28 @@ export default function ProductDetail() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Produk Lainnya (appears under Ulasan & Rating) */}
+        <div className="mt-8">
+          <h3 className="text-xl font-semibold mb-4 text-primary">Produk Lainnya</h3>
+          <div className="max-w-5xl mx-auto">
+            {relatedLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="animate-pulse bg-white rounded-lg h-56" />
+                ))}
+              </div>
+            ) : relatedProducts.length === 0 ? (
+              <div className="text-sm text-muted-foreground">Tidak ada produk lain yang relevan untuk saat ini.</div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {relatedProducts.slice(0, 4).map((p) => (
+                  <ProductCard key={p.id} product={p} onAddToCart={() => add(p.id, 1)} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
       {/* Confirmation Dialog */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
@@ -675,46 +861,8 @@ export default function ProductDetail() {
       </Dialog>
 
       {/* Payment / Recap Dialog */}
-      <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Lakukan Pembayaran</DialogTitle>
-            <DialogDescription>Periksa rekap pembelian. Tekan konfirmasi untuk melanjutkan ke WhatsApp.</DialogDescription>
-          </DialogHeader>
-
-          <div className="py-4 space-y-3">
-            <div className="border p-3 rounded">
-              <p className="text-sm text-muted-foreground">Order ID</p>
-              <p className="font-medium">{pendingOrderId ?? '-'}</p>
-              {!pendingOrderId ? (
-                <p className="text-xs text-muted-foreground mt-1">Order akan dibuat setelah Anda menekan "Konfirmasi & Lanjutkan ke WhatsApp".</p>
-              ) : null}
-            </div>
-            <div className="border p-3 rounded">
-              <p className="text-sm text-muted-foreground">Rekap Pembelian</p>
-              <p className="font-medium">{product.name} x{quantity} — {formatPrice(product.price * quantity)}</p>
-            </div>
-            <div className="border p-3 rounded">
-              <p className="text-sm text-muted-foreground">Alamat Pengiriman</p>
-              <div className="font-medium text-sm">
-                <div>{profile?.full_name}</div>
-                <div>{profile?.phone}</div>
-                <div className="mt-1">
-                  {profile?.address}<br />
-                  {profile?.subdistrict && profile?.district && `${profile.subdistrict}, ${profile.district}`}<br />
-                  {profile?.city && profile?.province && `${profile.city}, ${profile.province}`}<br />
-                  {profile?.postal_code && `Kode Pos: ${profile.postal_code}`}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setPaymentOpen(false)}>Tutup</Button>
-            <Button onClick={() => void redirectToWhatsApp()} disabled={creatingOrder}>{creatingOrder ? 'Menyimpan...' : 'Konfirmasi & Lanjutkan ke WhatsApp'}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Payment/Recap popup removed. Users are now routed to the dedicated Checkout page after confirmation. */}
+      {/* The confirmation button (Setuju, Lanjutkan) now calls openPaymentRecap -> proceedToCheckout which will create a pending order and navigate to /checkout?order_id=... */}
     </Layout>
   );
 }

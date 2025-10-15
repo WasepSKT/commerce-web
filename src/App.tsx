@@ -12,6 +12,7 @@ import CareerOpenings from "./pages/career/Openings";
 import CareerBenefits from "./pages/career/Benefits";
 import ProductList from "./pages/ProductList";
 import ProductDetail from "./pages/ProductDetail";
+import CheckoutPage from "./pages/Checkout";
 import CartPage from './pages/Cart';
 import ProfilePage from './pages/Profile';
 import MyOrders from './pages/MyOrders';
@@ -83,6 +84,7 @@ export default function App() {
               <Route path="/terms" element={<TermPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/product/:id" element={<ProductDetail />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/auth/signup" element={<Signup />} />
               <Route path="/signup" element={<Signup />} />

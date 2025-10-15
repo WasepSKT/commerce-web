@@ -89,12 +89,28 @@ export default function AddressSelectors({ province, setProvince, city, setCity,
   useEffect(() => {
     const subs = (province && city && district) ? getSubdistrictsFromCache(province, city, district) : [];
     setSubdistricts(subs);
-    setPostalCode('');
-    if (subs.length === 1) {
-      setPostalCode(subs[0].postal);
-      setSubdistrict(subs[0].name);
+
+    // Only clear postal code if we don't have a current subdistrict selection
+    // or if the current subdistrict is not in the new list
+    const currentSubExists = subdistrict && subs.some(s => s.name.trim() === subdistrict.trim());
+    if (!currentSubExists) {
+      setPostalCode('');
+      if (subs.length === 1) {
+        setPostalCode(subs[0].postal);
+        setSubdistrict(subs[0].name);
+      }
     }
-  }, [district, city, province, setPostalCode, setSubdistrict]);
+  }, [district, city, province, subdistrict, setPostalCode, setSubdistrict]);
+
+  // Ensure postal code is set when subdistrict is selected
+  useEffect(() => {
+    if (subdistrict && subdistricts.length > 0) {
+      const found = subdistricts.find(s => s.name.trim() === subdistrict.trim());
+      if (found && found.postal !== postalCode) {
+        setPostalCode(found.postal);
+      }
+    }
+  }, [subdistrict, subdistricts, postalCode, setPostalCode]);
 
   return (
     <>

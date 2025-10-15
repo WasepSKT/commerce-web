@@ -216,13 +216,15 @@ const Index = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {/* Card 1 */}
             <FadeInScale duration={600} delay={200}>
-              <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-                <div className="flex flex-col items-center">
-                  <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
-                    <FaLeaf className="h-6 w-6 text-[#F8DF7C]" />
+              <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1 h-full flex flex-col">
+                <div className="flex-1 flex flex-col items-center justify-between text-center">
+                  <div className="flex flex-col items-center justify-center h-28">
+                    <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
+                      <FaLeaf className="h-6 w-6 text-[#F8DF7C]" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-brand mb-2">100% Natural</h3>
                   </div>
-                  <h3 className="text-lg font-semibold text-brand mb-2">100% Natural</h3>
-                  <p className="text-sm text-muted-foreground text-center">
+                  <p className="text-sm text-muted-foreground">
                     Terbuat dari bahan-bahan alami pilihan tanpa pengawet buatan atau pewarna kimia
                   </p>
                 </div>
@@ -231,13 +233,15 @@ const Index = () => {
 
             {/* Card 2 */}
             <FadeInScale duration={600} delay={300}>
-              <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-                <div className="flex flex-col items-center">
-                  <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
-                    <FaShieldAlt className="h-6 w-6 text-[#F8DF7C]" />
+              <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1 h-full flex flex-col">
+                <div className="flex-1 flex flex-col items-center justify-between text-center">
+                  <div className="flex flex-col items-center justify-center h-28">
+                    <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
+                      <FaShieldAlt className="h-6 w-6 text-[#F8DF7C]" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-brand mb-2">Kualitas Premium</h3>
                   </div>
-                  <h3 className="text-lg font-semibold text-brand mb-2">Kualitas Premium</h3>
-                  <p className="text-sm text-muted-foreground text-center">
+                  <p className="text-sm text-muted-foreground">
                     Diproduksi dengan standar internasional dan telah mendapat sertifikasi dari AAFCO
                   </p>
                 </div>
@@ -246,13 +250,15 @@ const Index = () => {
 
             {/* Card 3 */}
             <FadeInScale duration={600} delay={400}>
-              <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-                <div className="flex flex-col items-center">
-                  <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
-                    <FaStar className="h-6 w-6 text-[#F8DF7C]" />
+              <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1 h-full flex flex-col">
+                <div className="flex-1 flex flex-col items-center justify-between text-center">
+                  <div className="flex flex-col items-center justify-center h-28">
+                    <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
+                      <FaStar className="h-6 w-6 text-[#F8DF7C]" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-brand mb-2">Nutrisi Lengkap</h3>
                   </div>
-                  <h3 className="text-lg font-semibold text-brand mb-2">Nutrisi Lengkap</h3>
-                  <p className="text-sm text-muted-foreground text-center">
+                  <p className="text-sm text-muted-foreground">
                     Mengandung protein, vitamin, dan mineral yang dibutuhkan kucing untuk tumbuh sehat
                   </p>
                 </div>
@@ -261,13 +267,15 @@ const Index = () => {
 
             {/* Card 4 */}
             <FadeInScale duration={600} delay={500}>
-              <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-                <div className="flex flex-col items-center">
-                  <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
-                    <FaTruck className="h-6 w-6 text-[#F8DF7C]" />
+              <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1 h-full flex flex-col">
+                <div className="flex-1 flex flex-col items-center justify-between text-center">
+                  <div className="flex flex-col items-center justify-center h-28">
+                    <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
+                      <FaTruck className="h-6 w-6 text-[#F8DF7C]" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-brand mb-2">Pengiriman Cepat</h3>
                   </div>
-                  <h3 className="text-lg font-semibold text-brand mb-2">Pengiriman Cepat</h3>
-                  <p className="text-sm text-muted-foreground text-center">
+                  <p className="text-sm text-muted-foreground">
                     Pengiriman ke seluruh Indonesia dengan sistem tracking dan kemasan yang aman.
                   </p>
                 </div>

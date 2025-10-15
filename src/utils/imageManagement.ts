@@ -7,6 +7,7 @@ export interface ImageUploadResult {
   success: boolean;
   url?: string;
   error?: string;
+  index?: number;
 }
 
 export interface ImageValidationResult {
@@ -16,7 +17,7 @@ export interface ImageValidationResult {
 
 export class ProductImageManager {
   private static readonly BUCKET_NAME = 'product-images';
-  private static readonly MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  private static readonly MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
   private static readonly ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
   private static readonly MAX_WIDTH = 1200;
   private static readonly QUALITY = 0.8;
@@ -24,7 +25,8 @@ export class ProductImageManager {
   /**
    * Validate image file before upload
    */
-  static validateImageFile(file: File): ImageValidationResult {
+  static validateImageFile(file?: File): ImageValidationResult {
+    if (!file) return { valid: true };
     // Check file size
     if (file.size > this.MAX_FILE_SIZE) {
       return {
@@ -98,19 +100,25 @@ export class ProductImageManager {
 
   /**
    * Generate structured file path for product image
-   * Format: products/{productId}/image.{extension}
+   * - main: products/{productId}/main.{ext}
+   * - gallery: products/{productId}/gallery/image_{index}.{ext}
    */
-  static generateImagePath(productId: string, file: File): string {
+  static generateImagePath(productId: string, file: File, index: number = 0, target: 'gallery' | 'main' = 'gallery'): string {
     const extension = file.name.split('.').pop() || 'jpg';
-    return `products/${productId}/image.${extension}`;
+    if (target === 'main') {
+      return `products/${productId}/main.${extension}`;
+    }
+    return `products/${productId}/gallery/image_${index + 1}.${extension}`;
   }
 
   /**
    * Upload product image with structured path
    */
   static async uploadProductImage(
-    productId: string, 
-    file: File
+    productId: string,
+    file: File,
+    index: number = 0,
+    target: 'gallery' | 'main' = 'gallery'
   ): Promise<ImageUploadResult> {
     try {
       // Validate file
@@ -122,8 +130,8 @@ export class ProductImageManager {
       // Compress image
       const compressedFile = await this.compressImage(file);
 
-      // Generate structured path
-      const filePath = this.generateImagePath(productId, compressedFile);
+    // Generate structured path
+  const filePath = this.generateImagePath(productId, compressedFile, index, target);
 
       // Upload to Supabase Storage
       const { data, error: uploadError } = await supabase.storage
@@ -142,7 +150,7 @@ export class ProductImageManager {
         .from(this.BUCKET_NAME)
         .getPublicUrl(data.path);
 
-      return { success: true, url: publicData.publicUrl };
+      return { success: true, url: publicData.publicUrl, index };
     } catch (error) {
       console.error('Image upload error:', error);
       return { 
@@ -150,6 +158,36 @@ export class ProductImageManager {
         error: error instanceof Error ? error.message : 'Upload failed' 
       };
     }
+  }
+
+  /**
+   * Upload multiple product images (preserves order)
+   */
+  static async uploadProductImages(productId: string, files: (File | undefined)[]): Promise<ImageUploadResult[]> {
+    const results: ImageUploadResult[] = [];
+    const limited = (files || []).slice(0, 4);
+    // Preserve original indices so uploads map to specific slots
+    for (let i = 0; i < limited.length && i < 4; i++) {
+      const f = limited[i];
+      if (!f) continue; // skip empty slot but keep index
+
+      // Validate
+      const validation = this.validateImageFile(f);
+      if (!validation.valid) {
+        results.push({ success: false, error: validation.error, index: i });
+        continue;
+      }
+
+      try {
+        const compressedFile = await this.compressImage(f);
+        const uploadRes = await this.uploadProductImage(productId, compressedFile, i, 'gallery');
+        results.push(uploadRes);
+      } catch (err) {
+        results.push({ success: false, error: err instanceof Error ? err.message : 'Upload failed', index: i });
+      }
+    }
+
+    return results;
   }
 
   /**

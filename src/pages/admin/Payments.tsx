@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw, Eye, XCircle, CheckCircle2 } from 'lucide-react';
+import { RefreshCw, Eye } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import AdminLayout from '@/components/admin/AdminLayout';
 import EmptyState from '@/components/ui/EmptyState';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,9 +37,19 @@ export default function Payments() {
   const [rows, setRows] = useState<OrderRow[]>([]);
   const [detailOrder, setDetailOrder] = useState<OrderRow | null>(null);
   const [loading, setLoading] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<'pay' | 'cancel' | null>(null);
-  const [confirmTargetId, setConfirmTargetId] = useState<string | null>(null);
+  // Manual confirmation removed: webhook-driven flow
+  const getStatusBadge = (status?: string) => {
+    const map: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
+      pending: { label: 'Menunggu', variant: 'secondary' },
+      paid: { label: 'Dibayar', variant: 'default' },
+      shipped: { label: 'Dikirim', variant: 'outline' },
+      completed: { label: 'Selesai', variant: 'secondary' },
+      cancelled: { label: 'Dibatalkan', variant: 'destructive' },
+    };
+    const info = status ? (map[status] || map['pending']) : map['pending'];
+    return <Badge variant={info.variant}>{info.label}</Badge>;
+  };
+
 
   const fetchPending = async () => {
     setLoading(true);
@@ -358,7 +369,7 @@ export default function Payments() {
     <AdminLayout>
       <SEOHead
         title="Kelola Pembayaran - Admin Regal Paw"
-        description="Panel admin untuk mengelola pembayaran pesanan. Verifikasi pembayaran, tandai pesanan sebagai dibayar, dan kelola status pesanan pending."
+        description="Panel admin pembayaran. Status order diperbarui otomatis oleh webhook payment gateway."
         keywords="admin pembayaran, manajemen pembayaran, verifikasi pembayaran, Regal Paw, admin panel"
         canonical="/admin/payments"
         ogType="website"
@@ -366,7 +377,7 @@ export default function Payments() {
       />
       <div>
         <h2 className="text-lg font-medium text-primary">Kelola Pembayaran</h2>
-        <p className="text-sm text-muted-foreground">Daftar pesanan berstatus <em>pending</em>. Gunakan halaman ini untuk memverifikasi pembayaran — jika sebuah order adalah referral, data referral akan ditampilkan.</p>
+        <p className="text-sm text-muted-foreground">Daftar pesanan berstatus <em>pending</em>. Status akan berubah otomatis via webhook payment gateway. Informasi referral ditampilkan jika ada.</p>
 
         <div className="mt-4">
           <div className="mb-3 flex items-center gap-2">
@@ -377,37 +388,7 @@ export default function Payments() {
             </div>
           </div>
 
-          {/* Confirmation Dialog for actions */}
-          <Dialog open={confirming} onOpenChange={(o) => { if (!o) setConfirming(false); }}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Konfirmasi</DialogTitle>
-                <DialogDescription>
-                  {confirmAction === 'pay' ? 'Anda akan menandai pesanan ini sebagai dibayar. Lanjutkan?' : 'Anda akan membatalkan pesanan ini. Lanjutkan?'}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="mt-4 flex gap-2">
-                <Button variant="ghost" onClick={() => { setConfirming(false); setConfirmAction(null); setConfirmTargetId(null); }}>Batal</Button>
-                <Button onClick={async () => {
-                  if (!confirmTargetId || !confirmAction) return;
-                  // For 'pay' action we open the detail dialog so admin can print the x-printer resi
-                  // and then mark as paid. For 'cancel' we perform immediate cancellation.
-                  const id = confirmTargetId;
-                  const act = confirmAction;
-                  setConfirming(false);
-                  setConfirmAction(null);
-                  setConfirmTargetId(null);
-                  if (act === 'pay') {
-                    // open detail dialog which contains the Cetak Resi & Tandai Dibayar flow
-                    await openDetail(id);
-                  }
-                  if (act === 'cancel') await markCancelled(id);
-                }}>
-                  {confirmAction === 'pay' ? 'Tandai Dibayar' : 'Batalkan Pesanan'}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          {/* Manual confirmation removed */}
 
           {loading ? (
             <TableSkeleton rows={6} columns={6} />
@@ -429,6 +410,7 @@ export default function Payments() {
                     <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Customer</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Amount</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Created</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Status</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
@@ -439,22 +421,13 @@ export default function Payments() {
                       <td className="px-4 py-3">{r.customer_name ?? r.user_id ?? '-'}</td>
                       <td className="px-4 py-3">Rp {Number(r.total_amount ?? 0).toLocaleString('id-ID')}</td>
                       <td className="px-4 py-3">{new Date(r.created_at).toLocaleString()}</td>
+                      <td className="px-4 py-3">{getStatusBadge(r.status)}</td>
                       <td className="px-4 py-3">
-                        {/* Actions per-row: always show detail (Eye). If pending, also show Tandai Dibayar / Batal */}
+                        {/* Actions per-row: read-only; hanya lihat detail */}
                         <div className="flex items-center gap-2">
-                          <button aria-label="Lihat Detail Pesanan" title="Lihat Detail Pesanan" className="text-primary" onClick={() => void openDetail(String(r.id))}>
+                          <button type="button" aria-label="Lihat Detail Pesanan" title="Lihat Detail Pesanan" className="text-primary" onClick={() => void openDetail(String(r.id))}>
                             <Eye className="w-5 h-5" />
                           </button>
-                          {r.status === 'pending' && (
-                            <>
-                              <Button size="sm" variant="ghost" className="bg-muted/10 hover:bg-muted/20 p-2 rounded" onClick={() => { setConfirmAction('pay'); setConfirmTargetId(String(r.id)); setConfirming(true); }} aria-label="Tandai Dibayar">
-                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={() => { setConfirmAction('cancel'); setConfirmTargetId(String(r.id)); setConfirming(true); }} aria-label="Batalkan Pesanan">
-                                <XCircle className="w-4 h-4 text-red-600" />
-                              </Button>
-                            </>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -471,13 +444,17 @@ export default function Payments() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Detail Pesanan</DialogTitle>
-            <DialogDescription>Periksa detail pesanan dan verifikasi pembayaran di sini.</DialogDescription>
+            <DialogDescription>Periksa detail pesanan. Pembayaran diverifikasi otomatis via webhook.</DialogDescription>
           </DialogHeader>
           {detailOrder ? (
             <div className="space-y-3">
               <div className="border p-3 rounded">
                 <p className="text-sm text-muted-foreground">Order ID</p>
                 <p className="font-medium">{detailOrder.id}</p>
+              </div>
+              <div className="border p-3 rounded">
+                <p className="text-sm text-muted-foreground">Status</p>
+                <div>{getStatusBadge(detailOrder.status)}</div>
               </div>
               <div className="border p-3 rounded">
                 <p className="text-sm text-muted-foreground">Customer</p>
@@ -522,9 +499,9 @@ export default function Payments() {
                   <p className="text-sm text-muted-foreground">Tidak ada item pada pesanan ini.</p>
                 )}
               </div>
-              <div className="flex gap-2">
-                <Button variant="ghost" onClick={() => setDetailOrder(null)}>Tutup</Button>
-                <Button onClick={() => void printReceiptAndMarkPaid(detailOrder)}>Cetak Resi & Tandai Dibayar</Button>
+              <div className="flex gap-2 justify-end">
+                <Button onClick={() => void handlePrintReceipt(detailOrder)}>Cetak Resi</Button>
+                <Button variant="outline" onClick={() => setDetailOrder(null)}>Tutup</Button>
               </div>
             </div>
           ) : null}

@@ -1,99 +1,196 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-
-interface ReferralResponse {
-  success: boolean;
-  error?: string;
-  message?: string;
-  reward_points?: number;
-  referrer_id?: string;
-  referrer_name?: string;
-  referral_id?: string;
-}
+import { ReferralService } from "@/services/referralService";
+import { ReferralStats, ReferralRecord } from "@/types/referral";
+import { REFERRAL_CONFIG, REFERRAL_ERROR_MESSAGES, REFERRAL_SUCCESS_MESSAGES } from "@/constants/referral";
 
 export function useReferral() {
   const { isAuthenticated, profile } = useAuth();
   const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
+  const [referralHistory, setReferralHistory] = useState<ReferralRecord[]>([]);
 
-  const handleReferral = useCallback(async (refCode: string, userId: string, retryCount = 0) => {
-    console.log('[REFERRAL] START', { refCode, userId, retryCount });
+  const handleReferral = useCallback(async (
+    refCode: string, 
+    userId: string, 
+    retryCount = 0
+  ): Promise<boolean> => {
+    console.log('[REFERRAL] Processing referral:', { refCode, userId, retryCount });
+    
     if (!refCode || !userId) {
       console.log('[REFERRAL] Missing refCode or userId');
-      return;
-    }
-    try {
-      const { data, error } = await supabase.rpc('handle_referral_signup', {
-        referral_code_input: refCode,
-        new_user_id: userId
+      toast({ 
+        variant: 'destructive', 
+        title: 'Referral gagal', 
+        description: REFERRAL_ERROR_MESSAGES.INVALID_CODE 
       });
-      console.log('[REFERRAL] RPC Response:', { data, error });
-  // Supabase RPC returns unknown — cast via `unknown` first and validate runtime shape
-  const responseData = data as unknown as ReferralResponse | null;
-      if (error) {
-        toast({ variant: 'destructive', title: 'Gagal referral', description: error.message });
-        if (error.message?.includes('function') && retryCount < 2) {
-          setTimeout(() => handleReferral(refCode, userId, retryCount + 1), 2000);
-        }
-        return;
+      return false;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      // First validate the referral code
+      const validation = await ReferralService.validateReferralCode(refCode);
+      if (!validation.isValid) {
+        toast({ 
+          variant: 'destructive', 
+          title: 'Referral gagal', 
+          description: validation.error || REFERRAL_ERROR_MESSAGES.INVALID_CODE 
+        });
+        return false;
       }
 
-      // Validate shape before trusting fields
-      if (!responseData || typeof responseData !== 'object' || Array.isArray(responseData) || !('success' in responseData)) {
-        // Attempt to handle JSON-string responses or unexpected shapes
-        let parsed: ReferralResponse | null = null;
-        try {
-          if (typeof data === 'string') parsed = JSON.parse(data) as ReferralResponse;
-        } catch (e) {
-          // ignore
-        }
-        if (!parsed) {
-          toast({ variant: 'destructive', title: 'Referral gagal', description: 'Response RPC tidak sesuai format.' });
-          return;
-        }
-        if (parsed.success) {
-          toast({ title: 'Referral berhasil!', description: `Bonus: ${parsed.reward_points || 100} poin!` });
-        } else {
-          toast({ variant: 'destructive', title: 'Referral gagal', description: parsed?.error || parsed?.message || 'Kode tidak valid.' });
-        }
-        return;
+      // Check if user can use referral code
+      const canUse = await ReferralService.canUseReferralCode(userId);
+      if (!canUse) {
+        toast({ 
+          variant: 'destructive', 
+          title: 'Referral gagal', 
+          description: REFERRAL_ERROR_MESSAGES.ALREADY_USED 
+        });
+        return false;
       }
 
-      // At this point TypeScript knows responseData is object-like and has 'success'
-      const rr = responseData as ReferralResponse;
-      if (rr.success) {
-        toast({ title: 'Referral berhasil!', description: `Bonus: ${rr.reward_points || 100} poin!` });
+      // Process the referral
+      const result = await ReferralService.processReferralSignup(refCode, userId);
+      
+      if (result.success) {
+        toast({ 
+          title: REFERRAL_SUCCESS_MESSAGES.REFERRAL_SUCCESS, 
+          description: `Poin berhasil ditambahkan: ${result.pointsAwarded || 0} poin!` 
+        });
+        
+        // Refresh referral stats after successful referral
+        if (profile?.user_id) {
+          await loadReferralStats(profile.user_id);
+        }
+        
+        return true;
       } else {
-        toast({ variant: 'destructive', title: 'Referral gagal', description: rr?.error || rr?.message || 'Kode tidak valid.' });
+        toast({ 
+          variant: 'destructive', 
+          title: 'Referral gagal', 
+          description: result.error || REFERRAL_ERROR_MESSAGES.SYSTEM_ERROR 
+        });
+        
+        // Retry logic for network errors
+        if (retryCount < REFERRAL_CONFIG.MAX_RETRY_ATTEMPTS) {
+          setTimeout(() => {
+            handleReferral(refCode, userId, retryCount + 1);
+          }, REFERRAL_CONFIG.RETRY_DELAY_MS);
+        }
+        
+        return false;
       }
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Referral error', description: String(err) });
-      if (retryCount < 2) setTimeout(() => handleReferral(refCode, userId, retryCount + 1), 2000);
+      console.error('[REFERRAL] Unexpected error:', err);
+      toast({ 
+        variant: 'destructive', 
+        title: 'Referral error', 
+        description: REFERRAL_ERROR_MESSAGES.NETWORK_ERROR 
+      });
+      
+      // Retry logic for unexpected errors
+      if (retryCount < REFERRAL_CONFIG.MAX_RETRY_ATTEMPTS) {
+        setTimeout(() => {
+          handleReferral(refCode, userId, retryCount + 1);
+        }, REFERRAL_CONFIG.RETRY_DELAY_MS);
+      }
+      
+      return false;
+    } finally {
+      setIsProcessing(false);
     }
-    console.log('[REFERRAL] END');
-  }, [toast]);
+  }, [toast, profile?.user_id]);
 
+  // Load referral stats
+  const loadReferralStats = useCallback(async (userId: string) => {
+    try {
+      const stats = await ReferralService.getReferralStats(userId);
+      setReferralStats(stats);
+    } catch (error) {
+      console.error('Error loading referral stats:', error);
+    }
+  }, []);
+
+  // Load referral history
+  const loadReferralHistory = useCallback(async (userId: string) => {
+    try {
+      const history = await ReferralService.getReferralHistory(userId);
+      setReferralHistory(history);
+    } catch (error) {
+      console.error('Error loading referral history:', error);
+    }
+  }, []);
+
+  // Validate referral code
+  const validateReferralCode = useCallback(async (code: string) => {
+    return await ReferralService.validateReferralCode(code);
+  }, []);
+
+  // Generate referral code for current user
+  const generateReferralCode = useCallback((userName?: string) => {
+    if (!profile?.user_id) return null;
+    return ReferralService.generateReferralCode(profile.user_id, userName);
+  }, [profile?.user_id]);
+
+  // Process pending referral from localStorage
   useEffect(() => {
     let pollingInterval: NodeJS.Timeout | undefined;
-    if (isAuthenticated) {
-      const pendingRef = localStorage.getItem('pendingReferralCode');
+    let pollingAttempts = 0;
+
+    if (isAuthenticated && profile?.user_id) {
+      const pendingRef = localStorage.getItem(REFERRAL_CONFIG.STORAGE_KEYS.PENDING_REFERRAL);
+      
       if (pendingRef) {
-        const tryProcessReferral = () => {
-          if (profile?.user_id) {
-            handleReferral(pendingRef, profile.user_id);
-            localStorage.removeItem('pendingReferralCode');
+        const tryProcessReferral = async () => {
+          pollingAttempts++;
+          
+          if (profile?.user_id && !isProcessing) {
+            const success = await handleReferral(pendingRef, profile.user_id);
+            if (success) {
+              localStorage.removeItem(REFERRAL_CONFIG.STORAGE_KEYS.PENDING_REFERRAL);
+              if (pollingInterval) clearInterval(pollingInterval);
+            }
+          } else if (pollingAttempts >= REFERRAL_CONFIG.MAX_POLLING_ATTEMPTS) {
+            // Stop polling after max attempts
+            localStorage.removeItem(REFERRAL_CONFIG.STORAGE_KEYS.PENDING_REFERRAL);
             if (pollingInterval) clearInterval(pollingInterval);
+            console.log('[REFERRAL] Max polling attempts reached, stopping...');
           } else {
-            console.log('[REFERRAL POLLING] Menunggu profile.user_id...');
+            console.log('[REFERRAL POLLING] Waiting for profile.user_id...', { attempts: pollingAttempts });
           }
         };
-        pollingInterval = setInterval(tryProcessReferral, 1000);
+
+        pollingInterval = setInterval(tryProcessReferral, REFERRAL_CONFIG.POLLING_INTERVAL_MS);
         tryProcessReferral();
       }
     }
+
     return () => {
       if (pollingInterval) clearInterval(pollingInterval);
     };
-  }, [isAuthenticated, profile, handleReferral]);
+  }, [isAuthenticated, profile?.user_id, handleReferral, isProcessing]);
+
+  // Load referral data when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && profile?.user_id) {
+      loadReferralStats(profile.user_id);
+      loadReferralHistory(profile.user_id);
+    }
+  }, [isAuthenticated, profile?.user_id, loadReferralStats, loadReferralHistory]);
+
+  return {
+    handleReferral,
+    validateReferralCode,
+    generateReferralCode,
+    loadReferralStats,
+    loadReferralHistory,
+    isProcessing,
+    referralStats,
+    referralHistory
+  };
 }

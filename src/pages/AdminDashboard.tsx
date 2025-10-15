@@ -282,7 +282,7 @@ export default function AdminDashboard() {
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
               <AdminRevenueChart data={buildRevenueSeries()} range={range} onRangeChange={(r) => setRange(r)} />
-              <AdminOrdersCard orders={orders} formatPrice={formatPrice} getStatusBadge={getStatusBadge} onUpdateStatus={handleUpdateOrderStatus} />
+              <AdminOrdersCard orders={orders} formatPrice={formatPrice} getStatusBadge={getStatusBadge} />
             </div>
           </>
         )}

@@ -9,10 +9,25 @@ export interface ProductForm {
   description: string;
   price: string;
   image_url: string;
-  imageFile: File | null;
-  imagePreview: string;
+  imageFiles: File[];
+  imagePreviews: string[];
   category: string;
   stock_quantity: string;
+  meta?: Record<string, unknown>;
+  // explicit fields (optional) to help typing when UI sends them separately
+  brand?: string;
+  product_type?: string;
+  pet_type?: string;
+  origin_country?: string;
+  expiry_date?: string; // ISO date
+  age_category?: string;
+  weight_grams?: number;
+  length_cm?: number;
+  width_cm?: number;
+  height_cm?: number;
+  discount_percent?: number;
+  sku?: string;
+  shipping_options?: string[];
 }
 
 export interface Product {
@@ -21,6 +36,21 @@ export interface Product {
   description: string;
   price: number;
   image_url: string;
+  image_gallery?: string[];
+  meta?: Record<string, unknown>;
+  brand?: string;
+  product_type?: string;
+  pet_type?: string;
+  origin_country?: string;
+  expiry_date?: string;
+  age_category?: string;
+  weight_grams?: number;
+  length_cm?: number;
+  width_cm?: number;
+  height_cm?: number;
+  discount_percent?: number;
+  sku?: string;
+  shipping_options?: string[];
   category: string;
   stock_quantity: number;
   is_active: boolean;
@@ -41,6 +71,30 @@ export const useProductCRUD = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // helpers to safely extract values from meta
+  const metaString = (m: Record<string, unknown> | undefined, key: string): string | undefined => {
+    if (!m) return undefined;
+    const v = m[key];
+    return typeof v === 'string' ? v : undefined;
+  };
+
+  const metaNumber = (m: Record<string, unknown> | undefined, key: string): number | undefined => {
+    if (!m) return undefined;
+    const v = m[key];
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string' && v.trim() !== '') {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    }
+    return undefined;
+  };
+
+  const metaArray = (m: Record<string, unknown> | undefined, key: string): unknown[] | undefined => {
+    if (!m) return undefined;
+    const v = m[key];
+    return Array.isArray(v) ? v : undefined;
+  };
 
   /**
    * Fetch all products
@@ -81,43 +135,108 @@ export const useProductCRUD = () => {
           category: form.category,
           stock_quantity: Number(form.stock_quantity) || 0,
           image_url: '', // Will be updated after image upload
+          // Map known spec fields if your schema already has them
+          brand: form.brand ?? null,
+          product_type: form.product_type ?? null,
+          pet_type: form.pet_type ?? null,
+          origin_country: form.origin_country ?? null,
+          expiry_date: form.expiry_date ?? null,
+          age_category: form.age_category ?? null,
+          weight_grams: form.weight_grams ?? null,
+          length_cm: form.length_cm ?? null,
+          width_cm: form.width_cm ?? null,
+          height_cm: form.height_cm ?? null,
+          discount_percent: form.discount_percent ?? null,
+          sku: form.sku ?? null,
+          shipping_options: form.shipping_options ?? []
         })
         .select()
         .single();
 
       if (insertError) throw insertError;
 
+      type InsertResult = { id?: string } & Record<string, unknown>;
+      const inserted = productData as InsertResult | null;
+      if (!inserted || typeof inserted.id !== 'string') {
+        throw new Error('Inserted product did not return an id');
+      }
+
+      // Use a mutable record to track updates (avoid reassigning the const productData)
+      let createdRecord: InsertResult = inserted;
+
       let imageUrl = '';
+      let imageGallery: string[] = [];
 
-      // Upload image if provided
-      if (form.imageFile) {
+      // Upload gallery images if provided (up to 4)
+      if (form.imageFiles && form.imageFiles.some(Boolean)) {
         setUploading(true);
-        const uploadResult: ImageUploadResult = await ProductImageManager.uploadProductImage(
-          productData.id,
-          form.imageFile
-        );
+        const uploadResults = await ProductImageManager.uploadProductImages(inserted.id!, form.imageFiles.slice(0,4));
 
-        if (!uploadResult.success) {
-          // Delete the product record if image upload fails
+        const successfulResults = uploadResults.filter(r => r.success && typeof r.index === 'number') as { success: true; url: string; index: number }[];
+        const failed = uploadResults.filter(r => !r.success);
+
+        if (successfulResults.length === 0 && failed.length > 0) {
+          // no images uploaded successfully — delete product and error
           await supabase.from('products').delete().eq('id', productData.id);
-          throw new Error(uploadResult.error || 'Image upload failed');
+          const agg = failed.map(f => f.error).filter(Boolean).join('; ') || 'Gagal mengunggah gambar';
+          // show toast before throwing so user sees the reason
+          toast({ variant: 'destructive', title: 'Gagal mengunggah gambar', description: agg });
+          throw new Error(agg);
         }
 
-        imageUrl = uploadResult.url!;
+        // Build ordered gallery array by index
+        const maxIdx = Math.max(0, ...(successfulResults.map(r => r.index)));
+        const galleryArr: (string | undefined)[] = Array.from({ length: maxIdx + 1 }, (_, i) => undefined);
+        for (const r of successfulResults) galleryArr[r.index] = r.url;
+        imageGallery = galleryArr.filter(Boolean) as string[];
 
-        // Update product with image URL
-        const { error: updateError } = await supabase
+        // Upload a separate main image to a dedicated path if admin provided the first file
+        try {
+          const firstFile = form.imageFiles[0];
+          if (firstFile) {
+            const mainRes = await ProductImageManager.uploadProductImage(inserted.id!, firstFile, 0, 'main');
+            if (mainRes.success && mainRes.url) {
+              imageUrl = mainRes.url;
+            } else {
+              // fallback to first gallery item
+              imageUrl = imageGallery[0] || '';
+            }
+          } else {
+            imageUrl = imageGallery[0] || '';
+          }
+        } catch (err) {
+          imageUrl = imageGallery[0] || '';
+        }
+
+        // Update product with primary image_url and image_gallery
+        const { data: updateData, error: updateError } = await supabase
           .from('products')
-          .update({ image_url: imageUrl })
-          .eq('id', productData.id);
+          .update({ image_url: imageUrl, image_gallery: imageGallery })
+          .eq('id', inserted.id)
+          .select()
+          .single();
 
         if (updateError) {
-          console.warn('Failed to update product with image URL:', updateError);
+          console.warn('Failed to update product with image URLs:', updateError);
+        } else if (updateData && (updateData as InsertResult).id) {
+          createdRecord = updateData as InsertResult;
         }
       }
 
+      // Fetch full product record to return latest state (covers case with/without images)
+      const createdId = inserted.id as string;
+      const { data: fullProduct, error: fetchFullErr } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', createdId)
+        .single();
+
+      if (fetchFullErr) {
+        console.warn('Failed to fetch created product after insert:', fetchFullErr);
+      }
+
       toast({ title: 'Produk berhasil ditambahkan' });
-      return { ...productData, image_url: imageUrl };
+  return (fullProduct as Product) || ({ ...(createdRecord as unknown as Record<string, unknown>), image_url: imageUrl, image_gallery: imageGallery } as Product);
     } catch (error) {
       console.error('Create product error:', error);
       const message = error instanceof Error ? error.message : 'Gagal menambahkan produk';
@@ -141,36 +260,50 @@ export const useProductCRUD = () => {
 
     try {
       // Get current product data
-      const { data: currentProduct, error: fetchError } = await supabase
+      const { data: currentProductRaw, error: fetchError } = await supabase
         .from('products')
-        .select('image_url')
+        .select('image_url, image_gallery')
         .eq('id', productId)
         .single();
 
       if (fetchError) throw fetchError;
+      const currentProduct = (currentProductRaw as unknown as { image_url?: string; image_gallery?: string[] }) || {};
+      let imageUrl = currentProduct.image_url || '';
+      // handle existing gallery from DB if present
+      const existingGallery = currentProduct.image_gallery;
+      let imageGallery: string[] = Array.isArray(existingGallery) ? existingGallery : [];
 
-      let imageUrl = currentProduct.image_url;
-
-      // Handle image update
-      if (form.imageFile) {
+      // Handle image update: merge uploaded slots into existing gallery
+      if (form.imageFiles && form.imageFiles.some(Boolean)) {
         setUploading(true);
-        
-        // Delete old image if exists
-        if (currentProduct.image_url) {
-          await ProductImageManager.deleteProductImage(currentProduct.image_url);
+
+        // Upload new/updated images to their respective slots (preserve indices)
+        const uploadResults = await ProductImageManager.uploadProductImages(productId, form.imageFiles.slice(0,4));
+
+        // Map successful uploads into the existing gallery by index
+        const successfulResults = uploadResults.filter(r => r.success && typeof r.index === 'number') as { success: true; url: string; index: number }[];
+        const failed = uploadResults.filter(r => !r.success);
+
+        // Initialize gallery array up to max of existing or uploaded indices
+        const maxLen = Math.max(imageGallery.length, ...(successfulResults.map(r => r.index + 1)), 0);
+        const mergedGallery = Array.from({ length: maxLen }, (_, i) => imageGallery[i] || undefined) as (string | undefined)[];
+
+        for (const res of successfulResults) {
+          mergedGallery[res.index] = res.url;
         }
 
-        // Upload new image
-        const uploadResult: ImageUploadResult = await ProductImageManager.uploadProductImage(
-          productId,
-          form.imageFile
-        );
+        // Filter undefined and keep order
+        imageGallery = mergedGallery.filter(Boolean) as string[];
 
-        if (!uploadResult.success) {
-          throw new Error(uploadResult.error || 'Image upload failed');
+        if (successfulResults.length === 0 && failed.length > 0) {
+          // No successful uploads; preserve existing images and surface an error to the user
+          const errMsg = failed.map(f => f.error).filter(Boolean).join('; ') || 'Gagal mengunggah gambar';
+          console.warn('No new images uploaded:', errMsg);
+          // Show toast so admin sees the validation/upload failure
+          toast({ variant: 'destructive', title: 'Gagal mengunggah gambar', description: String(errMsg) });
         }
 
-        imageUrl = uploadResult.url!;
+        imageUrl = imageGallery[0] || imageUrl;
       }
 
       // Update product
@@ -183,6 +316,20 @@ export const useProductCRUD = () => {
           category: form.category,
           stock_quantity: Number(form.stock_quantity) || 0,
           image_url: imageUrl,
+          image_gallery: imageGallery,
+          brand: form.brand ?? null,
+          product_type: form.product_type ?? null,
+          pet_type: form.pet_type ?? null,
+          origin_country: form.origin_country ?? null,
+          expiry_date: form.expiry_date ?? null,
+          age_category: form.age_category ?? null,
+          weight_grams: form.weight_grams ?? null,
+          length_cm: form.length_cm ?? null,
+          width_cm: form.width_cm ?? null,
+          height_cm: form.height_cm ?? null,
+          discount_percent: form.discount_percent ?? null,
+          sku: form.sku ?? null,
+          shipping_options: form.shipping_options ?? []
         })
         .eq('id', productId)
         .select()
@@ -191,7 +338,12 @@ export const useProductCRUD = () => {
       if (updateError) throw updateError;
 
       toast({ title: 'Produk berhasil diperbarui' });
-      return updatedProduct;
+      // ensure returned product includes any gallery we set
+      const fetched = await supabase.from('products').select('*').eq('id', productId).single();
+      if (fetched.error) {
+        return updatedProduct as Product;
+      }
+      return fetched.data as Product;
     } catch (error) {
       console.error('Update product error:', error);
       const message = error instanceof Error ? error.message : 'Gagal memperbarui produk';

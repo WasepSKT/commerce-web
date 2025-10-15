@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import SEOHead from '@/components/seo/SEOHead';
 import { generateBreadcrumbStructuredData } from '@/utils/seoData';
+import computePriceAfterDiscount from '@/utils/price';
 
 interface Product {
   id: string;
@@ -27,6 +28,7 @@ interface Product {
   price: number;
   image_url?: string;
   stock_quantity?: number;
+  discount_percent?: number | null;
 }
 
 // Type for referral_purchases table sesuai schema
@@ -107,13 +109,13 @@ export default function CartPage() {
   // recap modal is now immediate action only; no auto-countdown
 
   // small helper to normalize Supabase response shapes
-  const normalizeSupabaseResult = <T,>(res: unknown): { data?: T | null; error?: unknown } => {
+  function normalizeSupabaseResult<T>(res: unknown): { data?: T | null; error?: unknown } {
     if (res && typeof res === 'object') {
       const r = res as Record<string, unknown>;
       return { data: r['data'] as T | undefined, error: r['error'] };
     }
     return { data: res as T, error: undefined };
-  };
+  }
 
   // UUID validation regex
   const isValidUUID = (id: string): boolean => {
@@ -150,18 +152,21 @@ export default function CartPage() {
 
     try {
       console.log('Fetching products for valid UUIDs:', validIds);
-      const { data, error } = await supabase
+      const res = await supabase
         .from('products')
-        .select('id,name,price,image_url,stock_quantity')
+        // include discount_percent so cart can compute effective unit price
+        .select('id,name,price,image_url,stock_quantity,discount_percent')
         .in('id', validIds)
         .eq('is_active', true);
 
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
+      const { data: fetched, error: fetchError } = normalizeSupabaseResult<Product[]>(res);
+      if (fetchError) {
+        // If the column doesn't exist or another error occurred, log and throw to fall back to error UI
+        console.error('Supabase error while fetching products:', fetchError);
+        throw fetchError;
       }
-      console.log('Fetched products:', data);
-      setProducts(data || []);
+      console.log('Fetched products:', fetched);
+      setProducts((fetched as Product[]) || []);
     } catch (err) {
       console.error('Failed to fetch cart products', err);
       toast({ variant: 'destructive', title: 'Gagal memuat keranjang', description: 'Terjadi kesalahan saat mengambil data produk.' });
@@ -192,10 +197,15 @@ export default function CartPage() {
     return items
       .map((it) => {
         const product = products.find((p) => p.id === it.id);
+        const originalPrice = product?.price ?? 0;
+        const discountPercent = (product as Product & { discount_percent?: number | null })?.discount_percent ?? 0;
+        const priceInfo = computePriceAfterDiscount({ price: originalPrice, discount_percent: discountPercent });
         return {
           id: it.id,
           name: product?.name ?? 'Produk tidak ditemukan',
-          price: product?.price ?? 0,
+          price: originalPrice,
+          unit_price: priceInfo.discounted,
+          discount_percent: priceInfo.discountPercent,
           quantity: it.quantity,
           image_url: product?.image_url,
           stock_quantity: product?.stock_quantity ?? 0,
@@ -203,7 +213,7 @@ export default function CartPage() {
       });
   }, [items, products]);
 
-  const subtotal = useMemo(() => lineItems.reduce((s, it) => s + it.price * it.quantity, 0), [lineItems]);
+  const subtotal = useMemo(() => lineItems.reduce((s, it) => s + (it.unit_price ?? it.price) * it.quantity, 0), [lineItems]);
 
   const formatPrice = (value: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
 
@@ -211,6 +221,28 @@ export default function CartPage() {
     if (totalItems === 0) {
       toast({ variant: 'destructive', title: 'Keranjang kosong', description: 'Tambahkan produk terlebih dahulu.' });
       return;
+    }
+
+    // Validate stock before checkout
+    try {
+      const { StockService } = await import('@/services/stockService');
+      const cartItems = items.map(item => ({
+        product_id: item.id,
+        quantity: item.quantity
+      }));
+
+      const stockValidation = await StockService.validateCartStock(cartItems);
+      if (!stockValidation.valid) {
+        toast({
+          variant: 'destructive',
+          title: 'Stok tidak mencukupi',
+          description: 'Beberapa produk tidak memiliki stok yang cukup. Silakan periksa keranjang Anda.'
+        });
+        return;
+      }
+    } catch (error) {
+      console.warn('Failed to validate stock before checkout:', error);
+      // Continue with checkout if stock validation fails
     }
 
     // Require authentication
@@ -242,8 +274,17 @@ export default function CartPage() {
       return;
     }
 
-    // show confirmation modal first (user requested explicit confirmation of details)
-    setShowConfirm(true);
+    // Navigate directly to the Checkout page in dry-run/test mode to avoid creating DB rows here.
+    // Use a hard redirect so behavior matches ProductDetail and is reliable in all environments.
+    const target = `/checkout?dry_run=1&from_cart=1`;
+    console.debug('[Cart] Redirecting to checkout (dry-run):', target);
+    if (typeof window !== 'undefined') {
+      // Use assign so the previous page remains in history (user can go back)
+      window.location.assign(target);
+      return;
+    }
+    // Fallback to SPA navigation if `window` is not available (e.g. SSR test harness)
+    navigate(target);
   };
 
   // Create pending order (called after user confirms details)
@@ -293,8 +334,33 @@ export default function CartPage() {
       if (!orderId) throw new Error('No order id returned from insert');
 
       // build items payload and insert
-      const itemsPayload = lineItems.map(li => ({ order_id: orderId, product_id: li.id, quantity: li.quantity, price: li.price }));
-      const itemsRes = await supabase.from('order_items').insert(itemsPayload).select();
+      const itemsPayload = lineItems.map(li => {
+        // find the product to get discount_percent (we included it in the fetch)
+        const prod = products.find(p => p.id === li.id) as (Product & { discount_percent?: number | null }) | undefined;
+        const priceInfo = computePriceAfterDiscount({ price: li.price, discount_percent: prod?.discount_percent ?? 0 });
+        return { order_id: orderId, product_id: li.id, quantity: li.quantity, price: li.price, unit_price: priceInfo.discounted, discount_percent: priceInfo.discountPercent };
+      });
+      // Try inserting order_items including discount_percent. If the DB schema doesn't have that column
+      // (PGRST204), retry without discount_percent to remain backward-compatible.
+      let itemsRes: unknown;
+      try {
+        itemsRes = await supabase.from('order_items').insert(itemsPayload).select();
+      } catch (firstErr) {
+        console.warn('First attempt to insert order_items failed, retrying without discount_percent', firstErr);
+        const fallback = itemsPayload.map(({ order_id, product_id, quantity, price, unit_price }) => ({ order_id, product_id, quantity, price, unit_price }));
+        try {
+          itemsRes = await supabase.from('order_items').insert(fallback).select();
+        } catch (fallbackErr) {
+          console.error('Failed to insert cart order items (fallback)', fallbackErr);
+          try {
+            await supabase.from('orders').delete().eq('id', orderId);
+          } catch (delErr) {
+            console.error('Failed rollback after item insert failure', delErr);
+          }
+          throw new Error('Gagal menyimpan item pesanan');
+        }
+      }
+
       const { data: itemsData, error: itemsError } = normalizeSupabaseResult<unknown[]>(itemsRes);
       if (itemsError || !itemsData || (Array.isArray(itemsData) && itemsData.length === 0)) {
         console.error('Failed to insert cart order items', itemsError ?? itemsRes);
@@ -307,22 +373,19 @@ export default function CartPage() {
         throw new Error('Gagal menyimpan item pesanan');
       }
 
-      // Optional: decrement stock via RPC (requires server-side SECURITY DEFINER function)
+      // Decrement stock via RPC
       try {
-        // If the RPC is not yet created, this will no-op with an error which we ignore
-        // Expecting a function signature like: decrement_stock_for_order(order_id uuid)
-        // The function should decrement products.stock_quantity by order_items.quantity for the given order
-        // and guard against negatives (e.g., GREATEST(stock_quantity - qty, 0)).
-        const rpc = (supabase as unknown as { rpc: (name: string, args?: Record<string, unknown>) => Promise<unknown> }).rpc;
-        const rpcRes = await rpc('decrement_stock_for_order', { order_id: orderId });
-        const resObj = rpcRes as { error?: unknown } | null;
-        if (resObj?.error) {
-          // Non-fatal if RPC missing or blocked by RLS; log only
-          // console.warn('decrement_stock_for_order RPC failed/nonexistent', resObj.error);
+        const { StockService } = await import('@/services/stockService');
+        const stockResult = await StockService.decrementStockForOrder(orderId);
+        if (!stockResult.success) {
+          console.warn('Failed to decrement stock:', stockResult.error);
+          // Non-fatal: continue flow, stock can be managed manually
+        } else {
+          console.log('Stock successfully decremented for order:', orderId);
         }
       } catch (stockErr) {
         // Non-fatal: continue flow
-        // console.warn('Failed to call decrement_stock_for_order RPC', stockErr);
+        console.warn('Failed to call stock decrement service', stockErr);
       }
 
       // Insert referral purchase if user was referred
@@ -372,48 +435,20 @@ export default function CartPage() {
   };
 
 
-  // Ensure an order exists, then redirect to WhatsApp with order details
-  const proceedToWhatsApp = async () => {
+  // Ensure an order exists, then navigate to Checkout page
+  // NOTE: For test/dry-run checkout we do NOT persist orders here. Instead
+  // navigate to the Checkout page with `dry_run=1` and let the Checkout page
+  // handle building a temporary order payload for payment session creation.
+  const proceedToCheckout = async () => {
     try {
-      const orderId = await createPendingOrder();
-      if (orderId) {
-        setPendingOrderId(orderId);
-        toast({ title: 'Pesanan disimpan', description: `Order ID: ${orderId}` });
-      }
-
-      // build message and redirect
-      let message = `Halo, saya ${profile?.full_name ?? ''} ingin memesan:\n\n`;
-      lineItems.forEach(li => {
-        message += `${li.name}\nJumlah: ${li.quantity}\nHarga: ${formatPrice(li.price * li.quantity)}\n\n`;
-      });
-      message += `Total: ${formatPrice(subtotal)}\n\n`;
-      message += `📋 *DETAIL PENGIRIMAN:*\n`;
-      message += `Nama penerima: ${profile?.full_name}\n`;
-      message += `No. HP/WA: ${profile?.phone}\n`;
-      message += `\n📍 *ALAMAT LENGKAP:*\n`;
-      message += `${profile?.address || ''}\n`;
-      if (profile?.subdistrict) message += `${profile.subdistrict}, `;
-      if (profile?.district) message += `${profile.district}\n`;
-      if (profile?.city) message += `${profile.city}, `;
-      if (profile?.province) message += `${profile.province}\n`;
-      if (profile?.postal_code) message += `Kode Pos: ${profile.postal_code}\n`;
-
-      // Add Google Maps share link if coordinates are available
-      if (profile?.latitude && profile?.longitude) {
-        const googleMapsUrl = `https://www.google.com/maps?q=${profile.latitude},${profile.longitude}`;
-        message += `\n📍 *LOKASI PENERIMA:*\n${googleMapsUrl}\n`;
-      }
-
-      message += `\nTerima kasih.`;
-      if (orderId) message = `Order ID: ${orderId}\n` + message;
-      const whatsappUrl = `https://wa.me/6281216759149?text=${encodeURIComponent(message)}`;
-      window.open(whatsappUrl, '_blank');
+      // Close recap and navigate to Checkout in dry-run mode to avoid creating DB rows
       setShowRecap(false);
+      // pass a flag so Checkout will run in dry-run/test mode and not call supabase inserts
+      navigate(`/checkout?dry_run=1`);
     } catch (err) {
-      console.error('Failed create order before redirect', err);
+      console.error('Failed navigate to checkout', err);
       const msg = err instanceof Error ? err.message : String(err);
-      toast({ variant: 'destructive', title: 'Gagal membuat pesanan', description: msg });
-      // keep recap open so user can retry
+      toast({ variant: 'destructive', title: 'Gagal ke checkout', description: msg });
       throw err;
     }
   };
@@ -516,9 +551,18 @@ export default function CartPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="font-medium text-primary">{li.name}</h3>
-                        <p className="text-sm text-muted-foreground">{formatPrice(li.price)}</p>
+                        <div className="flex items-baseline gap-2">
+                          {typeof li.discount_percent === 'number' && li.discount_percent > 0 ? (
+                            <>
+                              <span className="text-xs text-muted-foreground line-through">{formatPrice(li.price)}</span>
+                              <span className="text-lg font-semibold text-primary">{formatPrice(li.unit_price ?? li.price)}</span>
+                            </>
+                          ) : (
+                            <span className="text-lg font-medium text-primary">{formatPrice(li.price)}</span>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-sm text-muted-foreground">Subtotal: {formatPrice(li.price * li.quantity)}</div>
+                      <div className="text-sm text-muted-foreground">Subtotal: {formatPrice((li.unit_price ?? li.price) * li.quantity)}</div>
                     </div>
 
                     <div className="mt-3 flex items-center space-x-2">
@@ -544,29 +588,41 @@ export default function CartPage() {
                     <span>Total</span>
                     <span>{formatPrice(subtotal)}</span>
                   </div>
-                  <Button className="w-full" onClick={handleCheckout}>Checkout</Button>
+                  {isAuthenticated && profile && profile.full_name && profile.phone && profile.address && profile.postal_code ? (
+                    // Render as plain anchor when user is already authenticated and profile appears complete.
+                    // This forces a reliable browser navigation to the Checkout page (dry-run) matching ProductDetail behavior.
+                    <a href="/checkout?dry_run=1&from_cart=1" className="inline-block w-full">
+                      <Button className="w-full">Checkout</Button>
+                    </a>
+                  ) : (
+                    <Button className="w-full" onClick={handleCheckout}>Checkout</Button>
+                  )}
                 </CardContent>
               </Card>
 
-              {/* Recap Dialog for Cart checkout */}
               {/* Recap Dialog for Cart checkout */}
               <Dialog open={showRecap} onOpenChange={setShowRecap}>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Ringkasan Pesanan</DialogTitle>
-                    <DialogDescription>Periksa rekap pesanan. Tekan konfirmasi untuk menyimpan pesanan dan lanjut ke WhatsApp.</DialogDescription>
+                    <DialogDescription>Periksa rekap pesanan. Tekan konfirmasi untuk menyimpan pesanan dan melanjutkan ke halaman Checkout.</DialogDescription>
                   </DialogHeader>
 
                   <div className="py-2 space-y-2 text-sm text-muted-foreground">
                     {lineItems.map(li => (
                       <div key={li.id} className="flex justify-between">
                         <div>{li.name} x{li.quantity}</div>
-                        <div>{formatPrice(li.price * li.quantity)}</div>
+                        <div>{formatPrice((li.unit_price ?? li.price) * li.quantity)}</div>
                       </div>
                     ))}
-                    <div className="mt-2 flex justify-between font-medium"> <div>Total</div> <div>{formatPrice(subtotal)}</div></div>
+
+                    <div className="mt-2 flex justify-between font-medium">
+                      <div>Total</div>
+                      <div>{formatPrice(subtotal)}</div>
+                    </div>
+
                     {!pendingOrderId ? (
-                      <div className="mt-2 text-xs text-muted-foreground">Order akan dibuat setelah Anda menekan "Lanjut ke WhatsApp".</div>
+                      <div className="mt-2 text-xs text-muted-foreground">Order akan dibuat setelah Anda menekan "Lanjut ke Checkout".</div>
                     ) : null}
                   </div>
 
@@ -574,11 +630,11 @@ export default function CartPage() {
                     <Button variant="ghost" onClick={() => setShowRecap(false)}>Batal</Button>
                     <Button disabled={creatingOrder} onClick={async () => {
                       try {
-                        await proceedToWhatsApp();
+                        await proceedToCheckout();
                       } catch (e) {
-                        // proceedToWhatsApp already toasts
+                        // proceedToCheckout already toasts
                       }
-                    }}>{creatingOrder ? 'Membuat...' : 'Lanjut ke WhatsApp'}</Button>
+                    }}>{creatingOrder ? 'Membuat...' : 'Lanjut ke Checkout'}</Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -633,14 +689,14 @@ export default function CartPage() {
 
               <Card>
                 <CardContent className="p-4 text-sm text-muted-foreground">
-                  <p>Silakan konfirmasi pesanan melalui WhatsApp. Kami akan memproses pesanan setelah konfirmasi.</p>
+                  <p>Silakan konfirmasi pesanan. Setelah konfirmasi Anda akan diarahkan ke halaman Checkout untuk memilih pengiriman dan pembayaran.</p>
                 </CardContent>
               </Card>
+
             </div>
           </div>
         )}
-      </div>
-
+      </div>;
     </Layout>
   );
 }
