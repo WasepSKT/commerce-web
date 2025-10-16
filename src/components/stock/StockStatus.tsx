@@ -44,7 +44,7 @@ export function StockStatus({ stock, className, showText = true }: StockStatusPr
         variant={status.variant}
         className={cn('text-xs font-medium', status.className)}
       >
-        {stock} unit
+        {stock} Kaleng
       </Badge>
       {showText && (
         <span className={cn('text-xs font-medium', {

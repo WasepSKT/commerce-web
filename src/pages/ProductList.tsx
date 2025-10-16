@@ -76,7 +76,7 @@ export default function ProductList() {
       toast({
         variant: "destructive",
         title: "Stok tidak mencukupi",
-        description: `Stok ${product.name} hanya tersisa ${product.stock_quantity} unit`,
+        description: `Stok ${product.name} hanya tersisa ${product.stock_quantity} kaleng`,
       });
       return;
     }

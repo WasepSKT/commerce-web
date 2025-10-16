@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, ShoppingCart, Star, Shield, Truck, Package, MessageCircle, ChevronDown } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Star, Shield, Truck, Package, MessageCircle, ChevronDown, Share2 } from 'lucide-react';
 import {
   Collapsible,
   CollapsibleContent,
@@ -30,6 +30,9 @@ import { ProductCard } from '@/components/ProductCard';
 import SEOHead from '@/components/seo/SEOHead';
 import { generateProductStructuredData, generateBreadcrumbStructuredData, generatePageTitle } from '@/utils/seoData';
 import computePriceAfterDiscount from '@/utils/price';
+import WhatsAppLogo from '@/assets/img/WhatsApp_logo-color-vertical.svg';
+import InstagramLogo from '@/assets/img/Instagram-Gradient-Logo-PNG.png';
+import TiktokIcon from '@/assets/img/Tiktok_icon.svg';
 
 interface Product {
   id: string;
@@ -616,7 +619,7 @@ export default function ProductDetail() {
               <div className="flex items-center space-x-2 mb-6">
                 <span className="text-sm">Stok tersedia:</span>
                 <Badge variant={isOutOfStock ? "destructive" : "secondary"}>
-                  {product.stock_quantity} unit
+                  {product.stock_quantity} Kaleng
                 </Badge>
               </div>
             </div>
@@ -681,6 +684,78 @@ export default function ProductDetail() {
                     </Button>
                   </div>
                 </div>
+
+                {/* Share buttons: WA, IG, TikTok, generic share */}
+                <div className="mt-3 flex items-center gap-2">
+                  {(() => {
+                    const productUrl = typeof window !== 'undefined' ? `${window.location.origin}/product/${product.id}` : `/product/${product.id}`;
+                    const shortDesc = product.description ? product.description.slice(0, 120) : '';
+                    const shareText = `${product.name}${shortDesc ? ' - ' + shortDesc : ''}\n${productUrl}`;
+
+                    const copyLink = async () => {
+                      try {
+                        await navigator.clipboard.writeText(productUrl);
+                        toast({ title: 'Link disalin', description: 'Tautan produk telah disalin ke clipboard.' });
+                      } catch (err) {
+                        // fallback: prompt
+                        window.prompt('Salin tautan ini:', productUrl);
+                      }
+                    };
+
+                    const shareWeb = async () => {
+                      if (navigator.share) {
+                        try {
+                          await navigator.share({ title: product.name, text: shortDesc, url: productUrl });
+                        } catch (e) {
+                          // user cancelled or error
+                        }
+                        return;
+                      }
+                      await copyLink();
+                    };
+
+                    const shareWhatsApp = () => {
+                      const url = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+                      window.open(url, '_blank');
+                    };
+
+                    const shareToIG = async () => {
+                      if (navigator.share) {
+                        await shareWeb();
+                        return;
+                      }
+                      await copyLink();
+                      toast({ title: 'Bagikan ke Instagram', description: 'Link disalin. Buka Instagram dan tempelkan tautan di Story/DM.' });
+                    };
+
+                    const shareToTikTok = async () => {
+                      if (navigator.share) {
+                        await shareWeb();
+                        return;
+                      }
+                      await copyLink();
+                      toast({ title: 'Bagikan ke TikTok', description: 'Link disalin. Buka TikTok dan tempelkan tautan di DM atau bio.' });
+                    };
+
+                    return (
+                      <>
+                        <button type="button" onClick={shareWhatsApp} aria-label="Bagikan ke WhatsApp" className="px-2 py-1 rounded border text-sm bg-white hover:bg-primary/5 border-gray-200">
+                          <img src={WhatsAppLogo} alt="WhatsApp" className="h-5 w-5 object-contain" />
+                        </button>
+                        <button type="button" onClick={shareToIG} aria-label="Bagikan ke Instagram" className="px-2 py-1 rounded border text-sm bg-white hover:bg-primary/5 border-gray-200">
+                          <img src={InstagramLogo} alt="Instagram" className="h-5 w-5 object-contain" />
+                        </button>
+                        <button type="button" onClick={shareToTikTok} aria-label="Bagikan ke TikTok" className="px-2 py-1 rounded border text-sm bg-white hover:bg-primary/5 border-gray-200">
+                          <img src={TiktokIcon} alt="TikTok" className="h-5 w-5 object-contain" />
+                        </button>
+                        <button type="button" onClick={shareWeb} aria-label="Share" className="ml-auto px-3 py-2 rounded border text-sm bg-white hover:bg-primary/5 border-gray-200">
+                          <Share2 className="h-5 w-5" />
+                        </button>
+                      </>
+                    );
+                  })()}
+                </div>
+
               </div>
             )}
 
@@ -699,7 +774,7 @@ export default function ProductDetail() {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Stok:</span>
-                  <p className="font-medium">{product.stock_quantity} unit</p>
+                  <p className="font-medium">{product.stock_quantity} kaleng</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Merek:</span>
