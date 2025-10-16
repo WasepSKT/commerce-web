@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useReferral } from '@/hooks/useReferral';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { MapPin, Crosshair } from 'lucide-react';
 import AddressSelectors from '@/components/profile/AddressSelectors';
@@ -52,6 +54,7 @@ const getWin = () => window as unknown as (Window & { _profile_map_ref?: Profile
 
 export default function ProfilePage() {
   const { profile, updateProfile } = useAuth();
+  const { referralLevel } = useReferral();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -203,6 +206,17 @@ export default function ProfilePage() {
         <Card>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {referralLevel ? (
+                <div className="md:col-span-2">
+                  <label className="text-sm font-medium">Referral Level</label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <Badge>{referralLevel.levelName}</Badge>
+                    <span className="text-sm text-muted-foreground">
+                      Komisi {(referralLevel.commissionPct * 100).toFixed(0)}% • Referral Rp {referralLevel.totalAmount.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </div>
+              ) : null}
               <div>
                 <label className="text-sm font-medium">Nama Penerima</label>
                 <Input value={full_name} onChange={(e) => setFullName(e.target.value)} placeholder="Nama lengkap sesuai pengiriman" />

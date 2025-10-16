@@ -21,7 +21,15 @@ export const REFERRAL_CONFIG = {
     PENDING_REFERRAL: 'pendingReferralCode',
     REFERRAL_HISTORY: 'referralHistory',
     REFERRAL_STATS: 'referralStats'
-  }
+  },
+
+  // Referral Levels (by total referred purchases amount)
+  LEVELS: [
+    { id: 'bronze', name: 'Bronze', min_amount: 0,      commission_pct: 0.03, priority: 1 },
+    { id: 'silver', name: 'Silver', min_amount: 500000, commission_pct: 0.05, priority: 2 },
+    { id: 'gold',   name: 'Gold',   min_amount: 2000000,commission_pct: 0.07, priority: 3 },
+    { id: 'platinum', name: 'Platinum', min_amount: 5000000, commission_pct: 0.10, priority: 4 }
+  ] as const
 } as const;
 
 export const REFERRAL_STATUS = {

@@ -11,6 +11,30 @@ export function useReferral() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
   const [referralHistory, setReferralHistory] = useState<ReferralRecord[]>([]);
+  const [referralLevel, setReferralLevel] = useState<{ levelId: string; levelName: string; commissionPct: number; totalAmount: number } | null>(null);
+
+  // Load referral stats
+  const loadReferralStats = useCallback(async (userId: string) => {
+    try {
+      const stats = await ReferralService.getReferralStats(userId);
+      setReferralStats(stats);
+      // compute level after stats load (uses purchases table)
+      const level = await ReferralService.computeReferralLevel(userId);
+      setReferralLevel(level);
+    } catch (error) {
+      console.error('Error loading referral stats:', error);
+    }
+  }, []);
+
+  // Load referral history
+  const loadReferralHistory = useCallback(async (userId: string) => {
+    try {
+      const history = await ReferralService.getReferralHistory(userId);
+      setReferralHistory(history);
+    } catch (error) {
+      console.error('Error loading referral history:', error);
+    }
+  }, []);
 
   const handleReferral = useCallback(async (
     refCode: string, 
@@ -104,27 +128,8 @@ export function useReferral() {
     } finally {
       setIsProcessing(false);
     }
-  }, [toast, profile?.user_id]);
+  }, [toast, profile?.user_id, loadReferralStats]);
 
-  // Load referral stats
-  const loadReferralStats = useCallback(async (userId: string) => {
-    try {
-      const stats = await ReferralService.getReferralStats(userId);
-      setReferralStats(stats);
-    } catch (error) {
-      console.error('Error loading referral stats:', error);
-    }
-  }, []);
-
-  // Load referral history
-  const loadReferralHistory = useCallback(async (userId: string) => {
-    try {
-      const history = await ReferralService.getReferralHistory(userId);
-      setReferralHistory(history);
-    } catch (error) {
-      console.error('Error loading referral history:', error);
-    }
-  }, []);
 
   // Validate referral code
   const validateReferralCode = useCallback(async (code: string) => {
@@ -191,6 +196,7 @@ export function useReferral() {
     loadReferralHistory,
     isProcessing,
     referralStats,
-    referralHistory
+    referralHistory,
+    referralLevel
   };
 }

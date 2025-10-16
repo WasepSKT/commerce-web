@@ -55,6 +55,64 @@ export class ReferralService {
   }
 
   /**
+   * Compute referral level from total amount of purchases by referred users
+   */
+  static async computeReferralLevel(userId: string): Promise<{ levelId: string; levelName: string; commissionPct: number; totalAmount: number }> {
+    try {
+      // Sum of successful referral purchases for this referrer
+      const { data, error } = await supabase
+        .from('referral_purchases')
+        .select('amount')
+        .eq('referrer_id', userId)
+        .eq('status', 'completed');
+
+      if (error) throw error;
+
+      const totalAmount = (data || []).reduce((sum, row) => sum + Number((row as { amount?: number }).amount || 0), 0);
+
+      // Try dynamic levels from DB first
+      const { data: levelRows, error: levelErr } = await supabase
+        .from('referral_levels')
+        .select('id,name,min_amount,commission_pct,priority,active')
+        .eq('active', true)
+        .order('priority', { ascending: true });
+
+      let pickedId = 'bronze';
+      let pickedName = 'Bronze';
+      let pickedPct = 0.03;
+
+      if (!levelErr && Array.isArray(levelRows) && levelRows.length > 0) {
+        // choose highest level where totalAmount >= min_amount
+        const sorted = levelRows.sort((a, b) => Number(a.priority ?? 0) - Number(b.priority ?? 0));
+        for (const lv of sorted) {
+          if (totalAmount >= Number(lv.min_amount ?? 0)) {
+            pickedId = String(lv.id ?? pickedId);
+            pickedName = String(lv.name ?? pickedName);
+            pickedPct = Number(lv.commission_pct ?? pickedPct);
+          }
+        }
+      } else {
+        // Fallback to static config if table not available
+        const levels = [...REFERRAL_CONFIG.LEVELS].sort((a, b) => a.priority - b.priority);
+        let picked = levels[0];
+        for (const lv of levels) {
+          if (totalAmount >= lv.min_amount) picked = lv as unknown as typeof picked;
+        }
+        pickedId = picked.id;
+        pickedName = picked.name;
+        pickedPct = picked.commission_pct;
+      }
+
+      return { levelId: pickedId, levelName: pickedName, commissionPct: pickedPct, totalAmount };
+    } catch (err) {
+      console.error('Failed to compute referral level', err);
+      // Fallback to lowest level
+      const lv = REFERRAL_CONFIG.LEVELS[0];
+      return { levelId: lv.id, levelName: lv.name, commissionPct: lv.commission_pct, totalAmount: 0 };
+    }
+  }
+
+  /**
    * Process referral signup with corrected logic
    * Only referrer gets points, referee gets no points
    */
@@ -87,8 +145,8 @@ export class ReferralService {
         };
       }
 
-      // Parse response
-      const response = data as ReferralResponse;
+  // Parse response (cast via unknown first to satisfy TS safety)
+  const response = (data as unknown) as ReferralResponse;
       
       if (response.success) {
         return {
@@ -120,6 +178,7 @@ export class ReferralService {
       const { data, error } = await supabase
         .from('profiles')
         .select(`
+          id,
           referral_code,
           referral_points,
           referred_invites_count,
@@ -131,20 +190,28 @@ export class ReferralService {
       if (error || !data) {
         return null;
       }
+      // Narrow the result into a safe local shape
+      const row = (data as unknown) as {
+        id?: string;
+        referral_code?: string | null;
+        referral_points?: number | null;
+        referred_invites_count?: number | null;
+        referral_levels?: { name?: string | null; commission_pct?: number | null } | null;
+      };
 
       // Get total referrals count
       const { count } = await supabase
         .from('referrals')
         .select('*', { count: 'exact', head: true })
-        .eq('referrer_id', data.id);
+        .eq('referrer_id', row.id);
 
       return {
         total_referrals: count || 0,
-        total_points_earned: data.referral_points || 0,
-        active_referrals: data.referred_invites_count || 0,
-        referral_code: data.referral_code,
-        level: data.referral_levels?.name,
-        commission_rate: data.referral_levels?.commission_pct
+        total_points_earned: row.referral_points || 0,
+        active_referrals: row.referred_invites_count || 0,
+        referral_code: row.referral_code || '',
+        level: row.referral_levels?.name || null,
+        commission_rate: row.referral_levels?.commission_pct ?? null
       };
     } catch (error) {
       console.error('Error fetching referral stats:', error);
@@ -175,7 +242,35 @@ export class ReferralService {
         return [];
       }
 
-      return data || [];
+      // Normalize and cast rows to ReferralRecord[] safely
+      const rows = (data ?? []) as unknown[];
+      const normalizeStatus = (s: unknown) => {
+        const st = String(s ?? '').toLowerCase();
+        if (st === 'active') return 'active';
+        if (st === 'expired') return 'expired';
+        return 'inactive';
+      };
+
+      const mapped = rows.map(r => {
+        const rec = r as Record<string, unknown>;
+        return {
+          created_at: String(rec.created_at ?? ''),
+          id: String(rec.id ?? ''),
+          referral_code: String(rec.referral_code ?? ''),
+          referred_id: String(rec.referred_id ?? ''),
+          referrer_id: String(rec.referrer_id ?? ''),
+          reward_points: Number(rec.reward_points ?? 0),
+          status: normalizeStatus(rec.status),
+          updated_at: String(rec.updated_at ?? ''),
+          referred_profile: (rec.referred_profile as Record<string, unknown> | undefined) ? {
+            full_name: String((rec.referred_profile as Record<string, unknown>).full_name ?? ''),
+            email: String((rec.referred_profile as Record<string, unknown>).email ?? ''),
+            created_at: String((rec.referred_profile as Record<string, unknown>).created_at ?? '')
+          } : undefined
+        } as ReferralRecord;
+      });
+
+      return mapped;
     } catch (error) {
       console.error('Error fetching referral history:', error);
       return [];
@@ -192,7 +287,7 @@ export class ReferralService {
         .select('*')
         .eq('active', true)
         .order('priority', { ascending: false });
-
+      
       if (error) {
         console.error('Error fetching referral levels:', error);
         return [];
@@ -278,18 +373,27 @@ export class ReferralLevelService {
   }
 
   static async saveLevel(
-    formData: any, 
+    formData: Record<string, unknown>, 
     editingLevel: ReferralLevel | null
   ): Promise<{ error: Error | null }> {
     try {
-      const payload = {
-        name: formData.name,
-        min_amount: Number(formData.min_amount) || 0,
-        max_amount: formData.max_amount ? Number(formData.max_amount) : null,
-        commission_pct: Number(formData.commission_pct) / 100 || 0.05,
-        priority: Number(formData.priority) || 0,
-        active: Boolean(formData.active ?? true),
-      };
+    // Normalize and validate incoming form values before sending to DB
+    const nameVal = String(formData.name ?? '');
+    const minAmount = Number(formData.min_amount) || 0;
+    const maxAmount = formData.max_amount != null ? Number(formData.max_amount) : null;
+    const commissionRaw = Number(formData.commission_pct);
+    const commissionPct = Number.isFinite(commissionRaw) ? commissionRaw / 100 : 0.05;
+    const priority = Number(formData.priority) || 0;
+    const active = Boolean(formData.active ?? true);
+
+    const payload = {
+      name: nameVal,
+      min_amount: minAmount,
+      max_amount: maxAmount,
+      commission_pct: commissionPct,
+      priority,
+      active,
+    };
 
       if (editingLevel) {
         const { error } = await supabase
