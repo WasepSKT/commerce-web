@@ -12,26 +12,13 @@ const SUPABASE_PUBLISHABLE_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// Use a noop storage to avoid persisting sessions in client-side localStorage.
-const noopStorage: any = {
-  getItem: (_: string) => null,
-  setItem: (_: string, __: string) => undefined,
-  removeItem: (_: string) => undefined,
-};
-
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    // Do NOT persist sessions client-side for cookie-based auth flow. Using
-    // a noop storage prevents supabase-js from writing to localStorage.
-    storage: noopStorage as any,
-    // Do not persist session across reloads/tabs — server will manage session
-    // via HttpOnly cookies (refresh flow implemented server-side).
-    persistSession: false,
-    // Disable automatic refresh token behavior in the client. The server
-    // handles refresh using the HttpOnly cookie.
-    autoRefreshToken: false,
-    // Keep URL session detection for OAuth redirects if necessary.
+    // Persist sessions client-side (localStorage) for client-only auth flow.
+    persistSession: true,
+    // Let the client automatically refresh access tokens.
+    autoRefreshToken: true,
+    // Detect sessions on URL after OAuth redirects.
     detectSessionInUrl: true,
   }
 });

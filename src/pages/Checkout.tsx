@@ -81,6 +81,15 @@ export default function CheckoutPage() {
   const widgetContainerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<number | string | null>(null);
   const [turnstileReady, setTurnstileReady] = useState(false);
+
+  // Debug Turnstile configuration
+  useEffect(() => {
+    console.log('🔧 Turnstile Debug Info (Checkout):', {
+      sitekey: TURNSTILE_SITEKEY,
+      hasSitekey: !!TURNSTILE_SITEKEY,
+      sitekeyLength: TURNSTILE_SITEKEY?.length || 0
+    });
+  }, [TURNSTILE_SITEKEY]);
   const [initializing, setInitializing] = useState(true);
   // Address editing state (persist to profile via useAuth.updateProfile)
   const [isEditingAddress, setIsEditingAddress] = useState(false);

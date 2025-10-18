@@ -18,24 +18,38 @@ export default async function handler(req: any, res: any) {
   }
 
   // Verify Turnstile
+  console.log('🔧 Turnstile Debug (Server):', {
+    hasSecret: !!process.env.TURNSTILE_SECRET,
+    secretLength: process.env.TURNSTILE_SECRET?.length || 0,
+    hasToken: !!token,
+    tokenLength: token?.length || 0
+  });
+
   if (!process.env.TURNSTILE_SECRET) {
-    console.error('TURNSTILE_SECRET not set');
+    console.error('❌ TURNSTILE_SECRET not set');
     return res.status(500).json({ message: 'Server misconfigured' });
   }
 
   if (token) {
     try {
+      console.log('🔄 Verifying Turnstile token...');
       const params = new URLSearchParams();
       params.append('secret', process.env.TURNSTILE_SECRET);
       params.append('response', token);
       const vres = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: params });
       const vjson = await vres.json();
-      if (!vjson.success) return res.status(403).json({ message: 'Turnstile verification failed', details: vjson });
+      console.log('📋 Turnstile verification response:', vjson);
+      if (!vjson.success) {
+        console.error('❌ Turnstile verification failed:', vjson);
+        return res.status(403).json({ message: 'Turnstile verification failed', details: vjson });
+      }
+      console.log('✅ Turnstile verification successful');
     } catch (err) {
-      console.error('Turnstile verify error', err);
+      console.error('❌ Turnstile verify error', err);
       return res.status(502).json({ message: 'Turnstile verification error' });
     }
   } else {
+    console.warn('⚠️ Missing Turnstile token');
     return res.status(400).json({ message: 'Missing Turnstile token' });
   }
 
@@ -60,16 +74,8 @@ export default async function handler(req: any, res: any) {
     const j = await r.json();
     if (!r.ok) return res.status(r.status).json(j);
 
-    // Set refresh token as HttpOnly cookie
-    const refreshToken = j.refresh_token;
-    if (refreshToken) {
-      const maxAge = 60 * 60 * 24 * 30; // 30 days
-      const secureFlag = process.env.NODE_ENV === 'production' ? 'Secure;' : '';
-      res.setHeader('Set-Cookie', `sb_refresh_token=${refreshToken}; HttpOnly; Path=/; Max-Age=${maxAge}; ${secureFlag} SameSite=Lax`);
-    }
-
-    // Return minimal session info
-    return res.status(200).json({ access_token: j.access_token, expires_in: j.expires_in, token_type: j.token_type });
+    // Return full token response to client (client-only flow stores tokens locally)
+    return res.status(200).json(j);
   } catch (err) {
     console.error('Supabase login proxy failed', err);
     return res.status(502).json({ message: 'Auth proxy failed' });

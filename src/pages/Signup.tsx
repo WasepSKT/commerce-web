@@ -67,6 +67,15 @@ export default function Signup() {
   const widgetContainerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<number | string | null>(null);
 
+  // Debug Turnstile configuration
+  useEffect(() => {
+    console.log('🔧 Turnstile Debug Info (Signup):', {
+      sitekey: TURNSTILE_SITEKEY,
+      hasSitekey: !!TURNSTILE_SITEKEY,
+      sitekeyLength: TURNSTILE_SITEKEY?.length || 0
+    });
+  }, [TURNSTILE_SITEKEY]);
+
   useEffect(() => {
     if (!TURNSTILE_SITEKEY) return;
     let cancelled = false;

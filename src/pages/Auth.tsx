@@ -44,6 +44,15 @@ export default function Auth() {
   const widgetContainerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<number | string | null>(null);
 
+  // Debug Turnstile configuration
+  useEffect(() => {
+    console.log('🔧 Turnstile Debug Info:', {
+      sitekey: TURNSTILE_SITEKEY,
+      hasSitekey: !!TURNSTILE_SITEKEY,
+      sitekeyLength: TURNSTILE_SITEKEY?.length || 0
+    });
+  }, [TURNSTILE_SITEKEY]);
+
   // Load Turnstile script and render invisible widget if configured
   useEffect(() => {
     if (!TURNSTILE_SITEKEY) return;
@@ -75,19 +84,25 @@ export default function Auth() {
 
     const renderWidget = async () => {
       try {
+        console.log('🔄 Loading Turnstile script...');
         await ensureScript();
         if (cancelled) return;
         const win = window as Window & { turnstile?: TurnstileAPI };
+        console.log('📦 Turnstile script loaded:', !!win.turnstile);
         if (win.turnstile && widgetContainerRef.current) {
           try {
+            console.log('🎨 Rendering Turnstile widget...');
             const id = win.turnstile.render(widgetContainerRef.current, { sitekey: TURNSTILE_SITEKEY, size: 'invisible' });
             widgetIdRef.current = typeof id === 'number' || typeof id === 'string' ? id : null;
+            console.log('✅ Turnstile widget rendered with ID:', widgetIdRef.current);
           } catch (e) {
-            console.warn('Turnstile render failed', e);
+            console.error('❌ Turnstile render failed', e);
           }
+        } else {
+          console.warn('⚠️ Turnstile not available or container not ready');
         }
       } catch (e) {
-        console.warn('Turnstile load failed', e);
+        console.error('❌ Turnstile load failed', e);
       }
     };
 
@@ -96,28 +111,43 @@ export default function Auth() {
   }, [TURNSTILE_SITEKEY]);
 
   const executeTurnstile = async (timeoutMs = 8000): Promise<string | null> => {
-    if (!TURNSTILE_SITEKEY) return null;
+    console.log('🚀 Executing Turnstile...');
+    if (!TURNSTILE_SITEKEY) {
+      console.warn('⚠️ No Turnstile sitekey configured');
+      return null;
+    }
     const win = window as Window & { turnstile?: TurnstileAPI };
-    if (!win.turnstile) return null;
+    if (!win.turnstile) {
+      console.warn('⚠️ Turnstile API not available');
+      return null;
+    }
     const wid = widgetIdRef.current;
-    if (wid == null) return null;
+    if (wid == null) {
+      console.warn('⚠️ Turnstile widget not rendered');
+      return null;
+    }
 
+    console.log('🎯 Executing Turnstile widget ID:', wid);
     return await new Promise<string | null>((resolve) => {
       let finished = false;
       const finish = (val: string | null) => {
         if (finished) return;
         finished = true;
+        console.log('🏁 Turnstile execution finished:', val ? 'SUCCESS' : 'FAILED');
         resolve(val);
       };
 
       const timer = window.setTimeout(() => {
+        console.warn('⏰ Turnstile execution timeout');
         try { win.turnstile?.reset(wid); } catch (_e) { void _e; }
         finish(null);
       }, timeoutMs);
 
       try {
         win.turnstile.execute(wid);
+        console.log('⚡ Turnstile execute() called');
       } catch (err) {
+        console.error('❌ Turnstile execute() failed:', err);
         window.clearTimeout(timer);
         finish(null);
         return;
@@ -127,6 +157,7 @@ export default function Auth() {
         try {
           const resp = win.turnstile?.getResponse ? win.turnstile.getResponse(wid) : null;
           if (resp) {
+            console.log('🎉 Turnstile token received:', resp.substring(0, 20) + '...');
             window.clearTimeout(timer);
             finish(String(resp));
             return;
@@ -150,6 +181,10 @@ export default function Auth() {
       });
     }
   };
+
+  // Note: We rely on supabase-js client persistence for OAuth redirects
+  // (sessions are stored in localStorage). No server-side /api/set-session
+  // call is required in a client-only setup.
 
   const handleEmailLogin = async () => {
     if (!email || !password) {
