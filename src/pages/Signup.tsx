@@ -1,4 +1,18 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+
+// Typing for Cloudflare Turnstile client API used on the window object.
+type TurnstileAPI = {
+  render: (el: HTMLElement, opts: { sitekey: string; theme?: string; size?: 'invisible' | 'normal'; callback?: (token: string) => void }) => number | string | undefined;
+  execute: (id: number | string) => void;
+  reset: (id: number | string) => void;
+  getResponse?: (id: number | string) => string | null;
+};
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileAPI;
+  }
+}
 import bgLogin from '@/assets/bg/bg-login.webp';
 import googleLogo from '@/assets/img/Google__G__logo.svg.png';
 import logoImg from '/regalpaw.png';
@@ -48,6 +62,86 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  // Turnstile
+  const TURNSTILE_SITEKEY = (import.meta.env.VITE_TURNSTILE_SITEKEY as string) ?? '';
+  const widgetContainerRef = useRef<HTMLDivElement | null>(null);
+  const widgetIdRef = useRef<number | string | null>(null);
+
+  useEffect(() => {
+    if (!TURNSTILE_SITEKEY) return;
+    let cancelled = false;
+
+    const loadScript = () => new Promise<void>((resolve, reject) => {
+      if (window.turnstile) return resolve();
+      const s = document.createElement('script');
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+      s.async = true;
+      s.defer = true;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('Gagal memuat Turnstile script'));
+      document.head.appendChild(s);
+    });
+
+    const renderWidget = async () => {
+      try {
+        await loadScript();
+        if (cancelled) return;
+        if (window.turnstile && widgetContainerRef.current) {
+          try {
+            const id = window.turnstile.render(widgetContainerRef.current, { sitekey: TURNSTILE_SITEKEY, size: 'invisible' });
+            widgetIdRef.current = typeof id === 'number' || typeof id === 'string' ? id : null;
+          } catch (e) {
+            console.warn('Turnstile render failed', e);
+          }
+        }
+      } catch (e) {
+        console.warn('Turnstile load failed', e);
+      }
+    };
+
+    void renderWidget();
+    return () => { cancelled = true; };
+  }, [TURNSTILE_SITEKEY]);
+
+  const executeTurnstile = async (timeoutMs = 8000): Promise<string | null> => {
+    if (!TURNSTILE_SITEKEY) return null;
+    if (!window.turnstile) return null;
+    const wid = widgetIdRef.current;
+    if (wid == null) return null;
+
+    return await new Promise((resolve) => {
+      let done = false;
+      const timer = window.setTimeout(() => {
+        if (!done) {
+          done = true;
+          try { window.turnstile?.reset(wid); } catch (_e) { void _e; }
+          resolve(null);
+        }
+      }, timeoutMs);
+
+      try {
+        window.turnstile.execute(wid);
+      } catch (err) {
+        window.clearTimeout(timer);
+        resolve(null);
+        return;
+      }
+
+      const poll = () => {
+        try {
+          const resp = window.turnstile?.getResponse ? window.turnstile.getResponse(wid) : null;
+          if (resp) {
+            done = true;
+            window.clearTimeout(timer);
+            resolve(String(resp));
+            return;
+          }
+        } catch (_e) { void _e; }
+        if (!done) requestAnimationFrame(poll);
+      };
+      requestAnimationFrame(poll);
+    });
+  };
 
   useEffect(() => {
     // Check if there's a referral code in URL
@@ -115,12 +209,22 @@ export default function Signup() {
         localStorage.setItem('pendingReferralCode', referralCode);
       }
 
+      // If Turnstile is configured, obtain token and include it in signup metadata
+      let turnstileToken: string | null = null;
+      if (TURNSTILE_SITEKEY) {
+        turnstileToken = await executeTurnstile();
+        if (!turnstileToken) {
+          throw new Error('Gagal mendapatkan token perlindungan (Turnstile). Silakan coba lagi.');
+        }
+      }
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: fullName,
+            ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
           }
         }
       });

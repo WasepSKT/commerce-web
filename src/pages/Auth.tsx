@@ -1,4 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+// Typing for Cloudflare Turnstile client API used on the window object.
+type TurnstileAPI = {
+  render: (el: HTMLElement, opts: { sitekey: string; theme?: string; size?: 'invisible' | 'normal'; callback?: (token: string) => void }) => number | string | undefined;
+  execute: (id: number | string) => void;
+  reset: (id: number | string) => void;
+  getResponse?: (id: number | string) => string | null;
+};
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileAPI;
+  }
+}
 import bgLogin from '@/assets/bg/bg-login.webp';
 import googleLogo from '@/assets/img/Google__G__logo.svg.png';
 import logoImg from '/regalpaw.png';
@@ -26,6 +39,105 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  // Turnstile
+  const TURNSTILE_SITEKEY = (import.meta.env.VITE_TURNSTILE_SITEKEY as string) ?? '';
+  const widgetContainerRef = useRef<HTMLDivElement | null>(null);
+  const widgetIdRef = useRef<number | string | null>(null);
+
+  // Load Turnstile script and render invisible widget if configured
+  useEffect(() => {
+    if (!TURNSTILE_SITEKEY) return;
+    let cancelled = false;
+
+    const ensureScript = (() => {
+      let promise: Promise<void> | null = null;
+      return () => {
+        if (promise) return promise;
+        promise = new Promise<void>((resolve, reject) => {
+          if ((window as Window & { turnstile?: TurnstileAPI }).turnstile) return resolve();
+          const existing = document.querySelector('script[src="https://challenges.cloudflare.com/turnstile/v0/api.js"]');
+          if (existing) {
+            existing.addEventListener('load', () => resolve());
+            existing.addEventListener('error', () => reject(new Error('Gagal memuat Turnstile script')));
+            return;
+          }
+          const s = document.createElement('script');
+          s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+          s.async = true;
+          s.defer = true;
+          s.onload = () => resolve();
+          s.onerror = () => reject(new Error('Gagal memuat Turnstile script'));
+          document.head.appendChild(s);
+        });
+        return promise;
+      };
+    })();
+
+    const renderWidget = async () => {
+      try {
+        await ensureScript();
+        if (cancelled) return;
+        const win = window as Window & { turnstile?: TurnstileAPI };
+        if (win.turnstile && widgetContainerRef.current) {
+          try {
+            const id = win.turnstile.render(widgetContainerRef.current, { sitekey: TURNSTILE_SITEKEY, size: 'invisible' });
+            widgetIdRef.current = typeof id === 'number' || typeof id === 'string' ? id : null;
+          } catch (e) {
+            console.warn('Turnstile render failed', e);
+          }
+        }
+      } catch (e) {
+        console.warn('Turnstile load failed', e);
+      }
+    };
+
+    void renderWidget();
+    return () => { cancelled = true; };
+  }, [TURNSTILE_SITEKEY]);
+
+  const executeTurnstile = async (timeoutMs = 8000): Promise<string | null> => {
+    if (!TURNSTILE_SITEKEY) return null;
+    const win = window as Window & { turnstile?: TurnstileAPI };
+    if (!win.turnstile) return null;
+    const wid = widgetIdRef.current;
+    if (wid == null) return null;
+
+    return await new Promise<string | null>((resolve) => {
+      let finished = false;
+      const finish = (val: string | null) => {
+        if (finished) return;
+        finished = true;
+        resolve(val);
+      };
+
+      const timer = window.setTimeout(() => {
+        try { win.turnstile?.reset(wid); } catch (_e) { void _e; }
+        finish(null);
+      }, timeoutMs);
+
+      try {
+        win.turnstile.execute(wid);
+      } catch (err) {
+        window.clearTimeout(timer);
+        finish(null);
+        return;
+      }
+
+      const poll = () => {
+        try {
+          const resp = win.turnstile?.getResponse ? win.turnstile.getResponse(wid) : null;
+          if (resp) {
+            window.clearTimeout(timer);
+            finish(String(resp));
+            return;
+          }
+        } catch (_e) { void _e; }
+        if (!finished) requestAnimationFrame(poll);
+      };
+      requestAnimationFrame(poll);
+    });
+  };
+
   const handleGoogleSignIn = async () => {
     setLoadingGoogle(true);
     const { error } = await signInWithGoogle();
@@ -50,26 +162,32 @@ export default function Auth() {
     }
 
     setLoadingEmailLogin(true);
-
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      let token: string | null = null;
+      if (TURNSTILE_SITEKEY) {
+        token = await executeTurnstile();
+        if (!token) {
+          toast({ variant: 'destructive', title: 'Verifikasi gagal', description: 'Gagal mendapatkan token perlindungan. Silakan coba lagi.' });
+          setLoadingEmailLogin(false);
+          return;
+        }
+      }
 
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Gagal masuk",
-          description: error.message,
-        });
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, token }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        toast({ variant: 'destructive', title: 'Gagal masuk', description: json?.message ?? 'Login gagal' });
+      } else {
+        // Login success — server sets HttpOnly cookie for refresh token
+        toast({ title: 'Berhasil', description: 'Anda berhasil masuk.' });
+        // Optionally redirect or rely on isAuthenticated from useAuth to update
       }
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Terjadi kesalahan",
-        description: "Silakan coba lagi",
-      });
+      toast({ variant: "destructive", title: "Terjadi kesalahan", description: "Silakan coba lagi" });
     } finally {
       setLoadingEmailLogin(false);
     }

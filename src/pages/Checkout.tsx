@@ -1,4 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+
+// Typing for Cloudflare Turnstile client API used on the window object.
+type TurnstileAPI = {
+  render: (el: HTMLElement, opts: { sitekey: string; theme?: string; size?: 'invisible' | 'normal'; callback?: (token: string) => void }) => number | string | undefined;
+  execute: (id: number | string) => void;
+  reset: (id: number | string) => void;
+  getResponse?: (id: number | string) => string | null;
+};
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileAPI;
+  }
+}
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/types/supabase';
@@ -62,6 +76,11 @@ export default function CheckoutPage() {
   }, [dryRunFlag, isLocalhost]);
   const [loadingRates, setLoadingRates] = useState(false);
   const [creatingSession, setCreatingSession] = useState(false);
+  // Cloudflare Turnstile sitekey (optional) - set in env as VITE_TURNSTILE_SITEKEY
+  const TURNSTILE_SITEKEY = (import.meta.env.VITE_TURNSTILE_SITEKEY as string) ?? '';
+  const widgetContainerRef = useRef<HTMLDivElement | null>(null);
+  const widgetIdRef = useRef<number | string | null>(null);
+  const [turnstileReady, setTurnstileReady] = useState(false);
   const [initializing, setInitializing] = useState(true);
   // Address editing state (persist to profile via useAuth.updateProfile)
   const [isEditingAddress, setIsEditingAddress] = useState(false);
@@ -300,14 +319,138 @@ export default function CheckoutPage() {
     void loadRates();
   }, [profile?.postal_code, toast, items]);
 
+  // Load Cloudflare Turnstile script and render invisible widget if sitekey present.
+  // Improvements: idempotent loader, cancellation guard, and safe render.
+  useEffect(() => {
+    if (!TURNSTILE_SITEKEY) return;
+
+    let cancelled = false;
+
+    // global loader promise to avoid multiple inserts when component remounts
+    const ensureScript = (() => {
+      let promise: Promise<void> | null = null;
+      return () => {
+        if (promise) return promise;
+        promise = new Promise<void>((resolve, reject) => {
+          if ((window as Window & { turnstile?: TurnstileAPI }).turnstile) return resolve();
+          const existing = document.querySelector('script[src="https://challenges.cloudflare.com/turnstile/v0/api.js"]');
+          if (existing) {
+            // script exists but widget may not be ready yet
+            existing.addEventListener('load', () => resolve());
+            existing.addEventListener('error', () => reject(new Error('Gagal memuat Turnstile script')));
+            return;
+          }
+          const s = document.createElement('script');
+          s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+          s.async = true;
+          s.defer = true;
+          s.onload = () => resolve();
+          s.onerror = () => reject(new Error('Gagal memuat Turnstile script'));
+          document.head.appendChild(s);
+        });
+        return promise;
+      };
+    })();
+
+    const renderWidget = async () => {
+      try {
+        await ensureScript();
+        if (cancelled) return;
+        // Render invisible widget into container
+        const win = window as Window & { turnstile?: TurnstileAPI };
+        if (win.turnstile && widgetContainerRef.current) {
+          try {
+            const id = win.turnstile.render(widgetContainerRef.current, {
+              sitekey: TURNSTILE_SITEKEY,
+              theme: 'light',
+              size: 'invisible',
+              callback: (_token: string) => {
+                // token will be read via getResponse or by callback if needed
+              }
+            });
+            widgetIdRef.current = typeof id === 'number' || typeof id === 'string' ? id : null;
+            if (!cancelled) setTurnstileReady(true);
+          } catch (err) {
+            console.warn('Turnstile render failed', err);
+          }
+        }
+      } catch (err) {
+        console.warn('Turnstile load failed', err);
+      }
+    };
+
+    void renderWidget();
+
+    return () => { cancelled = true; };
+  }, [TURNSTILE_SITEKEY]);
+
+  // Helper to execute the turnstile widget and obtain a token (or null)
+  // Wrapped in useRef/useCallback pattern to keep stable identity for hooks
+  const executeTurnstile = useRef<((timeoutMs?: number) => Promise<string | null>) | null>(null);
+  if (!executeTurnstile.current) {
+    executeTurnstile.current = async (timeoutMs = 10000): Promise<string | null> => {
+      if (!TURNSTILE_SITEKEY) return null;
+      const win = window as Window & { turnstile?: TurnstileAPI };
+      if (!win.turnstile) return null;
+      const wid = widgetIdRef.current;
+      if (wid == null) return null;
+
+      return await new Promise<string | null>((resolve) => {
+        let finished = false;
+        const finish = (val: string | null) => {
+          if (finished) return;
+          finished = true;
+          resolve(val);
+        };
+
+        const timer = window.setTimeout(() => {
+          try { win.turnstile?.reset(wid); } catch (_e) { void _e; }
+          finish(null);
+        }, timeoutMs);
+
+        try {
+          win.turnstile.execute(wid);
+        } catch (err) {
+          window.clearTimeout(timer);
+          finish(null);
+          return;
+        }
+
+        // Poll for response token using requestAnimationFrame loop
+        const poll = () => {
+          try {
+            const resp = win.turnstile?.getResponse ? win.turnstile.getResponse(wid) : null;
+            if (resp) {
+              window.clearTimeout(timer);
+              finish(String(resp));
+              return;
+            }
+          } catch (_e) {
+            void _e;
+          }
+          if (!finished) requestAnimationFrame(poll);
+        };
+        requestAnimationFrame(poll);
+      });
+    };
+  }
+
   const subtotal = useMemo(() => items.reduce((s, it) => s + (it.unit_price ?? it.price ?? 0) * (it.quantity ?? 1), 0), [items]);
   const total = useMemo(() => subtotal + (selectedRate ? selectedRate.cost : 0), [subtotal, selectedRate]);
 
   const formatPrice = (v: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v);
 
-  const handlePay = async () => {
+  const handlePay = useMemo(() => async () => {
     setCreatingSession(true);
     try {
+      // If Turnstile sitekey is configured, obtain a token and include it in payloads
+      let turnstileToken: string | null = null;
+      if (TURNSTILE_SITEKEY && executeTurnstile.current) {
+        turnstileToken = await executeTurnstile.current();
+        if (!turnstileToken) {
+          throw new Error('Gagal mendapatkan token perlindungan (Turnstile). Coba lagi.');
+        }
+      }
       let oid = order?.id;
       if (!oid) {
         if (dryRun) {
@@ -333,6 +476,7 @@ export default function CheckoutPage() {
             return_url: window.location.href,
             payment_method: selectedPaymentMethod,
             test: true,
+            ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
             // include specific channel if applicable
             ...(selectedPaymentMethod === 'EWALLET' ? { payment_channel: selectedEwallet } : {}),
             ...(selectedPaymentMethod === 'VIRTUAL_ACCOUNT' ? { payment_channel: selectedBank } : {}),
@@ -384,6 +528,7 @@ export default function CheckoutPage() {
         order_id: oid as string,
         return_url: window.location.href,
         payment_method: selectedPaymentMethod,
+        ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
         ...(selectedPaymentMethod === 'EWALLET' ? { payment_channel: selectedEwallet } : {}),
         ...(selectedPaymentMethod === 'VIRTUAL_ACCOUNT' ? { payment_channel: selectedBank } : {}),
       });
@@ -400,7 +545,7 @@ export default function CheckoutPage() {
     } finally {
       setCreatingSession(false);
     }
-  };
+  }, [dryRun, items, order, profile, selectedPaymentMethod, selectedEwallet, selectedBank, selectedRate, subtotal, total, toast, TURNSTILE_SITEKEY]);
 
   if (initializing) return null;
 
