@@ -767,6 +767,10 @@ export default function CheckoutPage() {
                 <div className="flex justify-between text-muted-foreground">Subtotal <div>{formatPrice(subtotal)}</div></div>
                 <div className="flex justify-between text-muted-foreground">Ongkos Kirim <div>{formatPrice(selectedRate?.cost ?? 0)}</div></div>
                 <div className="flex justify-between font-semibold text-lg">Total <div>{formatPrice(total)}</div></div>
+                
+                {/* Turnstile Widget Container (Hidden) */}
+                <div ref={widgetContainerRef} style={{ display: 'none' }} />
+                
                 <Button className="w-full mt-3" onClick={handlePay} disabled={creatingSession || !selectedRate}>{creatingSession ? 'Mengarahkan...' : 'Bayar & Lanjutkan'}</Button>
               </div>
             </div>

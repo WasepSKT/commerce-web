@@ -334,6 +334,9 @@ export default function Auth() {
                 </div>
               </div>
 
+              {/* Turnstile Widget Container (Hidden) */}
+              <div ref={widgetContainerRef} style={{ display: 'none' }} />
+
               {/* Google Login */}
               <Button
                 onClick={handleGoogleSignIn}

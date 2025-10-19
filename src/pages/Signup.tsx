@@ -409,6 +409,9 @@ export default function Signup() {
                   />
                 </div>
 
+                {/* Turnstile Widget Container (Hidden) */}
+                <div ref={widgetContainerRef} style={{ display: 'none' }} />
+
                 <Button
                   onClick={handleEmailSignup}
                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-sm py-2"
