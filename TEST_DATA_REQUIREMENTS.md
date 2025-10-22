@@ -1,19 +1,20 @@
 # Test Data Requirements & Environment Setup
+
 ## Regal Purrfect Shop - Testing Documentation
 
 ---
 
 ## 📋 **Document Information**
 
-| Field | Value |
-|-------|-------|
-| **Project Name** | Regal Purrfect Shop |
-| **Version** | 1.0.0 |
+| Field             | Value                         |
+| ----------------- | ----------------------------- |
+| **Project Name**  | Regal Purrfect Shop           |
+| **Version**       | 1.0.0                         |
 | **Document Type** | Test Data & Environment Setup |
-| **Created Date** | January 2025 |
-| **Last Updated** | January 2025 |
-| **Prepared By** | QA Team |
-| **Approved By** | Technical Lead |
+| **Created Date**  | January 2025                  |
+| **Last Updated**  | January 2025                  |
+| **Prepared By**   | QA Team                       |
+| **Approved By**   | Technical Lead                |
 
 ---
 
@@ -28,6 +29,7 @@ Dokumen ini berisi panduan lengkap untuk menyiapkan environment testing dan data
 ### **A. Development Environment**
 
 #### **A1. Local Development Setup**
+
 ```bash
 # 1. Clone Repository
 git clone https://github.com/Fakihibrohim-SKT/regal-purrfect-shop.git
@@ -45,6 +47,7 @@ npm run dev
 ```
 
 #### **A2. Environment Variables**
+
 ```env
 # Supabase Configuration
 VITE_SUPABASE_URL=your_supabase_url
@@ -69,12 +72,14 @@ GOOGLE_CLIENT_SECRET=your_google_client_secret
 ### **B. Testing Environment**
 
 #### **B1. Staging Environment**
+
 - **URL**: https://staging.regalpaw.id
 - **Database**: Supabase Staging Project
 - **External APIs**: Sandbox/Test Mode
 - **Monitoring**: Development Tools
 
 #### **B2. Production Environment**
+
 - **URL**: https://dev.regalpaw.id
 - **Database**: Supabase Production Project
 - **External APIs**: Live Mode
@@ -87,6 +92,7 @@ GOOGLE_CLIENT_SECRET=your_google_client_secret
 ### **A. User Data**
 
 #### **A1. Customer Users**
+
 ```sql
 -- Test Customer Users
 INSERT INTO profiles (user_id, email, full_name, role, referral_code) VALUES
@@ -98,6 +104,7 @@ INSERT INTO profiles (user_id, email, full_name, role, referral_code) VALUES
 ```
 
 #### **A2. Admin Users**
+
 ```sql
 -- Test Admin Users
 INSERT INTO profiles (user_id, email, full_name, role, referral_code) VALUES
@@ -107,6 +114,7 @@ INSERT INTO profiles (user_id, email, full_name, role, referral_code) VALUES
 ```
 
 #### **A3. Referral Test Data**
+
 ```sql
 -- Referral Relationships
 INSERT INTO referrals (referrer_id, referred_id, referral_code, reward_points, status) VALUES
@@ -118,6 +126,7 @@ INSERT INTO referrals (referrer_id, referred_id, referral_code, reward_points, s
 ### **B. Product Data**
 
 #### **B1. Categories**
+
 ```sql
 -- Product Categories
 INSERT INTO categories (name, description, slug) VALUES
@@ -129,6 +138,7 @@ INSERT INTO categories (name, description, slug) VALUES
 ```
 
 #### **B2. Products**
+
 ```sql
 -- Test Products
 INSERT INTO products (name, description, price, category_id, stock_quantity, image_url) VALUES
@@ -142,6 +152,7 @@ INSERT INTO products (name, description, price, category_id, stock_quantity, ima
 ### **C. Order Data**
 
 #### **C1. Test Orders**
+
 ```sql
 -- Test Orders
 INSERT INTO orders (user_id, total_amount, status, shipping_address, payment_method) VALUES
@@ -151,6 +162,7 @@ INSERT INTO orders (user_id, total_amount, status, shipping_address, payment_met
 ```
 
 #### **C2. Order Items**
+
 ```sql
 -- Test Order Items
 INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
@@ -165,6 +177,7 @@ INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
 ### **D. Blog Data**
 
 #### **D1. Blog Categories**
+
 ```sql
 -- Blog Categories
 INSERT INTO blog_categories (name, description, slug) VALUES
@@ -176,6 +189,7 @@ INSERT INTO blog_categories (name, description, slug) VALUES
 ```
 
 #### **D2. Blog Posts**
+
 ```sql
 -- Test Blog Posts
 INSERT INTO blogs (title, content, excerpt, author_id, status, featured_image) VALUES
@@ -191,6 +205,7 @@ INSERT INTO blogs (title, content, excerpt, author_id, status, featured_image) V
 ### **A. Authentication Test Data**
 
 #### **A1. Valid Credentials**
+
 ```json
 {
   "validUsers": [
@@ -200,7 +215,7 @@ INSERT INTO blogs (title, content, excerpt, author_id, status, featured_image) V
       "role": "customer"
     },
     {
-      "email": "admin1@test.com", 
+      "email": "admin1@test.com",
       "password": "AdminPassword123!",
       "role": "admin"
     }
@@ -209,6 +224,7 @@ INSERT INTO blogs (title, content, excerpt, author_id, status, featured_image) V
 ```
 
 #### **A2. Invalid Credentials**
+
 ```json
 {
   "invalidUsers": [
@@ -229,6 +245,7 @@ INSERT INTO blogs (title, content, excerpt, author_id, status, featured_image) V
 ### **B. E-commerce Test Data**
 
 #### **B1. Shopping Cart Scenarios**
+
 ```json
 {
   "cartScenarios": [
@@ -241,8 +258,8 @@ INSERT INTO blogs (title, content, excerpt, author_id, status, featured_image) V
     {
       "scenario": "Add multiple products",
       "products": [
-        {"id": 1, "quantity": 2},
-        {"id": 2, "quantity": 1}
+        { "id": 1, "quantity": 2 },
+        { "id": 2, "quantity": 1 }
       ],
       "expectedSubtotal": 325000
     },
@@ -257,6 +274,7 @@ INSERT INTO blogs (title, content, excerpt, author_id, status, featured_image) V
 ```
 
 #### **B2. Checkout Scenarios**
+
 ```json
 {
   "checkoutScenarios": [
@@ -290,6 +308,7 @@ INSERT INTO blogs (title, content, excerpt, author_id, status, featured_image) V
 ### **C. Referral Test Data**
 
 #### **C1. Referral Scenarios**
+
 ```json
 {
   "referralScenarios": [
@@ -319,6 +338,7 @@ INSERT INTO blogs (title, content, excerpt, author_id, status, featured_image) V
 ## 🔧 **Database Setup Scripts**
 
 ### **A. Complete Test Data Setup**
+
 ```sql
 -- 1. Clear existing test data
 DELETE FROM referrals WHERE referrer_id LIKE 'test-%';
@@ -354,6 +374,7 @@ INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
 ```
 
 ### **B. Referral Level Setup**
+
 ```sql
 -- Insert referral levels
 INSERT INTO referral_levels (name, min_amount, commission_pct, description) VALUES
@@ -368,13 +389,16 @@ INSERT INTO referral_levels (name, min_amount, commission_pct, description) VALU
 ## 🚀 **Testing Workflow**
 
 ### **A. Pre-Test Setup**
+
 1. **Environment Setup**
+
    - Clone repository
    - Install dependencies
    - Configure environment variables
    - Start development server
 
 2. **Database Setup**
+
    - Run database migrations
    - Insert test data
    - Verify data integrity
@@ -385,12 +409,15 @@ INSERT INTO referral_levels (name, min_amount, commission_pct, description) VALU
    - Configure Turnstile (test sitekey)
 
 ### **B. Test Execution**
+
 1. **UAT Execution**
+
    - Execute user journey tests
    - Verify business requirements
    - Document test results
 
 2. **SIT Execution**
+
    - Execute integration tests
    - Verify system interactions
    - Document integration results
@@ -401,7 +428,9 @@ INSERT INTO referral_levels (name, min_amount, commission_pct, description) VALU
    - Document performance results
 
 ### **C. Post-Test Cleanup**
+
 1. **Data Cleanup**
+
    - Remove test data
    - Reset database state
    - Clear caches
@@ -416,6 +445,7 @@ INSERT INTO referral_levels (name, min_amount, commission_pct, description) VALU
 ## 📊 **Test Data Validation**
 
 ### **A. Data Integrity Checks**
+
 ```sql
 -- Check user data integrity
 SELECT COUNT(*) as user_count FROM profiles WHERE user_id LIKE 'test-%';
@@ -431,9 +461,10 @@ SELECT COUNT(*) as referral_count FROM referrals WHERE referrer_id LIKE 'test-%'
 ```
 
 ### **B. Business Logic Validation**
+
 ```sql
 -- Check referral level calculations
-SELECT 
+SELECT
   p.full_name,
   rl.name as level_name,
   rl.commission_pct,
@@ -453,6 +484,7 @@ GROUP BY p.id, p.full_name, rl.name, rl.commission_pct;
 ### **A. Common Issues**
 
 #### **A1. Database Connection Issues**
+
 ```bash
 # Check Supabase connection
 curl -H "apikey: YOUR_SUPABASE_ANON_KEY" \
@@ -461,6 +493,7 @@ curl -H "apikey: YOUR_SUPABASE_ANON_KEY" \
 ```
 
 #### **A2. Environment Variable Issues**
+
 ```bash
 # Check environment variables
 echo $VITE_SUPABASE_URL
@@ -469,6 +502,7 @@ echo $VITE_TURNSTILE_SITEKEY
 ```
 
 #### **A3. External API Issues**
+
 ```bash
 # Test payment gateway connection
 curl -X POST https://api.xendit.co/v2/invoices \
@@ -478,6 +512,7 @@ curl -X POST https://api.xendit.co/v2/invoices \
 ```
 
 ### **B. Debug Commands**
+
 ```bash
 # Check application logs
 npm run dev 2>&1 | tee app.log
@@ -494,16 +529,19 @@ npm run dev 2>&1 | tee app.log
 ## 📝 **Test Data Maintenance**
 
 ### **A. Regular Cleanup**
+
 - **Daily**: Remove old test orders and sessions
 - **Weekly**: Clean up test user accounts
 - **Monthly**: Refresh product test data
 
 ### **B. Data Refresh**
+
 - **Before major testing**: Run complete test data setup
 - **After testing**: Clean up test data
 - **For specific tests**: Create targeted test data
 
 ### **C. Data Backup**
+
 - **Before testing**: Backup production data
 - **After testing**: Restore production data
 - **For rollback**: Keep test data snapshots
@@ -512,13 +550,13 @@ npm run dev 2>&1 | tee app.log
 
 ## ✅ **Sign-off**
 
-| Role | Name | Signature | Date |
-|------|------|-----------|------|
-| **QA Lead** | | | |
-| **Database Admin** | | | |
-| **DevOps Engineer** | | | |
-| **Technical Lead** | | | |
+| Role                | Name | Signature | Date |
+| ------------------- | ---- | --------- | ---- |
+| **QA Lead**         |      |           |      |
+| **Database Admin**  |      |           |      |
+| **DevOps Engineer** |      |           |      |
+| **Technical Lead**  |      |           |      |
 
 ---
 
-*This document will be updated as new test scenarios are added or existing ones are modified.*
+_This document will be updated as new test scenarios are added or existing ones are modified._
