@@ -16,7 +16,9 @@ export type CreatePaymentPayload =
 
 export async function createPaymentSession(payload: CreatePaymentPayload): Promise<CreateSessionResult> {
   try {
-    const res = await fetch('/api/payments/create-session', {
+  const base = (import.meta.env && (import.meta.env as Record<string, string>)["VITE_PAYMENT_API_URL"]) as string | undefined;
+    const endpoint = (base ? `${base.replace(/\/$/, '')}` : '') + `/api/payments/create-session`;
+    const res = await fetch(endpoint || '/api/payments/create-session', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(payload),

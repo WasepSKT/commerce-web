@@ -78,7 +78,8 @@ git clone <YOUR_GIT_URL>
 
    ```env
    VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
+   VITE_PAYMENT_API_URL=http://localhost:3001
    ```
 
 4. **Database Setup**
