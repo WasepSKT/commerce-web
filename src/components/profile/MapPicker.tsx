@@ -15,6 +15,7 @@ type MapLike = {
   remove?: () => void;
   on: (event: string, handler: (e: { latlng: { lat: number; lng: number } }) => void) => void;
   addControl?: (ctrl: unknown) => void;
+  invalidateSize?: () => void;
 };
 
 type MarkerLike = {
@@ -68,7 +69,29 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
       const s = document.createElement('script');
       s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
       s.async = true;
-      s.onload = () => resolve();
+      s.onload = () => {
+        // Fix Leaflet icon path for production
+        const L = getWin().L;
+        if (L) {
+          const Leaflet = L as unknown as {
+            Icon?: {
+              Default?: {
+                prototype: { _getIconUrl?: unknown; };
+                mergeOptions: (options: Record<string, unknown>) => void;
+              };
+            };
+          };
+          if (Leaflet.Icon?.Default) {
+            delete Leaflet.Icon.Default.prototype._getIconUrl;
+            Leaflet.Icon.Default.mergeOptions({
+              iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+              iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+              shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+            });
+          }
+        }
+        resolve();
+      };
       s.onerror = (e) => reject(e);
       document.body.appendChild(s);
     });
@@ -133,12 +156,27 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
       try {
         await ensureLeafletLoaded();
         if (!mounted) return;
+
+        // Wait for container to be ready
+        const containerEl = document.getElementById(containerId);
+        if (!containerEl) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          if (!mounted) return;
+        }
+
         const L = getWin().L;
         const initLat = initialCoordsRef.current.latitude ? Number(initialCoordsRef.current.latitude) : -6.2;
         const initLng = initialCoordsRef.current.longitude ? Number(initialCoordsRef.current.longitude) : 106.816666;
         const map = L.map(containerId);
+
+        // Add tile layer first
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Set view after container and tiles are ready
         map.setView([initLat, initLng], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+
         let marker = L.marker([initLat, initLng], { draggable: true }).addTo(map);
         marker.on('dragend', function () {
           const p = marker.getLatLng();
@@ -206,6 +244,15 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
           if (lngEl) lngEl.textContent = lng.toFixed(6);
         });
 
+        // Force map to recalculate size after all controls are added
+        setTimeout(() => {
+          if (mounted && map) {
+            if (typeof map.invalidateSize === 'function') {
+              map.invalidateSize();
+            }
+          }
+        }, 300);
+
         getWin()._profile_map_ref = { map, marker };
       } catch (e) {
         console.debug('Leaflet load failed', e);
@@ -227,6 +274,12 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
         const lngNum = Number(longitude);
         ref.marker.setLatLng([latNum, lngNum]);
         ref.map.setView([latNum, lngNum], ref.map.getZoom?.() ?? 13);
+        // Ensure map size is correct after update
+        if (typeof ref.map.invalidateSize === 'function') {
+          setTimeout(() => {
+            ref.map?.invalidateSize?.();
+          }, 100);
+        }
       } catch (e) {
         // ignore
       }
@@ -241,6 +294,20 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
     if (latEl && latNum !== null) latEl.textContent = latNum.toFixed(6);
     if (lngEl && lngNum !== null) lngEl.textContent = lngNum.toFixed(6);
   }, [latitude, longitude]);
+
+  // Effect to trigger map resize when dialog opens
+  useEffect(() => {
+    if (!open) return;
+
+    const timeout = setTimeout(() => {
+      const ref = getWin()._profile_map_ref;
+      if (ref?.map && typeof ref.map.invalidateSize === 'function') {
+        ref.map.invalidateSize();
+      }
+    }, 100);
+
+    return () => clearTimeout(timeout);
+  }, [open]);
 
   // This component renders only the map container; the parent should wrap it inside its dialog/footer.
   return <div id="profile-map-picker" className="w-full h-[60vh] rounded overflow-hidden" />;
