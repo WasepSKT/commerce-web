@@ -157,11 +157,21 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
         await ensureLeafletLoaded();
         if (!mounted) return;
 
-        // Wait for container to be ready
-        const containerEl = document.getElementById(containerId);
+        // Wait for container to be ready with explicit dimensions
+        let containerEl = document.getElementById(containerId);
         if (!containerEl) {
           await new Promise(resolve => setTimeout(resolve, 100));
           if (!mounted) return;
+          containerEl = document.getElementById(containerId);
+        }
+
+        // Ensure container has explicit dimensions for Leaflet
+        if (containerEl) {
+          const rect = containerEl.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0) {
+            await new Promise(resolve => setTimeout(resolve, 200));
+            if (!mounted) return;
+          }
         }
 
         const L = getWin().L;
@@ -176,6 +186,9 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
 
         // Set view after container and tiles are ready
         map.setView([initLat, initLng], 13);
+
+        // Force initial render
+        map.invalidateSize?.();
 
         let marker = L.marker([initLat, initLng], { draggable: true }).addTo(map);
         marker.on('dragend', function () {
@@ -251,7 +264,16 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
               map.invalidateSize();
             }
           }
-        }, 300);
+        }, 500);
+
+        // Additional resize after a longer delay for slow connections
+        setTimeout(() => {
+          if (mounted && map) {
+            if (typeof map.invalidateSize === 'function') {
+              map.invalidateSize();
+            }
+          }
+        }, 1000);
 
         getWin()._profile_map_ref = { map, marker };
       } catch (e) {
@@ -299,16 +321,35 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
   useEffect(() => {
     if (!open) return;
 
-    const timeout = setTimeout(() => {
+    // Multiple resize attempts to ensure tiles load
+    const timeout1 = setTimeout(() => {
       const ref = getWin()._profile_map_ref;
       if (ref?.map && typeof ref.map.invalidateSize === 'function') {
         ref.map.invalidateSize();
       }
     }, 100);
 
-    return () => clearTimeout(timeout);
+    const timeout2 = setTimeout(() => {
+      const ref = getWin()._profile_map_ref;
+      if (ref?.map && typeof ref.map.invalidateSize === 'function') {
+        ref.map.invalidateSize();
+      }
+    }, 300);
+
+    const timeout3 = setTimeout(() => {
+      const ref = getWin()._profile_map_ref;
+      if (ref?.map && typeof ref.map.invalidateSize === 'function') {
+        ref.map.invalidateSize();
+      }
+    }, 500);
+
+    return () => {
+      clearTimeout(timeout1);
+      clearTimeout(timeout2);
+      clearTimeout(timeout3);
+    };
   }, [open]);
 
   // This component renders only the map container; the parent should wrap it inside its dialog/footer.
-  return <div id="profile-map-picker" className="w-full h-[60vh] rounded overflow-hidden" />;
+  return <div id="profile-map-picker" className="w-full h-[60vh] rounded overflow-hidden" style={{ minHeight: '400px', minWidth: '300px' }} />;
 }
