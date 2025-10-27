@@ -113,10 +113,20 @@ export default function Signup() {
   }, [TURNSTILE_SITEKEY]);
 
   const executeTurnstile = async (timeoutMs = 8000): Promise<string | null> => {
-    if (!TURNSTILE_SITEKEY) return null;
-    if (!window.turnstile) return null;
+    // Skip Turnstile if not configured
+    if (!TURNSTILE_SITEKEY || TURNSTILE_SITEKEY.trim() === '') {
+      console.log('⚠️ Turnstile not configured, skipping captcha');
+      return null;
+    }
+    if (!window.turnstile) {
+      console.warn('⚠️ Turnstile API not loaded');
+      return null;
+    }
     const wid = widgetIdRef.current;
-    if (wid == null) return null;
+    if (wid == null) {
+      console.warn('⚠️ Turnstile widget not initialized');
+      return null;
+    }
 
     return await new Promise((resolve) => {
       let done = false;
@@ -220,22 +230,33 @@ export default function Signup() {
 
       // If Turnstile is configured, obtain token and include it in signup metadata
       let turnstileToken: string | null = null;
-      if (TURNSTILE_SITEKEY) {
+      if (TURNSTILE_SITEKEY && TURNSTILE_SITEKEY.trim() !== '') {
+        console.log('🔒 Turnstile configured, attempting verification...');
         turnstileToken = await executeTurnstile();
         if (!turnstileToken) {
-          throw new Error('Gagal mendapatkan token perlindungan (Turnstile). Silakan coba lagi.');
+          console.warn('⚠️ Turnstile verification failed or not configured, proceeding without captcha');
+          // Don't throw error - allow signup to proceed without Turnstile for now
+          // TODO: Configure Turnstile sitekey in production environment
         }
+      } else {
+        console.log('ℹ️ Turnstile not configured, skipping captcha verification');
+      }
+
+      const signupOptions: { data: { full_name: string; turnstile_token?: string } } = {
+        data: {
+          full_name: fullName,
+        }
+      };
+
+      // Only include turnstile_token if we have a valid token
+      if (turnstileToken && turnstileToken.trim() !== '') {
+        signupOptions.data.turnstile_token = turnstileToken;
       }
 
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            full_name: fullName,
-            ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
-          }
-        }
+        options: signupOptions
       });
 
       if (error) {

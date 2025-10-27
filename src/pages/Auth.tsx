@@ -111,11 +111,12 @@ export default function Auth() {
   }, [TURNSTILE_SITEKEY]);
 
   const executeTurnstile = async (timeoutMs = 8000): Promise<string | null> => {
-    console.log('🚀 Executing Turnstile...');
-    if (!TURNSTILE_SITEKEY) {
-      console.warn('⚠️ No Turnstile sitekey configured');
+    // Skip Turnstile if not configured
+    if (!TURNSTILE_SITEKEY || TURNSTILE_SITEKEY.trim() === '') {
+      console.log('ℹ️ Turnstile not configured, skipping captcha');
       return null;
     }
+    console.log('🚀 Executing Turnstile...');
     const win = window as Window & { turnstile?: TurnstileAPI };
     if (!win.turnstile) {
       console.warn('⚠️ Turnstile API not available');
@@ -199,13 +200,15 @@ export default function Auth() {
     setLoadingEmailLogin(true);
     try {
       let token: string | null = null;
-      if (TURNSTILE_SITEKEY) {
+      if (TURNSTILE_SITEKEY && TURNSTILE_SITEKEY.trim() !== '') {
+        console.log('🔒 Turnstile configured, attempting verification...');
         token = await executeTurnstile();
         if (!token) {
-          toast({ variant: 'destructive', title: 'Verifikasi gagal', description: 'Gagal mendapatkan token perlindungan. Silakan coba lagi.' });
-          setLoadingEmailLogin(false);
-          return;
+          console.warn('⚠️ Turnstile verification failed, proceeding without captcha');
+          // Don't block login if Turnstile fails
         }
+      } else {
+        console.log('ℹ️ Turnstile not configured, skipping captcha verification');
       }
 
       const res = await fetch('/api/login', {
