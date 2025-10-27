@@ -63,6 +63,40 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
       link.rel = 'stylesheet';
       link.href = cssHref;
       document.head.appendChild(link);
+
+      // Add custom CSS for responsive Leaflet controls
+      if (!document.getElementById('leaflet-responsive-css')) {
+        const customStyle = document.createElement('style');
+        customStyle.id = 'leaflet-responsive-css';
+        customStyle.textContent = `
+          @media (max-width: 640px) {
+            .leaflet-control-zoom { font-size: 14px !important; }
+            .leaflet-control-zoom a { 
+              width: 28px !important; 
+              height: 28px !important; 
+              line-height: 28px !important; 
+            }
+            .leaflet-bar { 
+              border-radius: 4px !important;
+              box-shadow: 0 1px 2px rgba(0,0,0,0.15) !important;
+            }
+            #profile-map-picker { 
+              height: 50vh !important; 
+              min-height: 280px !important; 
+            }
+            #profile-coords-overlay {
+              padding: 4px 6px !important;
+              font-size: 10px !important;
+              line-height: 1.2 !important;
+            }
+            .leaflet-bar-part {
+              height: 28px !important;
+              width: 28px !important;
+            }
+          }
+        `;
+        document.head.appendChild(customStyle);
+      }
     }
     await new Promise<void>((resolve, reject) => {
       if (getWin().L) return resolve();
@@ -207,12 +241,13 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
               btn.style.display = 'flex';
               btn.style.alignItems = 'center';
               btn.style.justifyContent = 'center';
-              btn.style.width = '32px';
-              btn.style.height = '32px';
+              btn.style.width = 'clamp(28px, 8vw, 32px)';
+              btn.style.height = 'clamp(28px, 8vw, 32px)';
               btn.style.background = 'white';
               btn.style.borderRadius = '6px';
               btn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)';
-              btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4 12h4"/><path d="M16 12h4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>';
+              btn.style.fontSize = 'clamp(14px, 4vw, 16px)';
+              btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4 12h4"/><path d="M16 12h4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>';
               L.DomEvent.disableClickPropagation(container);
               L.DomEvent.on(btn, 'click', (e: Event) => {
                 L.DomEvent.stop(e);
@@ -231,9 +266,12 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
           const CoordControl = L.Control.extend({
             options: { position: 'bottomleft' },
             onAdd: function () {
-              const container = L.DomUtil.create('div', 'leaflet-bar bg-white p-2 text-xs');
+              const container = L.DomUtil.create('div', 'leaflet-bar bg-white');
+              container.style.padding = 'clamp(4px, 2vw, 8px) clamp(6px, 2vw, 12px)';
               container.style.borderRadius = '6px';
               container.style.boxShadow = '0 1px 3px rgba(0,0,0,0.15)';
+              container.style.fontSize = 'clamp(10px, 2.5vw, 12px)';
+              container.style.lineHeight = '1.3';
               container.id = 'profile-coords-overlay';
               container.innerHTML = `<div>Lat: <span id="profile-lat">${initLat.toFixed(6)}</span></div><div>Lng: <span id="profile-lng">${initLng.toFixed(6)}</span></div>`;
               return container;
@@ -313,11 +351,15 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
     const lngEl = document.getElementById('profile-lng');
     const latNum = latitude ? Number(latitude) : null;
     const lngNum = longitude ? Number(longitude) : null;
-    if (latEl && latNum !== null) latEl.textContent = latNum.toFixed(6);
-    if (lngEl && lngNum !== null) lngEl.textContent = lngNum.toFixed(6);
+    if (latEl && latNum !== null) {
+      latEl.textContent = latNum.toFixed(6);
+    }
+    if (lngEl && lngNum !== null) {
+      lngEl.textContent = lngNum.toFixed(6);
+    }
   }, [latitude, longitude]);
 
-  // Effect to trigger map resize when dialog opens
+  // Effect to trigger map resize when dialog opens or window resizes
   useEffect(() => {
     if (!open) return;
 
@@ -343,13 +385,26 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
       }
     }, 500);
 
+    // Add resize listener for responsive map
+    const handleResize = () => {
+      const ref = getWin()._profile_map_ref;
+      if (ref?.map && typeof ref.map.invalidateSize === 'function') {
+        ref.map.invalidateSize();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+
     return () => {
       clearTimeout(timeout1);
       clearTimeout(timeout2);
       clearTimeout(timeout3);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
     };
   }, [open]);
 
   // This component renders only the map container; the parent should wrap it inside its dialog/footer.
-  return <div id="profile-map-picker" className="w-full h-[60vh] rounded overflow-hidden" style={{ minHeight: '400px', minWidth: '300px' }} />;
+  return <div id="profile-map-picker" className="w-full h-[50vh] sm:h-[60vh] rounded overflow-hidden" style={{ minHeight: '300px', minWidth: '100%' }} />;
 }

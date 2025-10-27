@@ -277,14 +277,16 @@ export default function ProfilePage() {
         </Card>
         {/* Map picker dialog */}
         <Dialog open={showMapPicker} onOpenChange={(v) => setShowMapPicker(v)}>
-          <DialogContent className="max-w-3xl w-[90vw]">
-            <DialogHeader>
-              <DialogTitle className="text-primary">Pilih Lokasi pada Peta</DialogTitle>
+          <DialogContent className="max-w-3xl w-[95vw] sm:w-[90vw] p-4 sm:p-6">
+            <DialogHeader className="pb-2 sm:pb-4">
+              <DialogTitle className="text-primary text-base sm:text-lg">Pilih Lokasi pada Peta</DialogTitle>
             </DialogHeader>
-            <MapPicker open={showMapPicker} latitude={latitude} longitude={longitude} setLatitude={setLatitude} setLongitude={setLongitude} onClose={() => setShowMapPicker(false)} />
-            <DialogFooter className="mt-3 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowMapPicker(false)}>Batal</Button>
-              <Button onClick={confirmMapSelection}>Konfirmasi Lokasi</Button>
+            <div className="overflow-hidden -mx-4 sm:mx-0">
+              <MapPicker open={showMapPicker} latitude={latitude} longitude={longitude} setLatitude={setLatitude} setLongitude={setLongitude} onClose={() => setShowMapPicker(false)} />
+            </div>
+            <DialogFooter className="mt-2 sm:mt-4 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+              <Button className="w-full sm:w-auto" variant="outline" onClick={() => setShowMapPicker(false)}>Batal</Button>
+              <Button className="w-full sm:w-auto" onClick={confirmMapSelection}>Konfirmasi Lokasi</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

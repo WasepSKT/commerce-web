@@ -182,7 +182,7 @@ export class ReferralService {
           referral_code,
           referral_points,
           referred_invites_count,
-          referral_level_id
+          referred_purchases_total
         `)
         .eq('user_id', userId)
         .single();
@@ -196,7 +196,7 @@ export class ReferralService {
         referral_code?: string | null;
         referral_points?: number | null;
         referred_invites_count?: number | null;
-        referral_level_id?: string | null;
+        referred_purchases_total?: number | null;
       };
 
       // Get total referrals count
@@ -205,20 +205,29 @@ export class ReferralService {
         .select('*', { count: 'exact', head: true })
         .eq('referrer_id', row.id);
 
-      // Fetch level info separately if referral_level_id exists
+      // Fetch level info based on total purchases amount
       let levelName: string | null = null;
       let commissionRate: number | null = null;
       
-      if (row.referral_level_id) {
-        const { data: levelData } = await supabase
+      const totalAmount = row.referred_purchases_total || 0;
+      
+      if (totalAmount > 0) {
+        const { data: levelsData } = await supabase
           .from('referral_levels')
-          .select('name, commission_pct')
-          .eq('id', row.referral_level_id)
-          .single();
+          .select('name, commission_pct, min_amount, max_amount, priority')
+          .eq('active', true)
+          .order('priority', { ascending: false });
         
-        if (levelData) {
-          levelName = levelData.name || null;
-          commissionRate = levelData.commission_pct ?? null;
+        if (levelsData) {
+          // Find the highest level where totalAmount >= min_amount
+          const matchingLevel = levelsData
+            .filter(l => (Number(l.min_amount) || 0) <= totalAmount)
+            .sort((a, b) => (Number(b.priority) || 0) - (Number(a.priority) || 0))[0];
+          
+          if (matchingLevel) {
+            levelName = matchingLevel.name || null;
+            commissionRate = matchingLevel.commission_pct ?? null;
+          }
         }
       }
 
