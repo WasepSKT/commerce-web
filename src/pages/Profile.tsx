@@ -279,7 +279,7 @@ export default function ProfilePage() {
         <Dialog open={showMapPicker} onOpenChange={(v) => setShowMapPicker(v)}>
           <DialogContent className="max-w-3xl w-[90vw]">
             <DialogHeader>
-              <DialogTitle>Pilih Lokasi pada Peta</DialogTitle>
+              <DialogTitle className="text-primary">Pilih Lokasi pada Peta</DialogTitle>
             </DialogHeader>
             <MapPicker open={showMapPicker} latitude={latitude} longitude={longitude} setLatitude={setLatitude} setLongitude={setLongitude} onClose={() => setShowMapPicker(false)} />
             <DialogFooter className="mt-3 flex justify-end gap-2">

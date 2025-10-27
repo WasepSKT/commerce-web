@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 
 type Props = {
   latitude: string;
@@ -44,7 +44,17 @@ type LeafletStatic = {
 const getWin = () => window as unknown as (Window & { _profile_map_ref?: ProfileMapRef; L?: LeafletStatic });
 
 export default function MapPicker({ latitude, longitude, setLatitude, setLongitude, open, onClose }: Props) {
-  const ensureLeafletLoaded = async () => {
+  // Use refs to store stable callback references
+  const callbacksRef = useRef({ setLatitude, setLongitude });
+  callbacksRef.current = { setLatitude, setLongitude };
+
+  // Store initial coordinates when dialog opens to avoid recreating map
+  const initialCoordsRef = useRef({ latitude, longitude });
+  if (open && !getWin()._profile_map_ref?.map) {
+    initialCoordsRef.current = { latitude, longitude };
+  }
+
+  const ensureLeafletLoaded = useCallback(async () => {
     if (getWin().L) return;
     const cssHref = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
     if (!document.querySelector(`link[href="${cssHref}"]`)) {
@@ -62,15 +72,15 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
       s.onerror = (e) => reject(e);
       document.body.appendChild(s);
     });
-  };
+  }, []);
 
   const centerToCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition((pos) => {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
-      setLatitude(String(lat));
-      setLongitude(String(lng));
+      callbacksRef.current.setLatitude(String(lat));
+      callbacksRef.current.setLongitude(String(lng));
       const ref = getWin()._profile_map_ref;
       try {
         if (ref?.map) {
@@ -81,8 +91,8 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
             ref.marker = L.marker([lat, lng], { draggable: true }).addTo(m);
             ref.marker.on('dragend', function () {
               const p = ref.marker!.getLatLng();
-              setLatitude(String(p.lat));
-              setLongitude(String(p.lng));
+              callbacksRef.current.setLatitude(String(p.lat));
+              callbacksRef.current.setLongitude(String(p.lng));
             });
           }
           m.setView([lat, lng], 15);
@@ -91,23 +101,17 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
         // ignore
       }
     });
-  }, [setLatitude, setLongitude]);
+  }, []);
 
+  // Effect to handle map initialization/destruction based on open state
   useEffect(() => {
-    if (!open) return;
-    let mounted = true;
-    const containerId = 'profile-map-picker';
-    const ref = getWin()._profile_map_ref as ProfileMapRef | undefined;
-
-    if (open && ref?.map) {
+    if (!open) {
+      // Cleanup when dialog closes
       try {
-        const m = ref.map;
-        const mk = ref.marker;
-        if (mk && latitude && longitude) {
-          const latNum = Number(latitude);
-          const lngNum = Number(longitude);
-          mk.setLatLng([latNum, lngNum]);
-          m.setView([latNum, lngNum], m.getZoom());
+        const ref = getWin()._profile_map_ref;
+        if (ref?.map) {
+          ref.map.remove?.();
+          getWin()._profile_map_ref = {};
         }
       } catch (e) {
         // ignore
@@ -115,21 +119,31 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
       return;
     }
 
+    let mounted = true;
+    const containerId = 'profile-map-picker';
+    const ref = getWin()._profile_map_ref as ProfileMapRef | undefined;
+
+    // If map already exists, don't recreate it
+    if (ref?.map) {
+      return;
+    }
+
+    // Create the map if it doesn't exist
     (async () => {
       try {
         await ensureLeafletLoaded();
         if (!mounted) return;
         const L = getWin().L;
-        const lat = latitude ? Number(latitude) : -6.2;
-        const lng = longitude ? Number(longitude) : 106.816666;
+        const initLat = initialCoordsRef.current.latitude ? Number(initialCoordsRef.current.latitude) : -6.2;
+        const initLng = initialCoordsRef.current.longitude ? Number(initialCoordsRef.current.longitude) : 106.816666;
         const map = L.map(containerId);
-        map.setView([lat, lng], 13);
+        map.setView([initLat, initLng], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
-        let marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+        let marker = L.marker([initLat, initLng], { draggable: true }).addTo(map);
         marker.on('dragend', function () {
           const p = marker.getLatLng();
-          setLatitude(String(p.lat));
-          setLongitude(String(p.lng));
+          callbacksRef.current.setLatitude(String(p.lat));
+          callbacksRef.current.setLongitude(String(p.lng));
         });
         try {
           const LocateControl = L.Control.extend({
@@ -170,7 +184,7 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
               container.style.borderRadius = '6px';
               container.style.boxShadow = '0 1px 3px rgba(0,0,0,0.15)';
               container.id = 'profile-coords-overlay';
-              container.innerHTML = `<div>Lat: <span id="profile-lat">${lat.toFixed(6)}</span></div><div>Lng: <span id="profile-lng">${lng.toFixed(6)}</span></div>`;
+              container.innerHTML = `<div>Lat: <span id="profile-lat">${initLat.toFixed(6)}</span></div><div>Lng: <span id="profile-lng">${initLng.toFixed(6)}</span></div>`;
               return container;
             }
           });
@@ -184,8 +198,8 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
           const { lat, lng } = e.latlng;
           if (!marker) marker = L.marker([lat, lng], { draggable: true }).addTo(map);
           else marker.setLatLng([lat, lng]);
-          setLatitude(String(lat));
-          setLongitude(String(lng));
+          callbacksRef.current.setLatitude(String(lat));
+          callbacksRef.current.setLongitude(String(lng));
           const latEl = document.getElementById('profile-lat');
           const lngEl = document.getElementById('profile-lng');
           if (latEl) latEl.textContent = lat.toFixed(6);
@@ -200,17 +214,24 @@ export default function MapPicker({ latitude, longitude, setLatitude, setLongitu
 
     return () => {
       mounted = false;
+    };
+  }, [open, centerToCurrentLocation, ensureLeafletLoaded]);
+
+  // Separate effect to update map position when coordinates change
+  useEffect(() => {
+    if (!open) return;
+    const ref = getWin()._profile_map_ref;
+    if (ref?.map && ref?.marker && latitude && longitude) {
       try {
-        const ref = getWin()._profile_map_ref;
-        if (ref?.map) {
-          ref.map.remove?.();
-          getWin()._profile_map_ref = {};
-        }
+        const latNum = Number(latitude);
+        const lngNum = Number(longitude);
+        ref.marker.setLatLng([latNum, lngNum]);
+        ref.map.setView([latNum, lngNum], ref.map.getZoom?.() ?? 13);
       } catch (e) {
         // ignore
       }
-    };
-  }, [open, latitude, longitude, centerToCurrentLocation, setLatitude, setLongitude]);
+    }
+  }, [open, latitude, longitude]);
 
   useEffect(() => {
     const latEl = document.getElementById('profile-lat');
