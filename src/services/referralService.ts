@@ -182,7 +182,7 @@ export class ReferralService {
           referral_code,
           referral_points,
           referred_invites_count,
-          referral_levels(name, commission_pct)
+          referral_level_id
         `)
         .eq('user_id', userId)
         .single();
@@ -196,7 +196,7 @@ export class ReferralService {
         referral_code?: string | null;
         referral_points?: number | null;
         referred_invites_count?: number | null;
-        referral_levels?: { name?: string | null; commission_pct?: number | null } | null;
+        referral_level_id?: string | null;
       };
 
       // Get total referrals count
@@ -205,13 +205,30 @@ export class ReferralService {
         .select('*', { count: 'exact', head: true })
         .eq('referrer_id', row.id);
 
+      // Fetch level info separately if referral_level_id exists
+      let levelName: string | null = null;
+      let commissionRate: number | null = null;
+      
+      if (row.referral_level_id) {
+        const { data: levelData } = await supabase
+          .from('referral_levels')
+          .select('name, commission_pct')
+          .eq('id', row.referral_level_id)
+          .single();
+        
+        if (levelData) {
+          levelName = levelData.name || null;
+          commissionRate = levelData.commission_pct ?? null;
+        }
+      }
+
       return {
         total_referrals: count || 0,
         total_points_earned: row.referral_points || 0,
         active_referrals: row.referred_invites_count || 0,
         referral_code: row.referral_code || '',
-        level: row.referral_levels?.name || null,
-        commission_rate: row.referral_levels?.commission_pct ?? null
+        level: levelName,
+        commission_rate: commissionRate
       };
     } catch (error) {
       console.error('Error fetching referral stats:', error);
