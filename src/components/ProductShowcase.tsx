@@ -251,9 +251,9 @@ const ProductShowcase: React.FC = () => {
             duration="700"
             easing="ease-out-cubic"
             delay="200"
-            className="w-full lg:w-1/2 text-center lg:text-left px-10 sm:px-20 min-h-[200px] sm:min-h-[220px] md:min-h-[180px] lg:min-h-0"
+            className="w-full lg:w-1/2 text-center lg:text-left px-4 sm:px-8 md:px-12 lg:px-16 min-h-[140px] sm:min-h-[160px] md:min-h-[180px] lg:min-h-0"
           >
-            <h3 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-brand tracking-wide mx-auto lg:mx-0">{slidesData[selectedIndex].title}</h3>
+            <h3 className="text-xl md:text-2xl lg:text-3xl font-extrabold text-brand tracking-wide mx-auto lg:mx-0">{slidesData[selectedIndex].title}</h3>
             <p className="mt-4 sm:mt-6 text-muted-foreground text-sm md:text-base lg:text-lg max-w-lg mx-auto lg:mx-0 line-clamp-4 sm:line-clamp-5">{slidesData[selectedIndex].description}</p>
           </ResponsiveAOS>
         </div>
