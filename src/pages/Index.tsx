@@ -120,16 +120,16 @@ const Index = () => {
         hideThreshold={100}
       />
       {/* Hero Section */}
-      <section id="hero-section" className="py-16">
+      <section id="hero-section" className="py-6 md:py-12">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <ResponsiveFadeInRight duration={800} delay={200}>
               <div className="space-y-6">
-                <h1 className="text-4xl lg:text-5xl font-extrabold text-center md:text-left text-brand leading-tight">
+                <h1 className="text-2xl md:text-4xl lg:text-5xl font-extrabold text-center md:text-left text-brand leading-tight">
                   Nutrisi Terbaik untuk
-                  <div className="text-4xl lg:text-5xl font-extrabold">Kucing kesayangan</div>
+                  <div className="text-2xl md:text-4xl lg:text-5xl font-extrabold">Kucing kesayangan</div>
                 </h1>
-                <p className="text-base text-muted-foreground text-center md:text-left">
+                <p className="text-sm md:text-base text-muted-foreground text-center md:text-left">
                   Berikan yang terbaik untuk kucing Anda dengan makanan premium berkualitas tinggi, dipercaya oleh ribuan pemilik kucing di Indonesia.
                 </p>
                 <div className="flex justify-start sm:justify-start md:justify-start lg:justify-start">
@@ -199,14 +199,14 @@ const Index = () => {
       {/* Features Section */}
       <section
         id="features-section"
-        className="py-16"
+        className="py-6 md:py-12"
         style={{ background: 'linear-gradient(180deg, #FFF8E0 0%, hsl(var(--background)) 100%)' }}
       >
         <div className="container mx-auto px-4">
           <FadeInUp duration={800} delay={100}>
             <div className="text-center mb-12">
-              <h2 className="text-4xl mb-4 text-brand">Mengapa Regal Paw?</h2>
-              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              <h2 className="text-2xl md:text-4xl lg:text-5xl mb-4 text-brand">Mengapa Regal Paw?</h2>
+              <p className="text-muted-foreground text-sm md:text-base max-w-2xl mx-auto">
                 Kami berkomitmen memberikan nutrisi terbaik untuk kucing kesayangan Anda,
                 dengan standar kualitas internasional.
               </p>
@@ -222,7 +222,7 @@ const Index = () => {
                     <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
                       <FaLeaf className="h-6 w-6 text-[#F8DF7C]" />
                     </div>
-                    <h3 className="text-lg font-semibold text-brand mb-2">100% Natural</h3>
+                    <h3 className="text-base md:text-lg font-semibold text-brand mb-2">100% Natural</h3>
                   </div>
                   <p className="text-sm text-muted-foreground">
                     Terbuat dari bahan-bahan alami pilihan tanpa pengawet buatan atau pewarna kimia
@@ -239,7 +239,7 @@ const Index = () => {
                     <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
                       <FaShieldAlt className="h-6 w-6 text-[#F8DF7C]" />
                     </div>
-                    <h3 className="text-lg font-semibold text-brand mb-2">Kualitas Premium</h3>
+                    <h3 className="text-base md:text-lg font-semibold text-brand mb-2">Kualitas Premium</h3>
                   </div>
                   <p className="text-sm text-muted-foreground">
                     Diproduksi dengan standar internasional dan telah mendapat sertifikasi dari AAFCO
@@ -256,7 +256,7 @@ const Index = () => {
                     <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
                       <FaStar className="h-6 w-6 text-[#F8DF7C]" />
                     </div>
-                    <h3 className="text-lg font-semibold text-brand mb-2">Nutrisi Lengkap</h3>
+                    <h3 className="text-base md:text-lg font-semibold text-brand mb-2">Nutrisi Lengkap</h3>
                   </div>
                   <p className="text-sm text-muted-foreground">
                     Mengandung protein, vitamin, dan mineral yang dibutuhkan kucing untuk tumbuh sehat
@@ -273,7 +273,7 @@ const Index = () => {
                     <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
                       <FaTruck className="h-6 w-6 text-[#F8DF7C]" />
                     </div>
-                    <h3 className="text-lg font-semibold text-brand mb-2">Pengiriman Cepat</h3>
+                    <h3 className="text-base md:text-lg font-semibold text-brand mb-2">Pengiriman Cepat</h3>
                   </div>
                   <p className="text-sm text-muted-foreground">
                     Pengiriman ke seluruh Indonesia dengan sistem tracking dan kemasan yang aman.
@@ -286,14 +286,14 @@ const Index = () => {
       </section>
 
       {/* Product Showcase (carousel) */}
-      <section id="showcase-section" className="py-16">
+      <section id="showcase-section" className="py-2 md:py-6">
         <FadeInUp duration={800} delay={100}>
           <ProductShowcase />
         </FadeInUp>
       </section>
 
       {/* Featured Products */}
-      <section id="products-section" className="py-16">
+      <section id="products-section" className="py-4 md:py-6">
         <div className="container mx-auto px-4">
           <FadeInUp duration={800} delay={150}>
             {loading ? (
@@ -323,9 +323,9 @@ const Index = () => {
 
       {/* Referral / Career Section */}
       <section id="referral-section">
-        <ParallaxScroll parallaxSpeed={0.2} duration={800}>
+        <FadeInUp duration={800} delay={200}>
           <ReferralCareerSection />
-        </ParallaxScroll>
+        </FadeInUp>
       </section>
 
       {/* Testimonials (marquee) */}

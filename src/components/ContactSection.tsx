@@ -9,8 +9,8 @@ export default function ContactSection() {
     <section className="py-12 overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-4">
         <div className="overflow-hidden">
-          <h2 className="text-4xl lg:text-5xl text-brand text-center mb-4" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic">Hubungi Kami Hari ini</h2>
-          <p className="text-muted-foreground mb-8 text-center max-w-2xl mx-auto" data-aos="fade-up" data-aos-duration="800" data-aos-easing="ease-out-cubic">
+          <h2 className="text-2xl md:text-4xl lg:text-5xl text-brand text-center mb-4" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic">Hubungi Kami Hari ini</h2>
+          <p className="text-sm md:text-base text-muted-foreground mb-8 text-center max-w-2xl mx-auto" data-aos="fade-up" data-aos-duration="800" data-aos-easing="ease-out-cubic">
             Ada pertanyaan tentang produk atau ingin konsultasi nutrisi kucing? Tim ahli kami siap membantu Anda.
           </p>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
@@ -49,21 +49,21 @@ export default function ContactSection() {
             >
               <div className="bg-[#7A1316] rounded-2xl p-8 text-white">
                 <p className="text-sm uppercase tracking-wider text-white/80">Contact Us</p>
-                <h3 className="text-2xl font-bold text-[#F8DF7C] mt-2">PT. Guna Aura Gemilang</h3>
-                <p className="text-white/80 mt-4">Jika Anda memiliki pertanyaan lebih lanjut, silakan hubungi melalui email atau telepon. Kami akan merespon secepatnya.</p>
+                <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-[#F8DF7C] mt-2">PT. Guna Aura Gemilang</h3>
+                <p className="text-sm md:text-base text-white/80 mt-4">Jika Anda memiliki pertanyaan lebih lanjut, silakan hubungi melalui email atau telepon. Kami akan merespon secepatnya.</p>
 
-                <div className="mt-6 space-y-4">
+                <div className="mt-2 md:mt-6 space-y-2 md:space-y-4">
                   <div className="flex items-center gap-3">
                     <Mail className="h-5 w-5 text-white/90" />
-                    <span>contact@regalpaw.id</span>
+                    <span className="text-sm md:text-base">contact@regalpaw.id</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <Phone className="h-5 w-5 text-white/90" />
-                    <span>+62 859 3215 3777</span>
+                    <span className="text-sm md:text-base">+62 859 3215 3777</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <MapPin className="h-5 w-5 text-white/90" />
-                    <span>Jl. Contoh No. 123, Jakarta</span>
+                    <span className="text-sm md:text-base">Jl. Contoh No. 123, Jakarta</span>
                   </div>
                 </div>
               </div>

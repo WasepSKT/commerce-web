@@ -50,18 +50,18 @@ export default function BlogSection() {
   }
 
   return (
-    <section id="blog-section" className="py-16 bg-gradient-to-b from-background to-muted/20">
+    <section id="blog-section" className="py-6 md:12 bg-gradient-to-b from-background to-muted/20">
       <div className="container mx-auto px-4">
         <FadeInUp duration={800} delay={100}>
           {/* Section Header */}
           <div className="text-center mb-12">
             <div className="flex items-center justify-center gap-3 mb-4">
               <BookOpen className="h-8 w-8 text-primary" />
-              <h2 className="text-3xl lg:text-4xl text-primary">
+              <h2 className="text-2xl md:text-4xl lg:text-5xl text-primary">
                 Artikel Terbaru
               </h2>
             </div>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto">
               Dapatkan tips perawatan kucing, informasi nutrisi, dan artikel menarik lainnya dari para ahli
             </p>
           </div>
@@ -71,7 +71,7 @@ export default function BlogSection() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 3 }).map((_, index) => (
               <Card key={index} className="animate-pulse rounded-xl">
-                <CardHeader>
+                <CardHeader className="pb-2 md:pb-3">
                   <div className="h-6 bg-muted rounded-lg w-3/4"></div>
                   <div className="h-4 bg-muted rounded-lg w-1/2"></div>
                 </CardHeader>

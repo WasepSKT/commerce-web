@@ -43,9 +43,9 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const goToDetail = () => navigate(`/product/${product.id}`);
 
   return (
-    <Card onClick={goToDetail} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') goToDetail(); }} className="group rounded-2xl overflow-hidden shadow-card bg-white hover:shadow-lg cursor-pointer flex flex-col h-full">
+    <Card onClick={goToDetail} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') goToDetail(); }} className="group rounded-lg overflow-hidden shadow-card bg-white hover:shadow-lg cursor-pointer flex flex-col h-full">
       {/* Header: full-width image */}
-      <div className="relative bg-white rounded-t-2xl overflow-hidden">
+      <div className="relative bg-white rounded-t-lg overflow-hidden">
         <div className="w-full aspect-square bg-white">
           <img
             src={product.image_url}
@@ -59,7 +59,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
 
         {isOutOfStock && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <Badge variant="destructive" className="text-sm">
+            <Badge variant="destructive" className="text-xs md:text-sm">
               Stok Habis
             </Badge>
           </div>
@@ -69,7 +69,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         {/* Discount badge (top-right) */}
         {typeof product.discount_percent === 'number' && product.discount_percent > 0 && (
           <div className="absolute top-3 right-3">
-            <div className="bg-rose-600 text-white text-[10px] sm:text-xs px-1.5 py-0.5 rounded-md">Diskon {Math.round(product.discount_percent)}%</div>
+            <div className="bg-rose-600 text-white text-[8px] md:text-xs px-1.5 py-0.5 rounded-md">Diskon {Math.round(product.discount_percent)}%</div>
           </div>
         )}
 
@@ -78,7 +78,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
 
       {/* Body: title, price, stock */}
       <div className="px-4 py-2 flex-1">
-        <h3 className="text-xs sm:text-sm font-normal text-brand mb-1 line-clamp-2">{product.name}</h3>
+        <h3 className="text-xs md:text-sm font-normal text-brand mb-1 line-clamp-2">{product.name}</h3>
 
         {/* Rating Section: show compact on mobile (single star + value or 0) */}
         <div className="mb-1">
@@ -89,12 +89,12 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
               showValue={ratingData.totalReviews > 0}
             />
             {ratingData.totalReviews > 0 ? (
-              <span className="text-xs text-muted-foreground">({ratingData.totalReviews})</span>
+              <span className="text-xs md:text-sm text-muted-foreground">({ratingData.totalReviews})</span>
             ) : (
-              <span className="text-xs text-muted-foreground">Belum ada rating</span>
+              <span className="text-xs md:text-sm text-muted-foreground">Belum ada rating</span>
             )}
           </div>
-          <div className="flex items-center gap-1 sm:hidden text-xs text-muted-foreground">
+          <div className="flex items-center gap-1 sm:hidden text-xs md:text-sm text-muted-foreground">
             <svg className={`w-3 h-3 sm:w-4 sm:h-4 ${ratingData.totalReviews > 0 ? 'text-yellow-400' : 'text-gray-400'}`} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
               <path d="M12 .587l3.668 7.431L24 9.748l-6 5.847L19.335 24 12 20.202 4.665 24 6 15.595 0 9.748l8.332-1.73z" />
             </svg>

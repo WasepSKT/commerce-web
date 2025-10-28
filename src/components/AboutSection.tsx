@@ -18,12 +18,12 @@ export default function AboutSection() {
   ];
 
   return (
-    <section className="py-16">
+    <section className="py-6 md:py-12">
       <div className="container mx-auto px-4">
         <div className="text-center mb-8" data-aos="fade-up" data-aos-duration="700" data-aos-easing="ease-out-cubic" data-aos-delay="100">
-          <p className="text-2xl font-extrabold text-[#C6982D]">Tentang Regal Paw</p>
-          <h2 className="text-3xl lg:text-4xl text-brand">Dedikasi Kami untuk kesehatan Kucing Indonesia</h2>
-          <p className="text-muted-foreground max-w-3xl mx-auto mt-4">
+          <p className="text-xl md:text-4xl lg:text-5xl font-extrabold text-[#C6982D]">Tentang Regal Paw</p>
+          <h2 className="text-xl md:text-4xl lg:text-5xl text-brand">Dedikasi Kami untuk kesehatan Kucing Indonesia</h2>
+          <p className="text-muted-foreground text-sm md:text-base lg:text-lg max-w-3xl mx-auto mt-4">
             Sejak 2024, Regal Paw menjadi pilihan utama ribuan pemilik kucing di Indonesia. Kami memahami bahwa kucing adalah bagian dari keluarga, dan mereka layak mendapatkan nutrisi terbaik.
             Dengan berkolaborasi bersama ahli nutrisi hewan dan dokter hewan berpengalaman, kami menghadirkan produk-produk berkualitas premium yang telah teruji klinis dan dipercaya oleh para profesional.
           </p>
@@ -38,8 +38,8 @@ export default function AboutSection() {
                   <Icon className="h-5 w-5" />
                 </div>
                 <div>
-                  <h4 className="text-xl font-semibold text-brand mb-1">{f.title}</h4>
-                  <p className="text-sm text-muted-foreground">{f.desc}</p>
+                  <h4 className="text-lg md:text-xl font-semibold text-brand mb-1">{f.title}</h4>
+                  <p className="text-xs md:text-sm text-muted-foreground">{f.desc}</p>
                 </div>
               </div>
             );
@@ -68,7 +68,7 @@ export default function AboutSection() {
 
         <div className="text-center mt-8" data-aos="fade-in" data-aos-duration="700" data-aos-easing="ease-out-cubic">
           <Link to="/about">
-            <button className="rounded-full bg-[#7A1316] text-[#F8DF7C] px-6 py-3">Pelajari Lebih Lanjut</button>
+            <button className="rounded-full bg-[#7A1316] text-[#F8DF7C] px-4 py-2 md:px-6 md:py-3 text-sm md:text-base">Pelajari Lebih Lanjut</button>
           </Link>
         </div>
       </div>

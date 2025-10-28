@@ -158,7 +158,7 @@ const ProductShowcase: React.FC = () => {
   }, [emblaApi, play, stop]);
 
   return (
-    <div className="mt-8">
+    <div className="mt-0 md:mt-2">
       <div className="mx-auto">
         {/* Two-column layout: left = carousel panel, right = description. Stack on mobile. */}
         <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6">
@@ -251,10 +251,10 @@ const ProductShowcase: React.FC = () => {
             duration="700"
             easing="ease-out-cubic"
             delay="200"
-            className="w-full lg:w-1/2 text-center lg:text-left px-10 sm:px-20"
+            className="w-full lg:w-1/2 text-center lg:text-left px-10 sm:px-20 min-h-[200px] sm:min-h-[220px] md:min-h-[180px] lg:min-h-0"
           >
-            <h3 className="text-3xl sm:text-3xl lg:text-4xl font-extrabold text-brand tracking-wide mx-auto lg:mx-0">{slidesData[selectedIndex].title}</h3>
-            <p className="mt-4 sm:mt-6 text-muted-foreground text-base sm:text-lg max-w-lg mx-auto lg:mx-0">{slidesData[selectedIndex].description}</p>
+            <h3 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-brand tracking-wide mx-auto lg:mx-0">{slidesData[selectedIndex].title}</h3>
+            <p className="mt-4 sm:mt-6 text-muted-foreground text-sm md:text-base lg:text-lg max-w-lg mx-auto lg:mx-0 line-clamp-4 sm:line-clamp-5">{slidesData[selectedIndex].description}</p>
           </ResponsiveAOS>
         </div>
       </div>

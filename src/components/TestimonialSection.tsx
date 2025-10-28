@@ -5,11 +5,11 @@ import { testimonials } from '@/data/testimonials';
 
 export default function TestimonialSection() {
   return (
-    <section className="py-16" data-aos="zoom-in" data-aos-duration="700" data-aos-easing="ease-out-cubic">
+    <section className="py-6 md:py-12" data-aos="zoom-in" data-aos-duration="700" data-aos-easing="ease-out-cubic">
       <div>
-        <div className="text-center mb-8">
-          <h2 className="text-4xl text-brand">Apa Kata Mereka?</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">Ribuan pemilik kucing telah merasakan manfaat produk Regal Paw untuk kesehatan kucing kesayangan mereka</p>
+        <div className="text-center mb-2 md:mb-8">
+          <h2 className="text-xl md:text-4xl lg:text-5xl text-brand">Apa Kata Mereka?</h2>
+          <p className="text-muted-foreground text-sm md:text-base lg:text-lg max-w-xl mx-2 md:mx-auto">Ribuan pemilik kucing telah merasakan manfaat produk Regal Paw untuk kesehatan kucing kesayangan mereka</p>
         </div>
 
         <div className="overflow-hidden">
