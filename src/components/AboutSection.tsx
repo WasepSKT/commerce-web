@@ -33,13 +33,13 @@ export default function AboutSection() {
           {features.map((f) => {
             const Icon = f.icon;
             return (
-              <div key={f.title} className="flex items-start gap-4">
-                <div className="h-14 w-14 rounded-full bg-[#7A1316] flex items-center justify-center text-[#F8DF7C]">
-                  <Icon className="h-5 w-5" />
+              <div key={f.title} className="flex items-start gap-2 sm:gap-3 md:gap-4 lg:gap-5">
+                <div className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 lg:h-14 lg:w-14 rounded-full bg-[#7A1316] flex items-center justify-center text-[#F8DF7C] flex-shrink-0">
+                  <Icon className="h-4 w-4 sm:h-4 sm:w-4 md:h-6 md:w-6 lg:h-7 lg:w-7" />
                 </div>
-                <div>
-                  <h4 className="text-lg md:text-xl font-semibold text-brand mb-1">{f.title}</h4>
-                  <p className="text-xs md:text-sm text-muted-foreground">{f.desc}</p>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm sm:text-base md:text-lg lg:text-xl font-semibold text-brand mb-1">{f.title}</h4>
+                  <p className="text-sm md:text-base text-muted-foreground line-clamp-2">{f.desc}</p>
                 </div>
               </div>
             );
