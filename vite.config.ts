@@ -9,6 +9,10 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    // Temporarily disable CSP headers for dev to fix white screen
+    // headers: {
+    //   "Content-Security-Policy": "..."
+    // }
   },
   plugins: [react()],
   resolve: {

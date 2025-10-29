@@ -20,20 +20,8 @@ if (typeof window !== 'undefined') {
   }
 }
 
-// Dynamically load dotlottie webcomponent only on supported browsers to avoid runtime errors
-if (typeof window !== 'undefined' && 'customElements' in window && 'fetch' in window) {
-  // inject module script from unpkg at runtime; this avoids TypeScript trying to resolve package types
-  const script = document.createElement('script');
-  script.type = 'module';
-  script.src = 'https://unpkg.com/@lottiefiles/dotlottie-wc@0.8.1/dist/dotlottie-wc.js';
-  script.onload = () => {
-    if (String(import.meta.env.VITE_ENABLE_DEBUG_LOGS).toLowerCase() === 'true') console.log('dotlottie loaded');
-  };
-  script.onerror = (err) => {
-    if (String(import.meta.env.VITE_ENABLE_DEBUG_LOGS).toLowerCase() === 'true') console.warn('dotlottie failed to load', err);
-  };
-  document.head.appendChild(script);
-}
+// Import dotlottie webcomponent from npm package (more secure than external CDN)
+import '@lottiefiles/dotlottie-wc';
 
 // Start the order expiry checker
 startOrderExpiryChecker();
@@ -56,7 +44,7 @@ if (!ENABLE_PWA && 'serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations?.().then((regs) => {
     regs.forEach((r) => r.unregister());
     if (String(import.meta.env.VITE_ENABLE_DEBUG_LOGS).toLowerCase() === 'true') console.log('Unregistered existing service workers');
-  }).catch(() => {});
+  }).catch(() => { });
   // Best-effort cache cleanup for our app caches to avoid stale CSS/JS
   const cacheStorage: CacheStorage | undefined = (typeof window !== 'undefined' && 'caches' in window)
     ? (window as unknown as { caches?: CacheStorage }).caches
@@ -64,10 +52,10 @@ if (!ENABLE_PWA && 'serviceWorker' in navigator) {
   cacheStorage?.keys()?.then((keys) => {
     keys.forEach((k) => {
       if (/regal-paw/i.test(k)) {
-        cacheStorage.delete(k).catch(() => {});
+        cacheStorage.delete(k).catch(() => { });
       }
     });
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
 createRoot(document.getElementById("root")!).render(<App />);
