@@ -68,17 +68,39 @@ export function useTurnstile() {
     return await new Promise<string | null>((resolve) => {
       let finished = false;
       const finish = (val: string | null) => { if (!finished) { finished = true; resolve(val); } };
-      const timer = window.setTimeout(() => { try { win.turnstile?.reset(wid); } catch {} finish(null); }, timeoutMs);
+      const timer = window.setTimeout(() => { 
+        try { 
+          win.turnstile?.reset(wid); 
+        } catch {
+          // Ignore reset errors
+        } 
+        finish(null); 
+      }, timeoutMs);
       const tryExec = () => {
         try { win.turnstile!.execute(wid); }
-        catch { try { win.turnstile!.reset(wid); } catch {} setTimeout(() => { try { win.turnstile!.execute(wid); } catch { finish(null); } }, 300); }
+        catch { 
+          try { 
+            win.turnstile!.reset(wid); 
+          } catch {
+            // Ignore reset errors
+          } 
+          setTimeout(() => { 
+            try { 
+              win.turnstile!.execute(wid); 
+            } catch { 
+              finish(null); 
+            } 
+          }, 300); 
+        }
       };
       tryExec();
       const poll = () => {
         try {
           const resp = win.turnstile?.getResponse ? win.turnstile.getResponse(wid) : null;
           if (resp) { window.clearTimeout(timer); finish(String(resp)); return; }
-        } catch {}
+        } catch {
+          // Ignore getResponse errors
+        }
         if (!finished) requestAnimationFrame(poll);
       };
       requestAnimationFrame(poll);
