@@ -1,17 +1,24 @@
 export function resolveTurnstileSitekey(hostname: string): string {
-  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
-  
-  // Skip Turnstile on localhost to avoid errors
-  if (isLocalhost) {
-    console.log('ℹ️ Skipping Turnstile on localhost');
-    return '';
-  }
-
   const env = import.meta.env as Record<string, string | boolean | undefined>;
+  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+  const skipLocal = String(env.VITE_TURNSTILE_SKIP_LOCAL ?? '').toLowerCase() === 'true';
 
   // Try direct key first
   const direct = (env.VITE_TURNSTILE_SITEKEY as string) || '';
   if (direct && direct.trim() !== '') return direct;
+
+  // Localhost behavior is configurable: skip when flag is true; otherwise try dev/stg keys
+  if (isLocalhost) {
+    if (skipLocal) {
+      console.log('ℹ️ Skipping Turnstile on localhost');
+      return '';
+    }
+    const devLocal = env.VITE_TURNSTILE_SITEKEY_DEV as string | undefined;
+    if (devLocal && devLocal.trim() !== '') return devLocal;
+    const stgLocal = env.VITE_TURNSTILE_SITEKEY_STG as string | undefined;
+    if (stgLocal && stgLocal.trim() !== '') return stgLocal;
+    return '';
+  }
 
   const isProdDomain = hostname === 'regalpaw.id' || hostname === 'www.regalpaw.id';
   const isDevDomain = hostname.includes('dev.') || hostname.includes('staging');

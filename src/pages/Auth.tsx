@@ -213,7 +213,7 @@ export default function Auth() {
               {/* Turnstile Widget Container - Visible and Responsive */}
               {TURNSTILE_SITEKEY && (
                 <div className="flex justify-center w-full">
-                  <div ref={widgetContainerRef as unknown as React.RefObject<HTMLDivElement>} className="w-full max-w-[320px]" />
+                  <div ref={widgetContainerRef as unknown as React.RefObject<HTMLDivElement>} className="w-full" />
                 </div>
               )}
 

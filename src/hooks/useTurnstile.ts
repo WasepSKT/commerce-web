@@ -43,10 +43,10 @@ export function useTurnstile() {
         if (cancelled) return;
         const win = window as Window & { turnstile?: TurnstileAPI };
         if (win.turnstile && containerRef.current) {
-          const widgetSize: TurnstileWidgetSize = window.innerWidth < 640 ? 'compact' : 'normal';
+          // Use 'flexible' so widget scales responsively to its container width
           const id = win.turnstile.render(containerRef.current, {
             sitekey,
-            size: widgetSize,
+            size: 'flexible',
             theme: 'light'
           });
           widgetIdRef.current = typeof id === 'number' || typeof id === 'string' ? id : null;
