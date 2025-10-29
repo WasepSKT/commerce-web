@@ -1,18 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-
-// Typing for Cloudflare Turnstile client API used on the window object.
-type TurnstileAPI = {
-  render: (el: HTMLElement, opts: { sitekey: string; theme?: string; size?: 'invisible' | 'normal'; callback?: (token: string) => void }) => number | string | undefined;
-  execute: (id: number | string) => void;
-  reset: (id: number | string) => void;
-  getResponse?: (id: number | string) => string | null;
-};
-
-declare global {
-  interface Window {
-    turnstile?: TurnstileAPI;
-  }
-}
+import type { TurnstileAPI, TurnstileWidgetSize } from '@/types/turnstile';
 import bgLogin from '@/assets/bg/bg-login.webp';
 import googleLogo from '@/assets/img/Google__G__logo.svg.png';
 import logoImg from '/regalpaw.png';
@@ -63,7 +50,13 @@ export default function Signup() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   // Turnstile: resolve sitekey from available envs (DEV/STG/PROD)
+  // Skip Turnstile on localhost to avoid domain errors
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const TURNSTILE_SITEKEY = (() => {
+    if (isLocalhost) {
+      console.log('ℹ️ Skipping Turnstile on localhost');
+      return '';
+    }
     const env = import.meta.env as Record<string, string | boolean | undefined>;
     const direct = (env.VITE_TURNSTILE_SITEKEY as string) || '';
     if (direct && String(direct).trim() !== '') return String(direct);
@@ -80,10 +73,20 @@ export default function Signup() {
 
   // Debug Turnstile configuration
   useEffect(() => {
+    const env = import.meta.env as Record<string, string | boolean | undefined>;
     console.log('🔧 Turnstile Debug Info (Signup):', {
       sitekey: TURNSTILE_SITEKEY,
       hasSitekey: !!TURNSTILE_SITEKEY,
-      sitekeyLength: TURNSTILE_SITEKEY?.length || 0
+      sitekeyLength: TURNSTILE_SITEKEY?.length || 0,
+      env_check: {
+        direct: env.VITE_TURNSTILE_SITEKEY,
+        dev: env.VITE_TURNSTILE_SITEKEY_DEV,
+        stg: env.VITE_TURNSTILE_SITEKEY_STG,
+        prod: env.VITE_TURNSTILE_SITEKEY_PROD,
+        isDev: env.DEV,
+        isProd: env.PROD,
+        mode: env.MODE
+      }
     });
   }, [TURNSTILE_SITEKEY]);
 
@@ -108,7 +111,12 @@ export default function Signup() {
         if (cancelled) return;
         if (window.turnstile && widgetContainerRef.current) {
           try {
-            const id = window.turnstile.render(widgetContainerRef.current, { sitekey: TURNSTILE_SITEKEY, size: 'invisible' });
+            const widgetSize: TurnstileWidgetSize = window.innerWidth < 640 ? 'compact' : 'normal';
+            const id = window.turnstile.render(widgetContainerRef.current, {
+              sitekey: TURNSTILE_SITEKEY,
+              size: widgetSize,
+              theme: 'light'
+            });
             widgetIdRef.current = typeof id === 'number' || typeof id === 'string' ? id : null;
           } catch (e) {
             console.warn('Turnstile render failed', e);
@@ -441,8 +449,12 @@ export default function Signup() {
                   />
                 </div>
 
-                {/* Turnstile Widget Container (Hidden) */}
-                <div ref={widgetContainerRef} style={{ display: 'none' }} />
+                {/* Turnstile Widget Container - Visible and Responsive */}
+                {TURNSTILE_SITEKEY && (
+                  <div className="flex justify-center w-full">
+                    <div ref={widgetContainerRef} className="w-full max-w-[320px]" />
+                  </div>
+                )}
 
                 <Button
                   onClick={handleEmailSignup}

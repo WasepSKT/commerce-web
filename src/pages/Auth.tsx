@@ -1,17 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-// Typing for Cloudflare Turnstile client API used on the window object.
-type TurnstileAPI = {
-  render: (el: HTMLElement, opts: { sitekey: string; theme?: string; size?: 'invisible' | 'normal'; callback?: (token: string) => void }) => number | string | undefined;
-  execute: (id: number | string) => void;
-  reset: (id: number | string) => void;
-  getResponse?: (id: number | string) => string | null;
-};
-
-declare global {
-  interface Window {
-    turnstile?: TurnstileAPI;
-  }
-}
+import type { TurnstileAPI, TurnstileWidgetSize } from '@/types/turnstile';
 import bgLogin from '@/assets/bg/bg-login.webp';
 import googleLogo from '@/assets/img/Google__G__logo.svg.png';
 import logoImg from '/regalpaw.png';
@@ -40,7 +28,13 @@ export default function Auth() {
   const [password, setPassword] = useState('');
 
   // Turnstile: resolve sitekey from available envs (DEV/STG/PROD)
+  // Skip Turnstile on localhost to avoid domain errors
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const TURNSTILE_SITEKEY = (() => {
+    if (isLocalhost) {
+      console.log('ℹ️ Skipping Turnstile on localhost');
+      return '';
+    }
     const env = import.meta.env as Record<string, string | boolean | undefined>;
     const direct = (env.VITE_TURNSTILE_SITEKEY as string) || '';
     if (direct && String(direct).trim() !== '') return String(direct);
@@ -102,7 +96,12 @@ export default function Auth() {
         if (win.turnstile && widgetContainerRef.current) {
           try {
             console.log('🎨 Rendering Turnstile widget...');
-            const id = win.turnstile.render(widgetContainerRef.current, { sitekey: TURNSTILE_SITEKEY, size: 'invisible' });
+            const widgetSize: TurnstileWidgetSize = window.innerWidth < 640 ? 'compact' : 'normal';
+            const id = win.turnstile.render(widgetContainerRef.current, {
+              sitekey: TURNSTILE_SITEKEY,
+              size: widgetSize,
+              theme: 'light'
+            });
             widgetIdRef.current = typeof id === 'number' || typeof id === 'string' ? id : null;
             console.log('✅ Turnstile widget rendered with ID:', widgetIdRef.current);
           } catch (e) {
@@ -154,9 +153,23 @@ export default function Auth() {
         finish(null);
       }, timeoutMs);
 
+      const doExecute = () => {
+        try {
+          win.turnstile.execute(wid);
+          console.log('⚡ Turnstile execute() called');
+        } catch (err) {
+          console.error('❌ Turnstile execute() failed (will retry once):', err);
+          try { win.turnstile.reset(wid); } catch (_e) { void _e; }
+          // retry once after a short delay
+          setTimeout(() => {
+            try { win.turnstile.execute(wid); } catch (_e) { finish(null); }
+          }, 300);
+          return;
+        }
+      };
+
       try {
-        win.turnstile.execute(wid);
-        console.log('⚡ Turnstile execute() called');
+        doExecute();
       } catch (err) {
         console.error('❌ Turnstile execute() failed:', err);
         window.clearTimeout(timer);
@@ -347,8 +360,12 @@ export default function Auth() {
                 </div>
               </div>
 
-              {/* Turnstile Widget Container (Hidden) */}
-              <div ref={widgetContainerRef} style={{ display: 'none' }} />
+              {/* Turnstile Widget Container - Visible and Responsive */}
+              {TURNSTILE_SITEKEY && (
+                <div className="flex justify-center w-full">
+                  <div ref={widgetContainerRef} className="w-full max-w-[320px]" />
+                </div>
+              )}
 
               {/* Google Login */}
               <Button

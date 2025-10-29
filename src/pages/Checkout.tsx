@@ -1,18 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-
-// Typing for Cloudflare Turnstile client API used on the window object.
-type TurnstileAPI = {
-  render: (el: HTMLElement, opts: { sitekey: string; theme?: string; size?: 'invisible' | 'normal'; callback?: (token: string) => void }) => number | string | undefined;
-  execute: (id: number | string) => void;
-  reset: (id: number | string) => void;
-  getResponse?: (id: number | string) => string | null;
-};
-
-declare global {
-  interface Window {
-    turnstile?: TurnstileAPI;
-  }
-}
+import type { TurnstileAPI } from '@/types/turnstile';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/types/supabase';
@@ -767,10 +754,10 @@ export default function CheckoutPage() {
                 <div className="flex justify-between text-muted-foreground">Subtotal <div>{formatPrice(subtotal)}</div></div>
                 <div className="flex justify-between text-muted-foreground">Ongkos Kirim <div>{formatPrice(selectedRate?.cost ?? 0)}</div></div>
                 <div className="flex justify-between font-semibold text-lg">Total <div>{formatPrice(total)}</div></div>
-                
+
                 {/* Turnstile Widget Container (Hidden) */}
                 <div ref={widgetContainerRef} style={{ display: 'none' }} />
-                
+
                 <Button className="w-full mt-3" onClick={handlePay} disabled={creatingSession || !selectedRate}>{creatingSession ? 'Mengarahkan...' : 'Bayar & Lanjutkan'}</Button>
               </div>
             </div>
