@@ -27,22 +27,36 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Turnstile: resolve sitekey from available envs (DEV/STG/PROD)
-  // Skip Turnstile on localhost to avoid domain errors
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  // Turnstile: resolve sitekey based on domain
+  const hostname = window.location.hostname;
+  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+  const isDevDomain = hostname.includes('dev.') || hostname.includes('staging');
+  const isProdDomain = hostname === 'regalpaw.id' || hostname === 'www.regalpaw.id';
+
   const TURNSTILE_SITEKEY = (() => {
     if (isLocalhost) {
       console.log('ℹ️ Skipping Turnstile on localhost');
       return '';
     }
     const env = import.meta.env as Record<string, string | boolean | undefined>;
+
+    // Try direct first
     const direct = (env.VITE_TURNSTILE_SITEKEY as string) || '';
     if (direct && String(direct).trim() !== '') return String(direct);
-    const isProd = Boolean(env.PROD);
-    const isDev = Boolean(env.DEV);
-    if (isProd && typeof env.VITE_TURNSTILE_SITEKEY_PROD === 'string') return env.VITE_TURNSTILE_SITEKEY_PROD as string;
-    if (isDev && typeof env.VITE_TURNSTILE_SITEKEY_DEV === 'string') return env.VITE_TURNSTILE_SITEKEY_DEV as string;
-    if (typeof env.VITE_TURNSTILE_SITEKEY_STG === 'string') return env.VITE_TURNSTILE_SITEKEY_STG as string;
+
+    // Try based on domain
+    if (isProdDomain) {
+      const prodKey = env.VITE_TURNSTILE_SITEKEY_PROD;
+      if (typeof prodKey === 'string' && prodKey.trim() !== '') return prodKey;
+    }
+
+    if (isDevDomain) {
+      const devKey = env.VITE_TURNSTILE_SITEKEY_DEV;
+      if (typeof devKey === 'string' && devKey.trim() !== '') return devKey;
+      const stgKey = env.VITE_TURNSTILE_SITEKEY_STG;
+      if (typeof stgKey === 'string' && stgKey.trim() !== '') return stgKey;
+    }
+
     return '';
   })();
   const widgetContainerRef = useRef<HTMLDivElement | null>(null);
@@ -50,12 +64,23 @@ export default function Auth() {
 
   // Debug Turnstile configuration
   useEffect(() => {
+    const env = import.meta.env as Record<string, string | boolean | undefined>;
     console.log('🔧 Turnstile Debug Info:', {
       sitekey: TURNSTILE_SITEKEY,
       hasSitekey: !!TURNSTILE_SITEKEY,
-      sitekeyLength: TURNSTILE_SITEKEY?.length || 0
+      sitekeyLength: TURNSTILE_SITEKEY?.length || 0,
+      hostname,
+      isLocalhost,
+      isDevDomain,
+      isProdDomain,
+      env_available: {
+        direct: typeof env.VITE_TURNSTILE_SITEKEY === 'string' ? '✅' : '❌',
+        dev: typeof env.VITE_TURNSTILE_SITEKEY_DEV === 'string' ? '✅' : '❌',
+        stg: typeof env.VITE_TURNSTILE_SITEKEY_STG === 'string' ? '✅' : '❌',
+        prod: typeof env.VITE_TURNSTILE_SITEKEY_PROD === 'string' ? '✅' : '❌',
+      }
     });
-  }, [TURNSTILE_SITEKEY]);
+  }, [TURNSTILE_SITEKEY, hostname, isLocalhost, isDevDomain, isProdDomain]);
 
   // Load Turnstile script and render invisible widget if configured
   useEffect(() => {

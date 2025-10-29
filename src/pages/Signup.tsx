@@ -49,23 +49,36 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  // Turnstile: resolve sitekey from available envs (DEV/STG/PROD)
-  // Skip Turnstile on localhost to avoid domain errors
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  // Turnstile: resolve sitekey based on domain
+  const hostname = window.location.hostname;
+  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+  const isDevDomain = hostname.includes('dev.') || hostname.includes('staging');
+  const isProdDomain = hostname === 'regalpaw.id' || hostname === 'www.regalpaw.id';
+
   const TURNSTILE_SITEKEY = (() => {
     if (isLocalhost) {
       console.log('ℹ️ Skipping Turnstile on localhost');
       return '';
     }
     const env = import.meta.env as Record<string, string | boolean | undefined>;
+
+    // Try direct first
     const direct = (env.VITE_TURNSTILE_SITEKEY as string) || '';
     if (direct && String(direct).trim() !== '') return String(direct);
-    // Prefer based on build mode
-    const isProd = Boolean(env.PROD);
-    const isDev = Boolean(env.DEV);
-    if (isProd && typeof env.VITE_TURNSTILE_SITEKEY_PROD === 'string') return env.VITE_TURNSTILE_SITEKEY_PROD as string;
-    if (isDev && typeof env.VITE_TURNSTILE_SITEKEY_DEV === 'string') return env.VITE_TURNSTILE_SITEKEY_DEV as string;
-    if (typeof env.VITE_TURNSTILE_SITEKEY_STG === 'string') return env.VITE_TURNSTILE_SITEKEY_STG as string;
+
+    // Try based on domain
+    if (isProdDomain) {
+      const prodKey = env.VITE_TURNSTILE_SITEKEY_PROD;
+      if (typeof prodKey === 'string' && prodKey.trim() !== '') return prodKey;
+    }
+
+    if (isDevDomain) {
+      const devKey = env.VITE_TURNSTILE_SITEKEY_DEV;
+      if (typeof devKey === 'string' && devKey.trim() !== '') return devKey;
+      const stgKey = env.VITE_TURNSTILE_SITEKEY_STG;
+      if (typeof stgKey === 'string' && stgKey.trim() !== '') return stgKey;
+    }
+
     return '';
   })();
   const widgetContainerRef = useRef<HTMLDivElement | null>(null);
@@ -78,17 +91,18 @@ export default function Signup() {
       sitekey: TURNSTILE_SITEKEY,
       hasSitekey: !!TURNSTILE_SITEKEY,
       sitekeyLength: TURNSTILE_SITEKEY?.length || 0,
-      env_check: {
-        direct: env.VITE_TURNSTILE_SITEKEY,
-        dev: env.VITE_TURNSTILE_SITEKEY_DEV,
-        stg: env.VITE_TURNSTILE_SITEKEY_STG,
-        prod: env.VITE_TURNSTILE_SITEKEY_PROD,
-        isDev: env.DEV,
-        isProd: env.PROD,
-        mode: env.MODE
+      hostname,
+      isLocalhost,
+      isDevDomain,
+      isProdDomain,
+      env_available: {
+        direct: typeof env.VITE_TURNSTILE_SITEKEY === 'string' ? '✅' : '❌',
+        dev: typeof env.VITE_TURNSTILE_SITEKEY_DEV === 'string' ? '✅' : '❌',
+        stg: typeof env.VITE_TURNSTILE_SITEKEY_STG === 'string' ? '✅' : '❌',
+        prod: typeof env.VITE_TURNSTILE_SITEKEY_PROD === 'string' ? '✅' : '❌',
       }
     });
-  }, [TURNSTILE_SITEKEY]);
+  }, [TURNSTILE_SITEKEY, hostname, isLocalhost, isDevDomain, isProdDomain]);
 
   useEffect(() => {
     if (!TURNSTILE_SITEKEY) return;
