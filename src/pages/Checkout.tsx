@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { TurnstileAPI } from '@/types/turnstile';
+import { useTurnstile } from '@/hooks/useTurnstile';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/types/supabase';
@@ -63,11 +63,8 @@ export default function CheckoutPage() {
   }, [dryRunFlag, isLocalhost]);
   const [loadingRates, setLoadingRates] = useState(false);
   const [creatingSession, setCreatingSession] = useState(false);
-  // Cloudflare Turnstile sitekey (optional) - set in env as VITE_TURNSTILE_SITEKEY
-  const TURNSTILE_SITEKEY = (import.meta.env.VITE_TURNSTILE_SITEKEY as string) ?? '';
-  const widgetContainerRef = useRef<HTMLDivElement | null>(null);
-  const widgetIdRef = useRef<number | string | null>(null);
-  const [turnstileReady, setTurnstileReady] = useState(false);
+  // Turnstile via hook
+  const { sitekey: TURNSTILE_SITEKEY, containerRef: widgetContainerRef, execute: executeTurnstile } = useTurnstile();
 
   // Debug Turnstile configuration
   useEffect(() => {
@@ -315,121 +312,7 @@ export default function CheckoutPage() {
     void loadRates();
   }, [profile?.postal_code, toast, items]);
 
-  // Load Cloudflare Turnstile script and render invisible widget if sitekey present.
-  // Improvements: idempotent loader, cancellation guard, and safe render.
-  useEffect(() => {
-    if (!TURNSTILE_SITEKEY) return;
-
-    let cancelled = false;
-
-    // global loader promise to avoid multiple inserts when component remounts
-    const ensureScript = (() => {
-      let promise: Promise<void> | null = null;
-      return () => {
-        if (promise) return promise;
-        promise = new Promise<void>((resolve, reject) => {
-          if ((window as Window & { turnstile?: TurnstileAPI }).turnstile) return resolve();
-          const existing = document.querySelector('script[src="https://challenges.cloudflare.com/turnstile/v0/api.js"]');
-          if (existing) {
-            // script exists but widget may not be ready yet
-            existing.addEventListener('load', () => resolve());
-            existing.addEventListener('error', () => reject(new Error('Gagal memuat Turnstile script')));
-            return;
-          }
-          const s = document.createElement('script');
-          s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-          s.async = true;
-          s.defer = true;
-          s.onload = () => resolve();
-          s.onerror = () => reject(new Error('Gagal memuat Turnstile script'));
-          document.head.appendChild(s);
-        });
-        return promise;
-      };
-    })();
-
-    const renderWidget = async () => {
-      try {
-        await ensureScript();
-        if (cancelled) return;
-        // Render invisible widget into container
-        const win = window as Window & { turnstile?: TurnstileAPI };
-        if (win.turnstile && widgetContainerRef.current) {
-          try {
-            const id = win.turnstile.render(widgetContainerRef.current, {
-              sitekey: TURNSTILE_SITEKEY,
-              theme: 'light',
-              size: 'invisible',
-              callback: (_token: string) => {
-                // token will be read via getResponse or by callback if needed
-              }
-            });
-            widgetIdRef.current = typeof id === 'number' || typeof id === 'string' ? id : null;
-            if (!cancelled) setTurnstileReady(true);
-          } catch (err) {
-            console.warn('Turnstile render failed', err);
-          }
-        }
-      } catch (err) {
-        console.warn('Turnstile load failed', err);
-      }
-    };
-
-    void renderWidget();
-
-    return () => { cancelled = true; };
-  }, [TURNSTILE_SITEKEY]);
-
-  // Helper to execute the turnstile widget and obtain a token (or null)
-  // Wrapped in useRef/useCallback pattern to keep stable identity for hooks
-  const executeTurnstile = useRef<((timeoutMs?: number) => Promise<string | null>) | null>(null);
-  if (!executeTurnstile.current) {
-    executeTurnstile.current = async (timeoutMs = 10000): Promise<string | null> => {
-      if (!TURNSTILE_SITEKEY) return null;
-      const win = window as Window & { turnstile?: TurnstileAPI };
-      if (!win.turnstile) return null;
-      const wid = widgetIdRef.current;
-      if (wid == null) return null;
-
-      return await new Promise<string | null>((resolve) => {
-        let finished = false;
-        const finish = (val: string | null) => {
-          if (finished) return;
-          finished = true;
-          resolve(val);
-        };
-
-        const timer = window.setTimeout(() => {
-          try { win.turnstile?.reset(wid); } catch (_e) { void _e; }
-          finish(null);
-        }, timeoutMs);
-
-        try {
-          win.turnstile.execute(wid);
-        } catch (err) {
-          window.clearTimeout(timer);
-          finish(null);
-          return;
-        }
-
-        // Poll for response token using requestAnimationFrame loop
-        const poll = () => {
-          try {
-            const resp = win.turnstile?.getResponse ? win.turnstile.getResponse(wid) : null;
-            if (resp) {
-              window.clearTimeout(timer);
-              finish(String(resp));
-              return;
-            }
-          } catch (_e) {
-            void _e;
-          }
-          if (!finished) requestAnimationFrame(poll);
-        };
-        requestAnimationFrame(poll);
-      });
-    };
-  }
+  // Removed local Turnstile script handling in favor of useTurnstile hook
 
   const subtotal = useMemo(() => items.reduce((s, it) => s + (it.unit_price ?? it.price ?? 0) * (it.quantity ?? 1), 0), [items]);
   const total = useMemo(() => subtotal + (selectedRate ? selectedRate.cost : 0), [subtotal, selectedRate]);
@@ -441,8 +324,8 @@ export default function CheckoutPage() {
     try {
       // If Turnstile sitekey is configured, obtain a token and include it in payloads
       let turnstileToken: string | null = null;
-      if (TURNSTILE_SITEKEY && executeTurnstile.current) {
-        turnstileToken = await executeTurnstile.current();
+      if (TURNSTILE_SITEKEY && executeTurnstile) {
+        turnstileToken = await executeTurnstile();
         if (!turnstileToken) {
           throw new Error('Gagal mendapatkan token perlindungan (Turnstile). Coba lagi.');
         }
@@ -541,7 +424,7 @@ export default function CheckoutPage() {
     } finally {
       setCreatingSession(false);
     }
-  }, [dryRun, items, order, profile, selectedPaymentMethod, selectedEwallet, selectedBank, selectedRate, subtotal, total, toast, TURNSTILE_SITEKEY]);
+  }, [dryRun, items, order, profile, selectedPaymentMethod, selectedEwallet, selectedBank, selectedRate, subtotal, total, toast, TURNSTILE_SITEKEY, executeTurnstile]);
 
   if (initializing) return null;
 
@@ -755,8 +638,12 @@ export default function CheckoutPage() {
                 <div className="flex justify-between text-muted-foreground">Ongkos Kirim <div>{formatPrice(selectedRate?.cost ?? 0)}</div></div>
                 <div className="flex justify-between font-semibold text-lg">Total <div>{formatPrice(total)}</div></div>
 
-                {/* Turnstile Widget Container (Hidden) */}
-                <div ref={widgetContainerRef} style={{ display: 'none' }} />
+                {/* Turnstile Widget Container (Visible & Responsive) */}
+                {TURNSTILE_SITEKEY ? (
+                  <div className="flex justify-center w-full mt-2">
+                    <div ref={widgetContainerRef as unknown as React.RefObject<HTMLDivElement>} className="w-full max-w-[320px]" />
+                  </div>
+                ) : null}
 
                 <Button className="w-full mt-3" onClick={handlePay} disabled={creatingSession || !selectedRate}>{creatingSession ? 'Mengarahkan...' : 'Bayar & Lanjutkan'}</Button>
               </div>

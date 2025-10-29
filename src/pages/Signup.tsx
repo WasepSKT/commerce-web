@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
-import type { TurnstileAPI, TurnstileWidgetSize } from '@/types/turnstile';
+import { useEffect, useState, useCallback } from 'react';
+import { useTurnstile } from '@/hooks/useTurnstile';
 import bgLogin from '@/assets/bg/bg-login.webp';
 import googleLogo from '@/assets/img/Google__G__logo.svg.png';
 import logoImg from '/regalpaw.png';
@@ -49,40 +49,8 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  // Turnstile: resolve sitekey based on domain
-  const hostname = window.location.hostname;
-  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
-  const isDevDomain = hostname.includes('dev.') || hostname.includes('staging');
-  const isProdDomain = hostname === 'regalpaw.id' || hostname === 'www.regalpaw.id';
-
-  const TURNSTILE_SITEKEY = (() => {
-    if (isLocalhost) {
-      console.log('ℹ️ Skipping Turnstile on localhost');
-      return '';
-    }
-    const env = import.meta.env as Record<string, string | boolean | undefined>;
-
-    // Try direct first
-    const direct = (env.VITE_TURNSTILE_SITEKEY as string) || '';
-    if (direct && String(direct).trim() !== '') return String(direct);
-
-    // Try based on domain
-    if (isProdDomain) {
-      const prodKey = env.VITE_TURNSTILE_SITEKEY_PROD;
-      if (typeof prodKey === 'string' && prodKey.trim() !== '') return prodKey;
-    }
-
-    if (isDevDomain) {
-      const devKey = env.VITE_TURNSTILE_SITEKEY_DEV;
-      if (typeof devKey === 'string' && devKey.trim() !== '') return devKey;
-      const stgKey = env.VITE_TURNSTILE_SITEKEY_STG;
-      if (typeof stgKey === 'string' && stgKey.trim() !== '') return stgKey;
-    }
-
-    return '';
-  })();
-  const widgetContainerRef = useRef<HTMLDivElement | null>(null);
-  const widgetIdRef = useRef<number | string | null>(null);
+  // Turnstile via hook
+  const { sitekey: TURNSTILE_SITEKEY, containerRef: widgetContainerRef, execute: executeTurnstile } = useTurnstile();
 
   // Debug Turnstile configuration
   useEffect(() => {
@@ -91,10 +59,6 @@ export default function Signup() {
       sitekey: TURNSTILE_SITEKEY,
       hasSitekey: !!TURNSTILE_SITEKEY,
       sitekeyLength: TURNSTILE_SITEKEY?.length || 0,
-      hostname,
-      isLocalhost,
-      isDevDomain,
-      isProdDomain,
       env_available: {
         direct: typeof env.VITE_TURNSTILE_SITEKEY === 'string' ? '✅' : '❌',
         dev: typeof env.VITE_TURNSTILE_SITEKEY_DEV === 'string' ? '✅' : '❌',
@@ -102,98 +66,9 @@ export default function Signup() {
         prod: typeof env.VITE_TURNSTILE_SITEKEY_PROD === 'string' ? '✅' : '❌',
       }
     });
-  }, [TURNSTILE_SITEKEY, hostname, isLocalhost, isDevDomain, isProdDomain]);
-
-  useEffect(() => {
-    if (!TURNSTILE_SITEKEY) return;
-    let cancelled = false;
-
-    const loadScript = () => new Promise<void>((resolve, reject) => {
-      if (window.turnstile) return resolve();
-      const s = document.createElement('script');
-      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-      s.async = true;
-      s.defer = true;
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error('Gagal memuat Turnstile script'));
-      document.head.appendChild(s);
-    });
-
-    const renderWidget = async () => {
-      try {
-        await loadScript();
-        if (cancelled) return;
-        if (window.turnstile && widgetContainerRef.current) {
-          try {
-            const widgetSize: TurnstileWidgetSize = window.innerWidth < 640 ? 'compact' : 'normal';
-            const id = window.turnstile.render(widgetContainerRef.current, {
-              sitekey: TURNSTILE_SITEKEY,
-              size: widgetSize,
-              theme: 'light'
-            });
-            widgetIdRef.current = typeof id === 'number' || typeof id === 'string' ? id : null;
-          } catch (e) {
-            console.warn('Turnstile render failed', e);
-          }
-        }
-      } catch (e) {
-        console.warn('Turnstile load failed', e);
-      }
-    };
-
-    void renderWidget();
-    return () => { cancelled = true; };
   }, [TURNSTILE_SITEKEY]);
 
-  const executeTurnstile = async (timeoutMs = 8000): Promise<string | null> => {
-    // Skip Turnstile if not configured
-    if (!TURNSTILE_SITEKEY || TURNSTILE_SITEKEY.trim() === '') {
-      console.log('⚠️ Turnstile not configured, skipping captcha');
-      return null;
-    }
-    if (!window.turnstile) {
-      console.warn('⚠️ Turnstile API not loaded');
-      return null;
-    }
-    const wid = widgetIdRef.current;
-    if (wid == null) {
-      console.warn('⚠️ Turnstile widget not initialized');
-      return null;
-    }
 
-    return await new Promise((resolve) => {
-      let done = false;
-      const timer = window.setTimeout(() => {
-        if (!done) {
-          done = true;
-          try { window.turnstile?.reset(wid); } catch (_e) { void _e; }
-          resolve(null);
-        }
-      }, timeoutMs);
-
-      try {
-        window.turnstile.execute(wid);
-      } catch (err) {
-        window.clearTimeout(timer);
-        resolve(null);
-        return;
-      }
-
-      const poll = () => {
-        try {
-          const resp = window.turnstile?.getResponse ? window.turnstile.getResponse(wid) : null;
-          if (resp) {
-            done = true;
-            window.clearTimeout(timer);
-            resolve(String(resp));
-            return;
-          }
-        } catch (_e) { void _e; }
-        if (!done) requestAnimationFrame(poll);
-      };
-      requestAnimationFrame(poll);
-    });
-  };
 
   useEffect(() => {
     // Check if there's a referral code in URL
@@ -266,11 +141,7 @@ export default function Signup() {
       if (TURNSTILE_SITEKEY && TURNSTILE_SITEKEY.trim() !== '') {
         console.log('🔒 Turnstile configured, attempting verification...');
         turnstileToken = await executeTurnstile();
-        if (!turnstileToken) {
-          console.warn('⚠️ Turnstile verification failed or not configured, proceeding without captcha');
-          // Don't throw error - allow signup to proceed without Turnstile for now
-          // TODO: Configure Turnstile sitekey in production environment
-        }
+        if (!turnstileToken) console.warn('⚠️ Turnstile verification failed or not configured, proceeding without captcha');
       } else {
         console.log('ℹ️ Turnstile not configured, skipping captcha verification');
       }
@@ -466,7 +337,7 @@ export default function Signup() {
                 {/* Turnstile Widget Container - Visible and Responsive */}
                 {TURNSTILE_SITEKEY && (
                   <div className="flex justify-center w-full">
-                    <div ref={widgetContainerRef} className="w-full max-w-[320px]" />
+                    <div ref={widgetContainerRef as unknown as React.RefObject<HTMLDivElement>} className="w-full max-w-[320px]" />
                   </div>
                 )}
 
