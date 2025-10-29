@@ -39,8 +39,18 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Turnstile
-  const TURNSTILE_SITEKEY = (import.meta.env.VITE_TURNSTILE_SITEKEY as string) ?? '';
+  // Turnstile: resolve sitekey from available envs (DEV/STG/PROD)
+  const TURNSTILE_SITEKEY = (() => {
+    const env = import.meta.env as Record<string, string | boolean | undefined>;
+    const direct = (env.VITE_TURNSTILE_SITEKEY as string) || '';
+    if (direct && String(direct).trim() !== '') return String(direct);
+    const isProd = Boolean(env.PROD);
+    const isDev = Boolean(env.DEV);
+    if (isProd && typeof env.VITE_TURNSTILE_SITEKEY_PROD === 'string') return env.VITE_TURNSTILE_SITEKEY_PROD as string;
+    if (isDev && typeof env.VITE_TURNSTILE_SITEKEY_DEV === 'string') return env.VITE_TURNSTILE_SITEKEY_DEV as string;
+    if (typeof env.VITE_TURNSTILE_SITEKEY_STG === 'string') return env.VITE_TURNSTILE_SITEKEY_STG as string;
+    return '';
+  })();
   const widgetContainerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<number | string | null>(null);
 
