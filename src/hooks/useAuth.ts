@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { canAccessAdmin, UserRole } from '@/utils/rolePermissions';
+import { safeJsonParse } from '@/utils/storage';
 
 export interface UserProfile {
   id: string;
@@ -63,7 +64,8 @@ function readCachedProfileForUser(userId?: string): UserProfile | null {
   try {
     const raw = localStorage.getItem('userProfile');
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as UserProfile;
+    const parsed = safeJsonParse(raw, null as UserProfile | null);
+    if (!parsed) return null;
     if (!userId) return parsed;
     return parsed?.user_id === userId ? parsed : null;
   } catch (e) {

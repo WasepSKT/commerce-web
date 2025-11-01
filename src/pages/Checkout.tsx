@@ -12,6 +12,7 @@ import SEOHead from '@/components/seo/SEOHead';
 import { getShippingRates, ShippingRate } from '@/services/shippingService';
 import { createPaymentSession, CreateSessionResult, CreatePaymentPayload } from '@/services/paymentService';
 import computePriceAfterDiscount from '@/utils/price';
+import { safeJsonParse } from '@/utils/storage';
 import OVOIcon from '@/assets/img/Logo OVO.png';
 import GoPayIcon from '@/assets/img/LOGO-GOPAY.png';
 import DANAIcon from '@/assets/img/Logo DANA.png';
@@ -126,7 +127,8 @@ export default function CheckoutPage() {
             // - Map-like object { <id>: { quantity } } or { <id>: qty }
             let parsedRaw: unknown;
             try {
-              parsedRaw = JSON.parse(raw);
+              parsedRaw = safeJsonParse(raw, null);
+              if (!parsedRaw) throw new Error('Data keranjang tidak valid');
             } catch (parseErr) {
               throw new Error('Data keranjang tidak valid');
             }
@@ -208,7 +210,7 @@ export default function CheckoutPage() {
       const raw = localStorage.getItem('rp_profile');
       if (raw) {
         try {
-          const parsed = JSON.parse(raw) as { postal_code?: string };
+          const parsed = safeJsonParse(raw, {} as { postal_code?: string });
           postal = parsed.postal_code;
         } catch (_) {
           // ignore

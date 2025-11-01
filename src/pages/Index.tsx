@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import FeaturedCarousel from '@/components/FeaturedCarousel';
 import { Layout } from '@/components/Layout';
 import { supabase } from '@/integrations/supabase/client';
-import { FaLeaf, FaShieldAlt, FaStar, FaTruck, FaShoppingCart } from 'react-icons/fa';
+import { FaAward, FaCoins, FaStar, FaHeart, FaShoppingCart } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import heroImg from '@/assets/img/heroimg.svg';
 import catVideo from '@/assets/video/kucing.mp4';
@@ -129,10 +129,10 @@ const Index = () => {
                   Nutrisi Terbaik untuk
                   <div className="text-2xl md:text-4xl lg:text-5xl font-extrabold">Kucing kesayangan</div>
                 </h1>
-                <p className="text-sm md:text-base text-muted-foreground text-center md:text-left">
+                <p className="text-sm md:text-2xl text-muted-foreground text-center md:text-left">
                   Berikan yang terbaik untuk kucing Anda dengan makanan premium berkualitas tinggi, dipercaya oleh ribuan pemilik kucing di Indonesia.
                 </p>
-                <div className="flex justify-start sm:justify-start md:justify-start lg:justify-start">
+                {/* <div className="flex justify-start sm:justify-start md:justify-start lg:justify-start">
                   <div className="sm:flex sm:justify-start md:justify-start lg:justify-start w-full sm:w-auto md:w-auto lg:w-auto">
                     <div className="flex justify-center sm:justify-start w-full sm:w-auto">
                       <Button asChild size="lg" className="rounded-full px-5 py-2" style={{ backgroundColor: '#7A1316', color: '#F8DF7C' }}>
@@ -142,7 +142,7 @@ const Index = () => {
                       </Button>
                     </div>
                   </div>
-                </div>
+                </div> */}
               </div>
             </ResponsiveFadeInRight>
             <ParallaxScroll parallaxSpeed={-0.3} duration={1000} delay={400}>
@@ -217,15 +217,15 @@ const Index = () => {
             {/* Card 1 */}
             <FadeInScale duration={600} delay={200}>
               <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1 h-full flex flex-col">
-                <div className="flex-1 flex flex-col items-center justify-between text-center">
-                  <div className="flex flex-col items-center justify-center h-28">
+                <div className="flex flex-col items-center text-center">
+                  <div className="flex flex-col items-center mb-4">
                     <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
-                      <FaLeaf className="h-6 w-6 text-[#F8DF7C]" />
+                      <FaAward className="h-6 w-6 text-[#F8DF7C]" />
                     </div>
-                    <h3 className="text-base md:text-lg font-semibold text-brand mb-2">100% Natural</h3>
+                    <h3 className="text-base md:text-lg font-semibold text-brand mb-2">Best Quality</h3>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Terbuat dari bahan-bahan alami pilihan tanpa pengawet buatan atau pewarna kimia
+                    Menggunakan bahan baku yang berkualitas tinggi (setara dengan kebutuhan manusia) / Organik.
                   </p>
                 </div>
               </div>
@@ -234,15 +234,15 @@ const Index = () => {
             {/* Card 2 */}
             <FadeInScale duration={600} delay={300}>
               <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1 h-full flex flex-col">
-                <div className="flex-1 flex flex-col items-center justify-between text-center">
-                  <div className="flex flex-col items-center justify-center h-28">
+                <div className="flex flex-col items-center text-center">
+                  <div className="flex flex-col items-center mb-4">
                     <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
-                      <FaShieldAlt className="h-6 w-6 text-[#F8DF7C]" />
+                      <FaCoins className="h-6 w-6 text-[#F8DF7C]" />
                     </div>
-                    <h3 className="text-base md:text-lg font-semibold text-brand mb-2">Kualitas Premium</h3>
+                    <h3 className="text-base md:text-lg font-semibold text-brand mb-2">Best Value for Money</h3>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Diproduksi dengan standar internasional dan telah mendapat sertifikasi dari AAFCO
+                    Harga yang terjangkau dengan kualitas produk yang tinggi (Super Premium Class).
                   </p>
                 </div>
               </div>
@@ -251,15 +251,15 @@ const Index = () => {
             {/* Card 3 */}
             <FadeInScale duration={600} delay={400}>
               <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1 h-full flex flex-col">
-                <div className="flex-1 flex flex-col items-center justify-between text-center">
-                  <div className="flex flex-col items-center justify-center h-28">
+                <div className="flex flex-col items-center text-center">
+                  <div className="flex flex-col items-center mb-4">
                     <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
                       <FaStar className="h-6 w-6 text-[#F8DF7C]" />
                     </div>
-                    <h3 className="text-base md:text-lg font-semibold text-brand mb-2">Nutrisi Lengkap</h3>
+                    <h3 className="text-base md:text-lg font-semibold text-brand mb-2">Best Experience</h3>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Mengandung protein, vitamin, dan mineral yang dibutuhkan kucing untuk tumbuh sehat
+                    Diproduksi oleh pabrik berpengalaman lebih dari 25 tahun dalam pengalengan makanan berkualitas ekspor ke Amerika, Eropa, Jepang, dan Hongkong.
                   </p>
                 </div>
               </div>
@@ -268,15 +268,15 @@ const Index = () => {
             {/* Card 4 */}
             <FadeInScale duration={600} delay={500}>
               <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1 h-full flex flex-col">
-                <div className="flex-1 flex flex-col items-center justify-between text-center">
-                  <div className="flex flex-col items-center justify-center h-28">
+                <div className="flex flex-col items-center text-center">
+                  <div className="flex flex-col items-center mb-4">
                     <div className="h-14 w-14 bg-[#7A1316] rounded-lg flex items-center justify-center mb-4">
-                      <FaTruck className="h-6 w-6 text-[#F8DF7C]" />
+                      <FaHeart className="h-6 w-6 text-[#F8DF7C]" />
                     </div>
-                    <h3 className="text-base md:text-lg font-semibold text-brand mb-2">Pengiriman Cepat</h3>
+                    <h3 className="text-base md:text-lg font-semibold text-brand mb-2">Best Recommend</h3>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Pengiriman ke seluruh Indonesia dengan sistem tracking dan kemasan yang aman.
+                    Di rekomendasi kan agar dapat dijadikan makanan untuk pemulihan Anabul (rekomendasi oleh dokter Hewan).
                   </p>
                 </div>
               </div>

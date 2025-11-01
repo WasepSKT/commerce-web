@@ -1,4 +1,5 @@
 import { useMemo, useSyncExternalStore } from 'react';
+import { safeJsonParse } from '@/utils/storage';
 
 export type CartItem = {
   id: string;
@@ -12,8 +13,7 @@ type CartMap = Record<string, number>;
 function readStorage(): CartMap {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) as CartMap;
+    return safeJsonParse(raw, {} as CartMap);
   } catch (e) {
     console.error('Failed to read cart from localStorage', e);
     return {};
@@ -96,11 +96,7 @@ function clearMap() {
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
     if (e.key === STORAGE_KEY) {
-      try {
-        mapState = e.newValue ? (JSON.parse(e.newValue) as CartMap) : {};
-      } catch (err) {
-        mapState = {};
-      }
+      mapState = safeJsonParse(e.newValue, {} as CartMap);
       emit();
     }
   });

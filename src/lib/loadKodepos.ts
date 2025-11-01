@@ -1,3 +1,5 @@
+import { safeJsonParse } from '@/utils/storage';
+
 export type Subdistrict = { name: string; postal: string };
 export type NormLocations = Record<string, Record<string, Record<string, Subdistrict[]>>>;
 
@@ -6,8 +8,7 @@ const CACHE_KEY = 'kodepos_v1';
 function fromCache(): NormLocations | null {
   try {
     const raw = sessionStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as NormLocations;
+    return safeJsonParse(raw, null as NormLocations | null);
   } catch (e) {
     sessionStorage.removeItem(CACHE_KEY);
     return null;

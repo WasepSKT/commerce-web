@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import computePriceAfterDiscount from '@/utils/price';
 import { Order, OrderItem, CheckoutQueryParams } from '@/types/checkout';
+import { safeJsonParse } from '@/utils/storage';
 
 export function useCheckoutInitialization(params: CheckoutQueryParams) {
   const navigate = useNavigate();
@@ -116,7 +117,9 @@ export function useCheckoutInitialization(params: CheckoutQueryParams) {
 
   const parseCartData = (raw: string) => {
     try {
-      return JSON.parse(raw);
+      const parsed = safeJsonParse(raw, null);
+      if (!parsed) throw new Error('Data keranjang tidak valid');
+      return parsed;
     } catch (parseErr) {
       throw new Error('Data keranjang tidak valid');
     }

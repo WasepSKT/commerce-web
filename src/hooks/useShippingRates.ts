@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getShippingRates, ShippingRate } from '@/services/shippingService';
 import { OrderItem } from '@/types/checkout';
+import { safeJsonParse } from '@/utils/storage';
 
 export function useShippingRates(profile: any, items: OrderItem[]) {
   const { toast } = useToast();
@@ -16,7 +17,7 @@ export function useShippingRates(profile: any, items: OrderItem[]) {
       const raw = localStorage.getItem('rp_profile');
       if (raw) {
         try {
-          const parsed = JSON.parse(raw) as { postal_code?: string };
+          const parsed = safeJsonParse(raw, {} as { postal_code?: string });
           postal = parsed.postal_code;
         } catch (_) {
           // ignore
