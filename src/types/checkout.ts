@@ -1,3 +1,15 @@
+export type Order = { id: string; total_amount?: number; user_id?: string };
+
+export type OrderItem = {
+  id?: string;
+  order_id?: string;
+  product_id?: string;
+  product_name?: string;
+  price?: number;
+  unit_price?: number;
+  quantity?: number;
+};
+
 export interface Order {
   id: string;
   total_amount?: number;

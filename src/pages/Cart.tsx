@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Layout } from '@/components/Layout';
 import useCart from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { Database } from '@/types/supabase';
 import { useToast } from '@/hooks/use-toast';
 import EmptyState from '@/components/ui/EmptyState';
 import {
@@ -16,461 +14,84 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogClose,
 } from '@/components/ui/dialog';
 import SEOHead from '@/components/seo/SEOHead';
 import { generateBreadcrumbStructuredData } from '@/utils/seoData';
-import computePriceAfterDiscount from '@/utils/price';
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  image_url?: string;
-  stock_quantity?: number;
-  discount_percent?: number | null;
-}
-
-// Type for referral_purchases table sesuai schema
-type ReferralPurchase = {
-  id?: string;
-  referrer_id: string;
-  referred_id?: string;
-  order_id: string;
-  amount: number;
-  status: string;
-  created_at?: string;
-  updated_at?: string;
-};
+import { useCartProducts } from '@/hooks/useCartProducts';
+import { useCartValidation } from '@/hooks/useCartValidation';
+import { useCartLineItems } from '@/hooks/useCartLineItems';
+import { useCartCheckout } from '@/hooks/useCartCheckout';
+import CartSkeleton from '@/components/cart/CartSkeleton';
+import CartItemCard from '@/components/cart/CartItemCard';
+import OrderSummary from '@/components/cart/OrderSummary';
+import CartRecapDialog from '@/components/cart/CartRecapDialog';
+import { CART_MESSAGES, CART_ROUTES } from '@/constants/cart';
+import { formatPrice } from '@/utils/format';
 
 export default function CartPage() {
-  const { items, map, totalItems, update, removeItem, clear } = useCart();
+  const { items, totalItems, update, removeItem, clear } = useCart();
   const { profile, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
   const [showRecap, setShowRecap] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const [creatingOrder, setCreatingOrder] = useState(false);
-  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
-  const { toast } = useToast();
-  const hasCleanedUp = useRef(false);
+  // Fetch products for cart items
+  const cartItemIds = items.map((item) => item.id);
+  const { products, loading } = useCartProducts(cartItemIds);
 
-  // Function to clear corrupted cart data
-  const clearCorruptedCart = useCallback(() => {
-    try {
-      localStorage.removeItem('rp_cart_v1');
-      clear();
-      toast({
-        title: 'Keranjang dibersihkan',
-        description: 'Data keranjang yang rusak telah dihapus.'
-      });
-      window.location.reload(); // Reload to reset state
-    } catch (err) {
-      console.error('Failed to clear cart:', err);
-    }
-  }, [clear, toast]);
+  // Validate cart items
+  const { invalidItemsInfo, clearCorruptedCart } = useCartValidation(items);
 
-  // Memoize invalid items detection to prevent loops
-  const invalidItemsInfo = useMemo(() => {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    const invalid = items.filter(item => {
-      if (!item.id || typeof item.id !== 'string' || item.id.trim() === '') {
-        return true;
-      }
-      return !uuidRegex.test(item.id);
-    });
+  // Calculate line items and subtotal
+  const { lineItems, subtotal } = useCartLineItems(items, products);
 
-    return {
-      hasInvalid: invalid.length > 0,
-      invalidItems: invalid,
-      count: invalid.length
-    };
-  }, [items]);
+  // Checkout logic
+  const { handleCheckout } = useCartCheckout(totalItems, items);
 
-  // Clean up invalid cart items only when first detected
-  useEffect(() => {
-    if (invalidItemsInfo.hasInvalid && !hasCleanedUp.current) {
-      console.warn('Found invalid cart items, cleaning up:', invalidItemsInfo.invalidItems);
-      hasCleanedUp.current = true; // Mark as cleaned up
-
-      // Clean up invalid items in a single batch
-      invalidItemsInfo.invalidItems.forEach(item => removeItem(item.id));
-
-      toast({
-        title: 'Data keranjang dibersihkan',
-        description: `Dihapus ${invalidItemsInfo.count} item yang tidak valid.`,
-        variant: 'default'
-      });
-    }
-  }, [invalidItemsInfo.hasInvalid, invalidItemsInfo.invalidItems, invalidItemsInfo.count, removeItem, toast]);
-
-  // recap modal is now immediate action only; no auto-countdown
-
-  // small helper to normalize Supabase response shapes
-  function normalizeSupabaseResult<T>(res: unknown): { data?: T | null; error?: unknown } {
-    if (res && typeof res === 'object') {
-      const r = res as Record<string, unknown>;
-      return { data: r['data'] as T | undefined, error: r['error'] };
-    }
-    return { data: res as T, error: undefined };
-  }
-
-  // UUID validation regex
-  const isValidUUID = (id: string): boolean => {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(id);
-  };
-
-  const fetchProducts = useCallback(async (ids: string[]) => {
-    if (ids.length === 0) {
-      setProducts([]);
-      setLoading(false);
-      return;
-    }
-
-    // Filter out invalid IDs and non-UUIDs (don't remove here to avoid loops)
-    const validIds = ids.filter(id => {
-      if (!id || typeof id !== 'string' || id.trim() === '') {
-        return false;
-      }
-
-      if (!isValidUUID(id)) {
-        console.warn('Skipping invalid UUID:', id);
-        return false;
-      }
-
-      return true;
-    });
-
-    if (validIds.length === 0) {
-      setProducts([]);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      console.log('Fetching products for valid UUIDs:', validIds);
-      const res = await supabase
-        .from('products')
-        // include discount_percent so cart can compute effective unit price
-        .select('id,name,price,image_url,stock_quantity,discount_percent')
-        .in('id', validIds)
-        .eq('is_active', true);
-
-      const { data: fetched, error: fetchError } = normalizeSupabaseResult<Product[]>(res);
-      if (fetchError) {
-        // If the column doesn't exist or another error occurred, log and throw to fall back to error UI
-        console.error('Supabase error while fetching products:', fetchError);
-        throw fetchError;
-      }
-      console.log('Fetched products:', fetched);
-      setProducts((fetched as Product[]) || []);
-    } catch (err) {
-      console.error('Failed to fetch cart products', err);
-      toast({ variant: 'destructive', title: 'Gagal memuat keranjang', description: 'Terjadi kesalahan saat mengambil data produk.' });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
-
-  // Only refetch product metadata when the set of product IDs changes.
-  // This prevents re-fetching when only quantities change.
-  const idsKey = useMemo(() => {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    const validIds = items
-      .map(i => i.id)
-      .filter(id => id && typeof id === 'string' && id.trim() !== '' && uuidRegex.test(id))
-      .sort();
-    return validIds.join(',');
-  }, [items]);
-
-  useEffect(() => {
-    const ids = idsKey ? idsKey.split(',').filter(Boolean) : [];
-    setLoading(true);
-    void fetchProducts(ids);
-    // depend on idsKey (stable representation of id set) and fetchProducts
-  }, [idsKey, fetchProducts]);
-
-  const lineItems = useMemo(() => {
-    return items
-      .map((it) => {
-        const product = products.find((p) => p.id === it.id);
-        const originalPrice = product?.price ?? 0;
-        const discountPercent = (product as Product & { discount_percent?: number | null })?.discount_percent ?? 0;
-        const priceInfo = computePriceAfterDiscount({ price: originalPrice, discount_percent: discountPercent });
-        return {
-          id: it.id,
-          name: product?.name ?? 'Produk tidak ditemukan',
-          price: originalPrice,
-          unit_price: priceInfo.discounted,
-          discount_percent: priceInfo.discountPercent,
-          quantity: it.quantity,
-          image_url: product?.image_url,
-          stock_quantity: product?.stock_quantity ?? 0,
-        };
-      });
-  }, [items, products]);
-
-  const subtotal = useMemo(() => lineItems.reduce((s, it) => s + (it.unit_price ?? it.price) * it.quantity, 0), [lineItems]);
-
-  const formatPrice = (value: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
-
-  const handleCheckout = async () => {
-    if (totalItems === 0) {
-      toast({ variant: 'destructive', title: 'Keranjang kosong', description: 'Tambahkan produk terlebih dahulu.' });
-      return;
-    }
-
-    // Validate stock before checkout
-    try {
-      const { StockService } = await import('@/services/stockService');
-      const cartItems = items.map(item => ({
-        product_id: item.id,
-        quantity: item.quantity
-      }));
-
-      const stockValidation = await StockService.validateCartStock(cartItems);
-      if (!stockValidation.valid) {
-        toast({
-          variant: 'destructive',
-          title: 'Stok tidak mencukupi',
-          description: 'Beberapa produk tidak memiliki stok yang cukup. Silakan periksa keranjang Anda.'
-        });
-        return;
-      }
-    } catch (error) {
-      console.warn('Failed to validate stock before checkout:', error);
-      // Continue with checkout if stock validation fails
-    }
-
-    // Require authentication
-    if (!isAuthenticated) {
-      toast({ variant: 'destructive', title: 'Harap masuk terlebih dahulu', description: 'Silakan login untuk melanjutkan ke checkout.' });
-      navigate('/auth');
-      return;
-    }
-
-    // Require profile completion: all essential shipping information
-    const missingFields: string[] = [];
-    if (!profile?.full_name) missingFields.push('Nama penerima');
-    if (!profile?.phone) missingFields.push('Nomor HP/WA');
-    if (!profile?.address) missingFields.push('Alamat lengkap');
-    if (!profile?.province) missingFields.push('Provinsi');
-    if (!profile?.city) missingFields.push('Kabupaten/Kota');
-    if (!profile?.district) missingFields.push('Kecamatan');
-    if (!profile?.subdistrict) missingFields.push('Desa/Kelurahan');
-    if (!profile?.postal_code) missingFields.push('Kode Pos');
-
-    if (missingFields.length > 0) {
-      toast({
-        variant: 'destructive',
-        title: 'Data Alamat Belum Lengkap',
-        description: `Silakan lengkapi data berikut: ${missingFields.join(', ')}.`
-      });
-      // Redirect to profile page so user can complete it, return to cart after save
-      navigate('/profile?next=/cart');
-      return;
-    }
-
-    // Navigate directly to the Checkout page in dry-run/test mode to avoid creating DB rows here.
-    // Use a hard redirect so behavior matches ProductDetail and is reliable in all environments.
-    const target = `/checkout?dry_run=1&from_cart=1`;
-    console.debug('[Cart] Redirecting to checkout (dry-run):', target);
-    if (typeof window !== 'undefined') {
-      // Use assign so the previous page remains in history (user can go back)
-      window.location.assign(target);
-      return;
-    }
-    // Fallback to SPA navigation if `window` is not available (e.g. SSR test harness)
-    navigate(target);
-  };
-
-  // Create pending order (called after user confirms details)
-  // idempotent: if a creation is already in-flight or an id already exists, return it
-  const createPendingOrder = async (): Promise<string> => {
-    if (pendingOrderId) return pendingOrderId;
-    if (creatingOrder) {
-      // ...existing code...
-      return new Promise((resolve, reject) => {
-        const start = Date.now();
-        const interval = setInterval(() => {
-          if (pendingOrderId) {
-            clearInterval(interval);
-            resolve(pendingOrderId as string);
-          }
-          if (!creatingOrder && !pendingOrderId && Date.now() - start > 15000) {
-            clearInterval(interval);
-            reject(new Error('Timeout waiting for order creation'));
-          }
-        }, 200);
-      });
-    }
-
-    setCreatingOrder(true);
-    try {
-      // Build complete address string
-      let fullAddress = profile?.address || '';
-      if (profile?.subdistrict) fullAddress += `\n${profile.subdistrict}`;
-      if (profile?.district) fullAddress += `, ${profile.district}`;
-      if (profile?.city) fullAddress += `\n${profile.city}`;
-      if (profile?.province) fullAddress += `, ${profile.province}`;
-      if (profile?.postal_code) fullAddress += `\nKode Pos: ${profile.postal_code}`;
-
-      const orderPayload = {
-        total_amount: subtotal,
-        status: 'pending' as const,
-        customer_name: profile?.full_name ?? '',
-        customer_phone: profile?.phone ?? '',
-        customer_address: fullAddress,
-        user_id: profile?.user_id,
-      };
-
-      const orderInsertRes = await supabase.from('orders').insert([orderPayload]).select().single();
-      const { data: orderData, error: orderError } = normalizeSupabaseResult<Record<string, unknown>>(orderInsertRes);
-      if (orderError) throw orderError;
-      const orderId = orderData && (orderData as Record<string, unknown>)['id'] as string | undefined;
-      if (!orderId) throw new Error('No order id returned from insert');
-
-      // build items payload and insert
-      const itemsPayload = lineItems.map(li => {
-        // find the product to get discount_percent (we included it in the fetch)
-        const prod = products.find(p => p.id === li.id) as (Product & { discount_percent?: number | null }) | undefined;
-        const priceInfo = computePriceAfterDiscount({ price: li.price, discount_percent: prod?.discount_percent ?? 0 });
-        return { order_id: orderId, product_id: li.id, quantity: li.quantity, price: li.price, unit_price: priceInfo.discounted, discount_percent: priceInfo.discountPercent };
-      });
-      // Try inserting order_items including discount_percent. If the DB schema doesn't have that column
-      // (PGRST204), retry without discount_percent to remain backward-compatible.
-      let itemsRes: unknown;
-      try {
-        itemsRes = await supabase.from('order_items').insert(itemsPayload).select();
-      } catch (firstErr) {
-        console.warn('First attempt to insert order_items failed, retrying without discount_percent', firstErr);
-        const fallback = itemsPayload.map(({ order_id, product_id, quantity, price, unit_price }) => ({ order_id, product_id, quantity, price, unit_price }));
-        try {
-          itemsRes = await supabase.from('order_items').insert(fallback).select();
-        } catch (fallbackErr) {
-          console.error('Failed to insert cart order items (fallback)', fallbackErr);
-          try {
-            await supabase.from('orders').delete().eq('id', orderId);
-          } catch (delErr) {
-            console.error('Failed rollback after item insert failure', delErr);
-          }
-          throw new Error('Gagal menyimpan item pesanan');
-        }
-      }
-
-      const { data: itemsData, error: itemsError } = normalizeSupabaseResult<unknown[]>(itemsRes);
-      if (itemsError || !itemsData || (Array.isArray(itemsData) && itemsData.length === 0)) {
-        console.error('Failed to insert cart order items', itemsError ?? itemsRes);
-        // attempt rollback
-        try {
-          await supabase.from('orders').delete().eq('id', orderId);
-        } catch (delErr) {
-          console.error('Failed rollback after item insert failure', delErr);
-        }
-        throw new Error('Gagal menyimpan item pesanan');
-      }
-
-      // Decrement stock via RPC
-      try {
-        const { StockService } = await import('@/services/stockService');
-        const stockResult = await StockService.decrementStockForOrder(orderId);
-        if (!stockResult.success) {
-          console.warn('Failed to decrement stock:', stockResult.error);
-          // Non-fatal: continue flow, stock can be managed manually
-        } else {
-          console.log('Stock successfully decremented for order:', orderId);
-        }
-      } catch (stockErr) {
-        // Non-fatal: continue flow
-        console.warn('Failed to call stock decrement service', stockErr);
-      }
-
-      // Insert referral purchase if user was referred
-      if (profile?.referred_by) {
-        try {
-
-          const referralPayload: Database['public']['Tables']['referral_purchases']['Insert'] = {
-            order_id: orderId,
-            referrer_id: profile.referred_by,
-            referred_id: profile?.user_id ?? undefined,
-            amount: subtotal,
-            status: 'pending',
-            // created_at, updated_at will be set by DB default
-          };
-          await supabase
-            .from('referral_purchases')
-            .insert([referralPayload]);
-        } catch (refErr) {
-          console.error('Failed to insert referral purchase', refErr);
-        }
-      }
-
-      // Clear cart on successful checkout creation
-      try {
-        clear();
-        localStorage.removeItem('rp_cart_v1');
-      } catch (_) {
-        // ignore
-      }
-
-      setPendingOrderId(orderId);
-      return orderId;
-    } catch (err) {
-      console.error('Checkout failed', err);
-      const msg = err instanceof Error ? err.message : String(err);
-      toast({ variant: 'destructive', title: 'Gagal Checkout', description: msg });
-      throw err;
-    } finally {
-      setCreatingOrder(false);
-    }
-  };
-
-  // Open the recap dialog (do not create order yet). This mirrors ProductDetail flow.
-  const openRecap = () => {
+  // Open recap dialog
+  const openRecap = useCallback(() => {
     setShowConfirm(false);
     setShowRecap(true);
-  };
+  }, []);
 
-
-  // Ensure an order exists, then navigate to Checkout page
-  // NOTE: For test/dry-run checkout we do NOT persist orders here. Instead
-  // navigate to the Checkout page with `dry_run=1` and let the Checkout page
-  // handle building a temporary order payload for payment session creation.
-  const proceedToCheckout = async () => {
+  // Navigate to checkout
+  const proceedToCheckout = useCallback(async () => {
     try {
-      // Close recap and navigate to Checkout in dry-run mode to avoid creating DB rows
       setShowRecap(false);
-      // pass a flag so Checkout will run in dry-run/test mode and not call supabase inserts
-      navigate(`/checkout?dry_run=1`);
+      navigate(`${CART_ROUTES.CHECKOUT}?dry_run=1`);
     } catch (err) {
       console.error('Failed navigate to checkout', err);
       const msg = err instanceof Error ? err.message : String(err);
-      toast({ variant: 'destructive', title: 'Gagal ke checkout', description: msg });
+      toast({
+        variant: 'destructive',
+        title: 'Gagal ke checkout',
+        description: msg,
+      });
       throw err;
     }
-  };
+  }, [navigate, toast]);
+
+  const handleRemoveItem = useCallback(
+    (id: string) => {
+      removeItem(id);
+      toast({ title: CART_MESSAGES.ITEM_REMOVED });
+    },
+    [removeItem, toast]
+  );
+
+  const handleClearCart = useCallback(() => {
+    clear();
+    toast({ title: CART_MESSAGES.CLEAR_SUCCESS });
+  }, [clear, toast]);
 
   if (loading) {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-8">
-          <div className="animate-pulse">
-            <div className="h-6 bg-gray-200 rounded w-48 mb-4" />
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-24 bg-gray-200 rounded" />
-              ))}
-            </div>
-          </div>
-        </div>
+        <CartSkeleton />
       </Layout>
     );
   }
-
-
 
   // Generate breadcrumb structured data
   const breadcrumbData = generateBreadcrumbStructuredData([
@@ -492,154 +113,82 @@ export default function CartPage() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-primary">Keranjang Belanja</h1>
+          <h1 className="text-2xl font-bold text-primary">{CART_MESSAGES.CART_TITLE}</h1>
           <div className="space-x-2">
             <Button variant="ghost" asChild>
-              <Link to="/products">Lanjut Belanja</Link>
+              <Link to={CART_ROUTES.PRODUCTS}>{CART_MESSAGES.CONTINUE_SHOPPING}</Link>
             </Button>
-            <Button variant="destructive" onClick={() => { clear(); toast({ title: 'Keranjang dibersihkan' }); }}>
-              Kosongkan
+            <Button variant="destructive" onClick={handleClearCart}>
+              {CART_MESSAGES.CLEAR_BUTTON}
             </Button>
           </div>
         </div>
 
-        {(() => {
-          if (invalidItemsInfo.hasInvalid) {
-            return (
-              <div className="py-12 text-center">
-                <div className="max-w-md mx-auto">
-                  <h3 className="text-lg font-semibold mb-2 text-red-600">Data Keranjang Rusak</h3>
-                  <p className="text-muted-foreground mb-6">
-                    Ditemukan data keranjang yang tidak valid. Silakan bersihkan keranjang untuk melanjutkan.
-                  </p>
-                  <div className="space-x-2">
-                    <Button onClick={clearCorruptedCart} variant="destructive">
-                      Bersihkan Keranjang
-                    </Button>
-                    <Button asChild variant="outline">
-                      <Link to="/products">Mulai Belanja</Link>
-                    </Button>
-                  </div>
-                </div>
+        {/* Invalid Items Error State */}
+        {invalidItemsInfo.hasInvalid && (
+          <div className="py-12 text-center">
+            <div className="max-w-md mx-auto">
+              <h3 className="text-lg font-semibold mb-2 text-red-600">{CART_MESSAGES.CART_CORRUPTED}</h3>
+              <p className="text-muted-foreground mb-6">{CART_MESSAGES.CART_CORRUPTED_DESC}</p>
+              <div className="space-x-2">
+                <Button onClick={clearCorruptedCart} variant="destructive">
+                  {CART_MESSAGES.CLEAR_CART}
+                </Button>
+                <Button asChild variant="outline">
+                  <Link to={CART_ROUTES.PRODUCTS}>{CART_MESSAGES.START_SHOPPING}</Link>
+                </Button>
               </div>
-            );
-          }
+            </div>
+          </div>
+        )}
 
-          if (lineItems.length === 0) {
-            return (
-              <div className="py-12">
-                <EmptyState
-                  title="Keranjang kosong"
-                  description="Tambahkan produk ke keranjang untuk memulai belanja."
-                  lottieSrc="https://lottie.host/6ebe5320-be98-4e5d-90b5-a9f5d2f186fd/ez07wuijAR.lottie"
-                  cta={{ label: 'Lanjut Belanja', onClick: () => { navigate('/products'); } }}
-                />
-              </div>
-            );
-          }
+        {/* Empty Cart State */}
+        {!invalidItemsInfo.hasInvalid && lineItems.length === 0 && (
+          <div className="py-12">
+            <EmptyState
+              title={CART_MESSAGES.EMPTY_CART}
+              description={CART_MESSAGES.EMPTY_CART_DESC}
+              lottieSrc="https://lottie.host/6ebe5320-be98-4e5d-90b5-a9f5d2f186fd/ez07wuijAR.lottie"
+              cta={{ label: CART_MESSAGES.CONTINUE_SHOPPING, onClick: () => navigate(CART_ROUTES.PRODUCTS) }}
+            />
+          </div>
+        )}
 
-          return null;
-        })()}
-
-        {lineItems.length > 0 && (
+        {/* Cart Items and Summary */}
+        {!invalidItemsInfo.hasInvalid && lineItems.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-4">
-              {lineItems.map(li => (
-                <Card key={li.id} className="flex items-center p-4">
-                  <img src={li.image_url || '/placeholder.svg'} alt={li.name} className="w-28 h-28 object-cover rounded mr-4" />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-medium text-primary">{li.name}</h3>
-                        <div className="flex items-baseline gap-2">
-                          {typeof li.discount_percent === 'number' && li.discount_percent > 0 ? (
-                            <>
-                              <span className="text-xs text-muted-foreground line-through">{formatPrice(li.price)}</span>
-                              <span className="text-lg font-semibold text-primary">{formatPrice(li.unit_price ?? li.price)}</span>
-                            </>
-                          ) : (
-                            <span className="text-lg font-medium text-primary">{formatPrice(li.price)}</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-sm text-muted-foreground">Subtotal: {formatPrice((li.unit_price ?? li.price) * li.quantity)}</div>
-                    </div>
-
-                    <div className="mt-3 flex items-center space-x-2">
-                      <Button size="sm" variant="outline" onClick={() => update(li.id, Math.max(0, li.quantity - 1))}>-</Button>
-                      <span className="w-10 text-center">{li.quantity}</span>
-                      <Button size="sm" variant="outline" onClick={() => update(li.id, Math.min(li.stock_quantity || 9999, li.quantity + 1))}>+</Button>
-                      <Button size="sm" variant="ghost" onClick={() => { removeItem(li.id); toast({ title: 'Produk dihapus' }); }}>Hapus</Button>
-                    </div>
-                  </div>
-                </Card>
+              {lineItems.map((li) => (
+                <CartItemCard
+                  key={li.id}
+                  item={li}
+                  onUpdate={update}
+                  onRemove={handleRemoveItem}
+                />
               ))}
             </div>
 
             <div className="space-y-4">
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold mb-2 text-primary">Ringkasan Pesanan</h3>
-                  <div className="flex justify-between text-sm text-muted-foreground mb-2">
-                    <span>Jumlah item</span>
-                    <span>{totalItems}</span>
-                  </div>
-                  <div className="flex justify-between text-lg font-medium mb-4">
-                    <span>Total</span>
-                    <span>{formatPrice(subtotal)}</span>
-                  </div>
-                  {isAuthenticated && profile && profile.full_name && profile.phone && profile.address && profile.postal_code ? (
-                    // Render as plain anchor when user is already authenticated and profile appears complete.
-                    // This forces a reliable browser navigation to the Checkout page (dry-run) matching ProductDetail behavior.
-                    <a href="/checkout?dry_run=1&from_cart=1" className="inline-block w-full">
-                      <Button className="w-full">Checkout</Button>
-                    </a>
-                  ) : (
-                    <Button className="w-full" onClick={handleCheckout}>Checkout</Button>
-                  )}
-                </CardContent>
-              </Card>
+              <OrderSummary
+                totalItems={totalItems}
+                subtotal={subtotal}
+                isAuthenticated={isAuthenticated}
+                profile={profile}
+                onCheckout={handleCheckout}
+              />
 
-              {/* Recap Dialog for Cart checkout */}
-              <Dialog open={showRecap} onOpenChange={setShowRecap}>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Ringkasan Pesanan</DialogTitle>
-                    <DialogDescription>Periksa rekap pesanan. Tekan konfirmasi untuk menyimpan pesanan dan melanjutkan ke halaman Checkout.</DialogDescription>
-                  </DialogHeader>
+              {/* Recap Dialog */}
+              <CartRecapDialog
+                open={showRecap}
+                onOpenChange={setShowRecap}
+                lineItems={lineItems}
+                subtotal={subtotal}
+                pendingOrderId={null}
+                creatingOrder={false}
+                onProceed={proceedToCheckout}
+              />
 
-                  <div className="py-2 space-y-2 text-sm text-muted-foreground">
-                    {lineItems.map(li => (
-                      <div key={li.id} className="flex justify-between">
-                        <div>{li.name} x{li.quantity}</div>
-                        <div>{formatPrice((li.unit_price ?? li.price) * li.quantity)}</div>
-                      </div>
-                    ))}
-
-                    <div className="mt-2 flex justify-between font-medium">
-                      <div>Total</div>
-                      <div>{formatPrice(subtotal)}</div>
-                    </div>
-
-                    {!pendingOrderId ? (
-                      <div className="mt-2 text-xs text-muted-foreground">Order akan dibuat setelah Anda menekan "Lanjut ke Checkout".</div>
-                    ) : null}
-                  </div>
-
-                  <DialogFooter>
-                    <Button variant="ghost" onClick={() => setShowRecap(false)}>Batal</Button>
-                    <Button disabled={creatingOrder} onClick={async () => {
-                      try {
-                        await proceedToCheckout();
-                      } catch (e) {
-                        // proceedToCheckout already toasts
-                      }
-                    }}>{creatingOrder ? 'Membuat...' : 'Lanjut ke Checkout'}</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              {/* Confirmation Dialog: show order details and ask user to confirm before creating pending order */}
+              {/* Confirmation Dialog */}
               <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
                 <DialogContent className="max-w-md">
                   <DialogHeader>
@@ -651,7 +200,7 @@ export default function CartPage() {
 
                   <div className="space-y-3">
                     <div className="space-y-2">
-                      {lineItems.map(li => (
+                      {lineItems.map((li) => (
                         <div key={li.id} className="flex justify-between items-start py-2 border-b last:border-b-0">
                           <div className="flex-1">
                             <div className="font-medium text-sm">{li.name}</div>
@@ -672,31 +221,39 @@ export default function CartPage() {
                     </div>
 
                     <div className="bg-muted/30 p-3 rounded-lg text-sm space-y-1">
-                      <div><span className="font-medium">Nama penerima:</span> {profile?.full_name ?? '-'}</div>
-                      <div><span className="font-medium">No. HP/WA:</span> {profile?.phone ?? '-'}</div>
-                      <div><span className="font-medium">Alamat:</span> {profile?.address ?? '-'}</div>
+                      <div>
+                        <span className="font-medium">Nama penerima:</span> {profile?.full_name ?? '-'}
+                      </div>
+                      <div>
+                        <span className="font-medium">No. HP/WA:</span> {profile?.phone ?? '-'}
+                      </div>
+                      <div>
+                        <span className="font-medium">Alamat:</span> {profile?.address ?? '-'}
+                      </div>
                     </div>
                   </div>
 
                   <DialogFooter>
-                    <Button variant="ghost" onClick={() => setShowConfirm(false)}>Kembali</Button>
-                    <Button disabled={creatingOrder} onClick={() => void openRecap()}>
-                      {creatingOrder ? 'Membuat...' : 'Konfirmasi & Lanjut'}
+                    <Button variant="ghost" onClick={() => setShowConfirm(false)}>
+                      Kembali
                     </Button>
+                    <Button onClick={openRecap}>Konfirmasi & Lanjut</Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
 
               <Card>
                 <CardContent className="p-4 text-sm text-muted-foreground">
-                  <p>Silakan konfirmasi pesanan. Setelah konfirmasi Anda akan diarahkan ke halaman Checkout untuk memilih pengiriman dan pembayaran.</p>
+                  <p>
+                    Silakan konfirmasi pesanan. Setelah konfirmasi Anda akan diarahkan ke halaman
+                    Checkout untuk memilih pengiriman dan pembayaran.
+                  </p>
                 </CardContent>
               </Card>
-
             </div>
           </div>
         )}
-      </div>;
+      </div>
     </Layout>
   );
 }

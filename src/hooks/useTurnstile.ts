@@ -42,15 +42,19 @@ export function useTurnstile() {
         await ensureScript();
         if (cancelled) return;
         const win = window as Window & { turnstile?: TurnstileAPI };
-        if (win.turnstile && containerRef.current) {
-          // Use 'flexible' so widget scales responsively to its container width
-          const id = win.turnstile.render(containerRef.current, {
-            sitekey,
-            size: 'flexible',
-            theme: 'light'
-          });
+        const tryRender = () => {
+          if (cancelled) return;
+          if (!win.turnstile) return;
+          const el = containerRef.current;
+          if (!el) {
+            // wait for the container to mount
+            requestAnimationFrame(tryRender);
+            return;
+          }
+          const id = win.turnstile.render(el, { sitekey, size: 'flexible', theme: 'light' });
           widgetIdRef.current = typeof id === 'number' || typeof id === 'string' ? id : null;
-        }
+        };
+        tryRender();
       } catch (_e) {
         // ignore
       }

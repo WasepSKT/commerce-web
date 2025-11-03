@@ -1,37 +1,25 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useTurnstile } from '@/hooks/useTurnstile';
-import bgLogin from '@/assets/bg/bg-login.webp';
-import googleLogo from '@/assets/img/Google__G__logo.svg.png';
-import logoImg from '/regalpaw.png';
+import { useEffect, useState } from 'react';
 import { Navigate, useSearchParams, Link, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useTurnstile } from '@/hooks/useTurnstile';
 import { useAuth } from '@/hooks/useAuth';
 import { getRoleBasedRedirect, UserRole } from '@/utils/rolePermissions';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Eye, EyeOff } from 'lucide-react';
+import { validateSignupForm } from '@/utils/signupValidation';
+import { logTurnstileDebug } from '@/utils/turnstileDebug';
+import { storePendingReferralCode } from '@/utils/referralStorage';
+import { AUTH_MESSAGES, AUTH_ROUTES } from '@/constants/auth';
+import bgLogin from '@/assets/bg/bg-login.webp';
+import googleLogo from '@/assets/img/Google__G__logo.svg.png';
+import logoImg from '/regalpaw.png';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import SEOHead from '@/components/seo/SEOHead';
 import { generateBreadcrumbStructuredData } from '@/utils/seoData';
-
-// Interface untuk response dari function handle_referral_signup
-interface ReferralResponse {
-  success: boolean;
-  error?: string;
-  message?: string;
-  reward_points?: number;
-  referrer_id?: string;
-  referrer_name?: string;
-  referral_id?: string;
-}
-
-// Interface untuk parameter RPC function (sesuai dengan yang diharapkan Supabase)
-interface ReferralParams {
-  p_referred_id: string;
-  p_referral_code: string;
-}
+import LoadingSpinner from '@/components/auth/LoadingSpinner';
+import PasswordInput from '@/components/auth/PasswordInput';
 
 export default function Signup() {
   const { isAuthenticated, signInWithGoogle, profile } = useAuth();
@@ -41,115 +29,129 @@ export default function Signup() {
   const [referralCode, setReferralCode] = useState('');
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [loadingEmailSignup, setLoadingEmailSignup] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  // Form state
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
-  // Turnstile via hook
+
+  // Turnstile via hook (handles sitekey, script, render, execute)
   const { sitekey: TURNSTILE_SITEKEY, containerRef: widgetContainerRef, execute: executeTurnstile } = useTurnstile();
 
-  // Debug Turnstile configuration
+  // Debug Turnstile configuration (development only)
   useEffect(() => {
-    const env = import.meta.env as Record<string, string | boolean | undefined>;
-    console.log('🔧 Turnstile Debug Info (Signup):', {
-      sitekey: TURNSTILE_SITEKEY,
-      hasSitekey: !!TURNSTILE_SITEKEY,
-      sitekeyLength: TURNSTILE_SITEKEY?.length || 0,
-      env_available: {
-        direct: typeof env.VITE_TURNSTILE_SITEKEY === 'string' ? '✅' : '❌',
-        dev: typeof env.VITE_TURNSTILE_SITEKEY_DEV === 'string' ? '✅' : '❌',
-        stg: typeof env.VITE_TURNSTILE_SITEKEY_STG === 'string' ? '✅' : '❌',
-        prod: typeof env.VITE_TURNSTILE_SITEKEY_PROD === 'string' ? '✅' : '❌',
-      }
-    });
+    logTurnstileDebug(TURNSTILE_SITEKEY);
   }, [TURNSTILE_SITEKEY]);
 
-
-
+  // Get referral code from URL params
   useEffect(() => {
-    // Check if there's a referral code in URL
     const ref = searchParams.get('ref');
     if (ref) {
       setReferralCode(ref);
+      storePendingReferralCode(ref);
     }
   }, [searchParams]);
 
+  // Store referral code when it changes
+  useEffect(() => {
+    if (referralCode && referralCode.trim() !== '') {
+      storePendingReferralCode(referralCode);
+    }
+  }, [referralCode]);
+
+  /**
+   * Handle Google sign-in with CAPTCHA verification
+   * CAPTCHA is required before OAuth redirect for security
+   */
   const handleGoogleSignIn = async () => {
     setLoadingGoogle(true);
+    try {
+      // Store referral code for later processing
+      if (referralCode && referralCode.trim() !== '') {
+        storePendingReferralCode(referralCode);
+        console.log('🔗 Referral code stored for Google signup:', referralCode);
+      }
 
-    // Store referral code for later use (for Google signup too)
-    if (referralCode) {
-      localStorage.setItem('pendingReferralCode', referralCode);
-      console.log('🔗 Referral code stored for Google signup:', referralCode);
-    }
+      // Execute CAPTCHA verification before Google OAuth
+      let token: string | null = null;
+      if (TURNSTILE_SITEKEY && TURNSTILE_SITEKEY.trim() !== '') {
+        console.log('🔒 Turnstile configured, attempting verification for Google sign-in...');
+        token = await executeTurnstile();
+        if (!token) {
+          toast({
+            variant: 'destructive',
+            title: AUTH_MESSAGES.CAPTCHA_FAILED,
+            description: AUTH_MESSAGES.CAPTCHA_REQUIRED,
+          });
+          setLoadingGoogle(false);
+          return;
+        }
+      } else {
+        console.log('ℹ️ Turnstile not configured, proceeding without captcha for Google sign-in');
+      }
 
-    const { error } = await signInWithGoogle();
-    setLoadingGoogle(false);
-    if (error) {
+      // Proceed with Google OAuth only after CAPTCHA verification (if required)
+      const { error } = await signInWithGoogle();
+      if (error) {
+        toast({
+          variant: 'destructive',
+          title: AUTH_MESSAGES.GOOGLE_LOGIN_FAILED,
+          description: error.message,
+        });
+      } else {
+        console.log('✅ Google signup successful, referral will be processed by useEffect');
+      }
+    } catch (error) {
+      console.error('Google sign-in error:', error);
       toast({
-        variant: "destructive",
-        title: "Gagal masuk",
-        description: error.message,
+        variant: 'destructive',
+        title: AUTH_MESSAGES.ERROR_OCCURRED,
+        description: AUTH_MESSAGES.PLEASE_RETRY,
       });
-    } else {
-      console.log('✅ Google signup successful, referral will be processed by useEffect');
+    } finally {
+      setLoadingGoogle(false);
     }
   };
 
+  /**
+   * Handle email/password signup with CAPTCHA verification
+   */
   const handleEmailSignup = async () => {
-    if (!email || !password || !fullName) {
+    // Validate form
+    const validation = validateSignupForm(fullName, email, password, confirmPassword);
+    if (!validation.isValid) {
       toast({
-        variant: "destructive",
-        title: "Form tidak lengkap",
-        description: "Mohon isi semua field yang diperlukan",
-      });
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      toast({
-        variant: "destructive",
-        title: "Password tidak cocok",
-        description: "Konfirmasi password harus sama dengan password",
-      });
-      return;
-    }
-
-    if (password.length < 6) {
-      toast({
-        variant: "destructive",
-        title: "Password terlalu pendek",
-        description: "Password harus minimal 6 karakter",
+        variant: 'destructive',
+        title: AUTH_MESSAGES.FORM_INCOMPLETE,
+        description: validation.error,
       });
       return;
     }
 
     setLoadingEmailSignup(true);
-
     try {
-      // Store referral code for later use
-      if (referralCode) {
-        localStorage.setItem('pendingReferralCode', referralCode);
+      // Store referral code for later processing
+      if (referralCode && referralCode.trim() !== '') {
+        storePendingReferralCode(referralCode);
+        console.log('🔗 Processing referral after manual signup:', referralCode);
       }
 
-      // If Turnstile is configured, obtain token and include it in signup metadata
+      // Execute CAPTCHA verification
       let turnstileToken: string | null = null;
       if (TURNSTILE_SITEKEY && TURNSTILE_SITEKEY.trim() !== '') {
         console.log('🔒 Turnstile configured, attempting verification...');
         turnstileToken = await executeTurnstile();
-        if (!turnstileToken) console.warn('⚠️ Turnstile verification failed or not configured, proceeding without captcha');
+        if (!turnstileToken) {
+          console.warn('⚠️ Turnstile verification failed, proceeding without captcha');
+        }
       } else {
         console.log('ℹ️ Turnstile not configured, skipping captcha verification');
       }
 
+      // Prepare signup options with metadata
       const signupOptions: { data: { full_name: string; turnstile_token?: string } } = {
         data: {
           full_name: fullName,
-        }
+        },
       };
 
       // Only include turnstile_token if we have a valid token
@@ -157,55 +159,42 @@ export default function Signup() {
         signupOptions.data.turnstile_token = turnstileToken;
       }
 
+      // Sign up with Supabase
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: signupOptions
+        options: signupOptions,
       });
 
       if (error) {
         toast({
-          variant: "destructive",
-          title: "Gagal mendaftar",
+          variant: 'destructive',
+          title: AUTH_MESSAGES.SIGNUP_FAILED,
           description: error.message,
         });
       } else {
         toast({
-          title: "Pendaftaran berhasil!",
-          description: "Silakan cek email Anda untuk konfirmasi akun",
+          title: AUTH_MESSAGES.SIGNUP_SUCCESS,
+          description: AUTH_MESSAGES.SIGNUP_SUCCESS_DESC,
         });
-
-        // Process referral after successful signup
-        if (referralCode) {
-          console.log('🔗 Processing referral after manual signup:', referralCode);
-          // Referral will be processed by useEffect when profile is loaded
-        }
-        // Redirect user to login/auth page after manual signup
-        navigate('/auth', { replace: true });
+        // Redirect to login page after successful signup
+        navigate(AUTH_ROUTES.AUTH, { replace: true });
       }
     } catch (error) {
       toast({
-        variant: "destructive",
-        title: "Terjadi kesalahan",
-        description: "Silakan coba lagi",
+        variant: 'destructive',
+        title: AUTH_MESSAGES.ERROR_OCCURRED,
+        description: AUTH_MESSAGES.PLEASE_RETRY,
       });
     } finally {
       setLoadingEmailSignup(false);
     }
   };
 
-  // Store referral code for later use after signup
-  useEffect(() => {
-    if (referralCode) {
-      localStorage.setItem('pendingReferralCode', referralCode);
-      console.log('Referral code stored:', referralCode);
-    }
-  }, [referralCode]);
-
-
+  // Redirect if already authenticated
   if (isAuthenticated) {
-    const dest = getRoleBasedRedirect((profile?.role as UserRole) ?? 'customer');
-    return <Navigate to={dest} replace />;
+    const destination = getRoleBasedRedirect((profile?.role as UserRole) ?? 'customer');
+    return <Navigate to={destination} replace />;
   }
 
   // Generate breadcrumb structured data
@@ -248,6 +237,7 @@ export default function Signup() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 pt-4">
+              {/* Referral Code Banner */}
               {referralCode && (
                 <div className="p-3 bg-orange-100 rounded-lg text-center border border-orange-200">
                   <p className="text-sm text-orange-700">
@@ -281,47 +271,21 @@ export default function Signup() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-primary font-medium">Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Masukkan password (min. 6 karakter)"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="!border-2 !border-primary focus:!border-primary focus:!ring-2 focus:!ring-primary/20 focus:!ring-offset-0 pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
+                <PasswordInput
+                  id="password"
+                  label="Password"
+                  value={password}
+                  onChange={setPassword}
+                  placeholder="Masukkan password (min. 6 karakter)"
+                />
 
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword" className="text-primary font-medium">Konfirmasi Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="Konfirmasi password Anda"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="!border-2 !border-primary focus:!border-primary focus:!ring-2 focus:!ring-primary/20 focus:!ring-offset-0 pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    >
-                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
+                <PasswordInput
+                  id="confirmPassword"
+                  label="Konfirmasi Password"
+                  value={confirmPassword}
+                  onChange={setConfirmPassword}
+                  placeholder="Konfirmasi password Anda"
+                />
 
                 <div className="space-y-2">
                   <Label htmlFor="referral" className="text-primary font-medium">Kode Referral (Opsional)</Label>
@@ -347,12 +311,7 @@ export default function Signup() {
                   size="lg"
                   disabled={loadingEmailSignup}
                 >
-                  {loadingEmailSignup ? (
-                    <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                    </svg>
-                  ) : null}
+                  {loadingEmailSignup && <LoadingSpinner className="h-5 w-5 mr-2 text-white" />}
                   {loadingEmailSignup ? 'Mendaftar...' : 'Daftar Sekarang'}
                 </Button>
               </div>
@@ -375,10 +334,7 @@ export default function Signup() {
                 disabled={loadingGoogle}
               >
                 {loadingGoogle ? (
-                  <svg className="animate-spin h-5 w-5 mr-2 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
+                  <LoadingSpinner className="h-5 w-5 mr-2 text-blue-500" />
                 ) : (
                   <img src={googleLogo} alt="Google logo" className="h-5 w-5 mr-2" />
                 )}
@@ -391,13 +347,13 @@ export default function Signup() {
 
               <div className="text-sm text-center mt-4">
                 <span className="text-muted-foreground">Sudah punya akun? </span>
-                <Link to="/auth" className="underline text-blue-700 hover:text-blue-900">
+                <Link to={AUTH_ROUTES.AUTH} className="underline text-blue-700 hover:text-blue-900">
                   Masuk di sini
                 </Link>
               </div>
 
               <div className="mb-4 text-sm text-muted-foreground text-center">
-                <Link to="/" className="underline">Kembali ke Beranda</Link>
+                <Link to={AUTH_ROUTES.HOME} className="underline">Kembali ke Beranda</Link>
               </div>
             </CardContent>
           </Card>

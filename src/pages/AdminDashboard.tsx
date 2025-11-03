@@ -1,191 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import AdminLayout from '@/components/admin/AdminLayout';
 import AdminStatsGrid from '@/components/admin/AdminStatsGrid';
 import AdminRevenueChart from '@/components/admin/AdminRevenueChart';
 import AdminOrdersCard from '@/components/admin/AdminOrdersCard';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import Loading from '@/components/ui/Loading';
+import { useAdminDashboard } from '@/hooks/useAdminDashboard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import SEOHead from '@/components/seo/SEOHead';
-import { generateBreadcrumbStructuredData } from '@/utils/seoData';
-
-
-interface Order {
-  id: string;
-  total_amount: number;
-  status: string;
-  customer_name: string;
-  customer_phone: string;
-  created_at: string;
-}
+import { REVENUE_RANGES, type RevenueRange } from '@/constants/adminDashboard';
+import { buildRevenueSeries } from '@/utils/adminRevenueUtils';
+import { formatPrice, getStatusBadge } from '@/utils/adminUtils';
 
 export default function AdminDashboard() {
-  const { isAuthenticated, isAdmin, loading, user } = useAuth();
+  const { isAuthenticated, isAdmin, loading: authLoading } = useAuth();
+  const { orders, stats, loading: dataLoading } = useAdminDashboard(
+    isAuthenticated,
+    isAdmin
+  );
+  const [range, setRange] = useState<RevenueRange>(REVENUE_RANGES.WEEKLY);
 
-  const [dataLoading, setDataLoading] = useState(true);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [range, setRange] = useState<'weekly' | 'monthly' | 'yearly'>('weekly');
-  const [stats, setStats] = useState({
-    totalProducts: 0,
-    totalOrders: 0,
-    totalRevenue: 0,
-    totalUsers: 0
-  });
-  const { toast } = useToast();
-
-  useEffect(() => {
-    if (isAuthenticated && isAdmin) {
-      fetchAdminData();
-    }
-  }, [isAuthenticated, isAdmin]);
-
-  const fetchAdminData = async () => {
-    setDataLoading(true);
-    try {
-      // Fetch orders
-      const { data: ordersData } = await supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      // Fetch users count
-      const { count: usersCount } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
-
-      const { count: productCount } = await supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true });
-      const totalProducts = productCount || 0;
-      const totalOrders = ordersData?.length || 0;
-      const totalRevenue = ordersData?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
-      const totalUsers = usersCount || 0;
-
-      setOrders(ordersData || []);
-      setStats({ totalProducts, totalOrders, totalRevenue, totalUsers });
-    } catch (error) {
-      console.error('Error fetching admin data:', error);
-    } finally {
-      setDataLoading(false);
-    }
-  };
-
-  const handleUpdateOrderStatus = async (orderId: string, status: 'pending' | 'paid' | 'shipped' | 'completed' | 'cancelled') => {
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status })
-        .eq('id', orderId);
-
-      if (error) throw error;
-      toast({ title: "Status pesanan berhasil diupdate!" });
-      fetchAdminData();
-    } catch (error: unknown) {
-      let message = 'Terjadi kesalahan';
-      if (typeof error === 'object' && error && 'message' in error) {
-        message = String((error as { message?: string }).message);
-      }
-      toast({
-        variant: "destructive",
-        title: "Gagal update status",
-        description: message,
-      });
-    }
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(price);
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusMap = {
-      pending: { label: 'Menunggu', variant: 'secondary' as const },
-      paid: { label: 'Dibayar', variant: 'default' as const },
-      shipped: { label: 'Dikirim', variant: 'outline' as const },
-      completed: { label: 'Selesai', variant: 'secondary' as const },
-      cancelled: { label: 'Dibatalkan', variant: 'destructive' as const }
-    };
-    const statusInfo = statusMap[status as keyof typeof statusMap] || statusMap.pending;
-    return <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs ${statusInfo.variant === 'destructive' ? 'text-destructive border-destructive' : 'text-foreground border-border'
-      }`}>{statusInfo.label}</span>;
-  };
-
-  // Build revenue data depending on selected range
-  const buildRevenueSeries = () => {
-    if (range === 'weekly') {
-      const days = 7;
-      const now = new Date();
-      const buckets: { [k: string]: number } = {};
-      for (let i = days - 1; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(now.getDate() - i);
-        const key = d.toISOString().slice(0, 10);
-        buckets[key] = 0;
-      }
-      for (const o of orders) {
-        const key = new Date(o.created_at).toISOString().slice(0, 10);
-        if (key in buckets) buckets[key] += Number(o.total_amount || 0);
-      }
-      return Object.entries(buckets).map(([key, value]) => ({
-        date: new Date(key).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' }),
-        revenue: value,
-      }));
-    }
-
-    if (range === 'monthly') {
-      // last 12 months, aggregate by month
-      const months = 12;
-      const now = new Date();
-      const buckets: { [k: string]: number } = {};
-      for (let i = months - 1; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        buckets[key] = 0;
-      }
-      for (const o of orders) {
-        const d = new Date(o.created_at);
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        if (key in buckets) buckets[key] += Number(o.total_amount || 0);
-      }
-      return Object.entries(buckets).map(([key, value]) => ({
-        date: new Date(key + '-01').toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }),
-        revenue: value,
-      }));
-    }
-
-    // yearly
-    {
-      const years = 5;
-      const now = new Date();
-      const buckets: { [k: string]: number } = {};
-      for (let i = years - 1; i >= 0; i--) {
-        const y = now.getFullYear() - i;
-        const key = String(y);
-        buckets[key] = 0;
-      }
-      for (const o of orders) {
-        const d = new Date(o.created_at);
-        const key = String(d.getFullYear());
-        if (key in buckets) buckets[key] += Number(o.total_amount || 0);
-      }
-      return Object.entries(buckets).map(([key, value]) => ({
-        date: key,
-        revenue: value,
-      }));
-    }
-  };
+  // Build revenue data based on selected range
+  const revenueSeries = buildRevenueSeries(orders, range);
 
   // App-level loader covers the hydration phase. Render a small inline placeholder
   // if components mount while still in a loading state to avoid a double fullscreen overlay.
-  if (loading) {
+  if (authLoading) {
     return <div className="w-full px-4 py-8">{/* inline placeholder while auth loads */}</div>;
   }
 
@@ -281,8 +122,16 @@ export default function AdminDashboard() {
             />
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
-              <AdminRevenueChart data={buildRevenueSeries()} range={range} onRangeChange={(r) => setRange(r)} />
-              <AdminOrdersCard orders={orders} formatPrice={formatPrice} getStatusBadge={getStatusBadge} />
+              <AdminRevenueChart
+                data={revenueSeries}
+                range={range}
+                onRangeChange={(r) => setRange(r)}
+              />
+              <AdminOrdersCard
+                orders={orders}
+                formatPrice={formatPrice}
+                getStatusBadge={getStatusBadge}
+              />
             </div>
           </>
         )}
