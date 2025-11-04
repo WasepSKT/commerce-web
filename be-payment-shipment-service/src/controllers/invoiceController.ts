@@ -56,11 +56,32 @@ export async function xenditWebhook(req: Request, res: Response) {
   try {
     if (!supabase) return res.status(501).json({ error: 'DB not configured' });
     const payload = req.body as Record<string, unknown>;
+    const headers = req.headers as Record<string, unknown>;
+    const nowIso = new Date().toISOString();
+
     const extId = String(payload?.['id'] ?? payload?.['external_id'] ?? '');
     const status = String(payload?.['status'] ?? '').toUpperCase();
     const amount = Number(payload?.['amount'] ?? 0);
     const invoiceUrl = String(payload?.['invoice_url'] ?? '');
     const orderIdFromExternal = String(payload?.['external_id'] ?? '').replace(/^order-/, '');
+
+    // Attempt to infer method/channel from payloads across products
+    const paymentMethod = String(
+      payload?.['payment_method'] ??
+      payload?.['payment_method_type'] ??
+      payload?.['payment_method_category'] ??
+      payload?.['type'] ?? ''
+    ).toUpperCase() || null;
+    const paymentChannel = String(
+      (payload as Record<string, unknown>)?.['payment_channel'] ??
+      (payload as Record<string, unknown>)?.['bank_code'] ??
+      (payload as Record<string, unknown>)?.['ewallet_type'] ??
+      (payload as Record<string, unknown>)?.['retail_outlet_name'] ?? ''
+    ).toUpperCase() || null;
+
+    // Failure codes/messages if provided
+    const failureCode = String((payload as Record<string, unknown>)?.['failure_code'] ?? '').toUpperCase() || null;
+    const failureMessage = String((payload as Record<string, unknown>)?.['failure_message'] ?? '') || null;
 
     // Upsert payment by session_id (invoice id) or external_id
     let paymentId: string | null = null;
@@ -81,12 +102,34 @@ export async function xenditWebhook(req: Request, res: Response) {
           currency: 'IDR',
           status: status || null,
           invoice_url: invoiceUrl || null,
+          payment_method: paymentMethod,
+          payment_channel: paymentChannel,
+          failure_code: failureCode,
+          failure_message: failureMessage,
+          webhook_received_at: nowIso,
+          webhook_headers: headers || null,
+          paid_at: (status === 'PAID' || status === 'SETTLED') ? nowIso : null,
+          expired_at: (status === 'EXPIRED') ? nowIso : null,
+          failed_at: (status === 'FAILED') ? nowIso : null,
         }
       ]).select('id').single();
       if (insertRes.data?.id) paymentId = String(insertRes.data.id);
     } else {
       // Update status/amount/url
-      await supabase.from('payments').update({ status, amount: isFinite(amount) ? amount : null, invoice_url: invoiceUrl || null }).eq('id', paymentId);
+      await supabase.from('payments').update({
+        status,
+        amount: isFinite(amount) ? amount : null,
+        invoice_url: invoiceUrl || null,
+        payment_method: paymentMethod,
+        payment_channel: paymentChannel,
+        failure_code: failureCode,
+        failure_message: failureMessage,
+        webhook_received_at: nowIso,
+        webhook_headers: headers || null,
+        paid_at: (status === 'PAID' || status === 'SETTLED') ? nowIso : null,
+        expired_at: (status === 'EXPIRED') ? nowIso : null,
+        failed_at: (status === 'FAILED') ? nowIso : null,
+      }).eq('id', paymentId);
     }
 
     // Insert payment_event idempotently by external id if available
@@ -98,6 +141,8 @@ export async function xenditWebhook(req: Request, res: Response) {
             event_type: status,
             external_id: extId || null,
             payload,
+            received_at: nowIso,
+            headers,
           }
         ]).select().single();
       } catch {
