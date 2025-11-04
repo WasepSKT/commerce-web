@@ -1,11 +1,12 @@
 import { Button } from '@/components/ui/button';
 import PaymentSection from './PaymentSection';
 import { OrderItem } from '@/types/checkout';
+import type { ShippingRate } from './ShippingRateList';
 
 interface OrderSummaryProps {
   items: OrderItem[];
   subtotal: number;
-  selectedRate: any; // ShippingRate type
+  selectedRate: ShippingRate | null;
   total: number;
   selectedPaymentMethod: string;
   selectedEwallet: string;

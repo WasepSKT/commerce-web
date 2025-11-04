@@ -39,7 +39,7 @@ export default function AddressBlock({
   return (
     <div>
       <div className="flex justify-between items-start">
-        <h3 className="font-semibold mb-2">{CHECKOUT_MESSAGES.ADDRESS_TITLE}</h3>
+        <h3 className="font-semibold mb-2 text-primary">{CHECKOUT_MESSAGES.ADDRESS_TITLE}</h3>
         {!isEditing ? (
           <button type="button" className="text-sm text-primary underline flex items-center gap-1" onClick={() => setIsEditing(true)}>
             <EditIcon className="h-4 w-4" />

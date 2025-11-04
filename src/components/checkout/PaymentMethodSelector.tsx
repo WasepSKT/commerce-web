@@ -29,7 +29,7 @@ export default function PaymentMethodSelector({
 
   return (
     <div className="mb-3">
-      <h4 className="font-medium mb-2">{CHECKOUT_MESSAGES.PAYMENT_METHOD}</h4>
+      <h4 className="font-medium mb-2 text-primary">{CHECKOUT_MESSAGES.PAYMENT_METHOD}</h4>
       <div className="space-y-2">
         <div className="flex gap-2 flex-wrap">
           {PAYMENT_METHODS.map((pm) => (

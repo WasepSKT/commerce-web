@@ -19,7 +19,7 @@ interface ShippingRateListProps {
 export default function ShippingRateList({ loading, rates, selected, onSelect }: ShippingRateListProps) {
   return (
     <div>
-      <h3 className="font-semibold mb-2">{CHECKOUT_MESSAGES.SHIPPING_TITLE}</h3>
+      <h3 className="font-semibold mb-2 text-primary">{CHECKOUT_MESSAGES.SHIPPING_TITLE}</h3>
       {loading ? (
         <div>{CHECKOUT_MESSAGES.LOADING_RATES}</div>
       ) : (

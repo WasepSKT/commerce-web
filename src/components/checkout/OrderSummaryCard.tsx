@@ -21,7 +21,7 @@ interface OrderSummaryCardProps {
 export default function OrderSummaryCard({ items, subtotal, selectedRate, total, children }: OrderSummaryCardProps) {
   return (
     <div className="p-6 border rounded">
-      <h3 className="font-semibold mb-2">{CHECKOUT_MESSAGES.ORDER_SUMMARY}</h3>
+      <h3 className="font-semibold mb-2 text-primary">{CHECKOUT_MESSAGES.ORDER_SUMMARY}</h3>
       {children}
       <div className="space-y-2 text-sm">
         {items.map((it, idx) => (
