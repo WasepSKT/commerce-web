@@ -37,7 +37,7 @@ export default function BusinessOpportunitySection() {
                 <img
                   src={Lampu2}
                   alt="Lamp kiri"
-                  className="absolute bottom-28 left-[16%] sm:bottom-28 sm:left-[16%] md:bottom-28 md:left-[16%] w-20 sm:w-20 md:w-20 rotate-6"
+                  className="absolute bottom-28 left-[10%] sm:bottom-28 sm:left-[16%] md:bottom-28 md:left-[16%] w-16 sm:w-20 md:w-20 rotate-6"
                   style={{ animation: 'floatY 3s ease-in-out infinite' }}
                   loading="lazy"
                 />
@@ -45,7 +45,7 @@ export default function BusinessOpportunitySection() {
                 <img
                   src={Lampu}
                   alt="Lamp kanan"
-                  className="absolute top-2 right-[18%] sm:top-2 sm:right-[18%] md:top-3 md:right-[18%] w-24 sm:w-24 md:w-24 -rotate-8"
+                  className="absolute top-2 right-[10%] sm:top-2 sm:right-[18%] md:top-3 md:right-[18%] w-16 sm:w-24 md:w-24 -rotate-8"
                   style={{ animation: 'floatY 3s ease-in-out infinite', animationDelay: '1.5s' }}
                   loading="lazy"
                 />
