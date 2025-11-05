@@ -2,7 +2,7 @@ import React from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import ResponsiveAnimation from '@/components/ui/ResponsiveAnimation';
-import heroImg from '@/assets/img/hero-career.png';
+import heroImg from '@/assets/img/hero-career.webp';
 import { Link } from 'react-router-dom';
 import SEOHead from '@/components/seo/SEOHead';
 import { pageSEOData, generateBreadcrumbStructuredData } from '@/utils/seoData';

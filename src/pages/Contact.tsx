@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import ResponsiveAnimation from '@/components/ui/ResponsiveAnimation';
-import heroContact from '@/assets/img/hero-contact.png';
+import heroContact from '@/assets/img/hero-contact.webp';
 import { Link } from 'react-router-dom';
 import SEOHead from '@/components/seo/SEOHead';
 import { pageSEOData, generateBreadcrumbStructuredData } from '@/utils/seoData';
@@ -71,7 +71,7 @@ export default function ContactPage() {
                 >
                   Kirim Pesan
                 </button>
-                <Button variant="ghost" asChild className="rounded-full px-5 py-2 border border-[#7A1316] text-[#7A1316]">
+                <Button variant="ghost" asChild className="rounded-full px-5 py-2 border border-[#7A1316] text-[#7A1316] hover:text-primary">
                   <a href="mailto:contact@regalpaw.id">Email Kami</a>
                 </Button>
               </div>

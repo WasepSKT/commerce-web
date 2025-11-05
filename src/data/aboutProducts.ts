@@ -1,6 +1,6 @@
-import tunaImg from '@/assets/img/Tuna.png';
-import salmonImg from '@/assets/img/salmon.png';
-import oceanfishImg from '@/assets/img/oceanfish.png';
+import tunaImg from '@/assets/img/Tuna.webp';
+import salmonImg from '@/assets/img/salmon.webp';
+import oceanfishImg from '@/assets/img/oceanfish.webp';
 
 export interface AboutProduct {
   id: string;

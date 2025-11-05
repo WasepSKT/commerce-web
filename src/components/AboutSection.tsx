@@ -1,8 +1,8 @@
 import React from 'react';
 import { FaLeaf, FaFlask, FaHandshake, FaUsers } from 'react-icons/fa';
-import tunaImg from '@/assets/img/Tuna.png';
-import salmonImg from '@/assets/img/salmon.png';
-import oceanImg from '@/assets/img/oceanfish.png';
+import tunaImg from '@/assets/img/Tuna.webp';
+import salmonImg from '@/assets/img/salmon.webp';
+import oceanImg from '@/assets/img/oceanfish.webp';
 import { Link } from 'react-router-dom';
 
 

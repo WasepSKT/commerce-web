@@ -2,9 +2,9 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import ResponsiveAOS from '@/components/ui/ResponsiveAOS';
-import tunaImg from '@/assets/img/Tuna.png';
-import salmonImg from '@/assets/img/salmon.png';
-import oceanfishImg from '@/assets/img/oceanfish.png';
+import tunaImg from '@/assets/img/Tuna.webp';
+import salmonImg from '@/assets/img/salmon.webp';
+import oceanfishImg from '@/assets/img/oceanfish.webp';
 
 type Slide = {
   id: string;

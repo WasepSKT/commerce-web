@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, ShoppingCart, Star, Shield, Truck, Package, MessageCircle, ChevronDown, Share2 } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Star, Shield, Truck, Package, MessageCircle, ChevronDown } from 'lucide-react';
 import {
   Collapsible,
   CollapsibleContent,
@@ -30,39 +30,18 @@ import { ProductCard } from '@/components/ProductCard';
 import SEOHead from '@/components/seo/SEOHead';
 import { generateProductStructuredData, generateBreadcrumbStructuredData, generatePageTitle } from '@/utils/seoData';
 import computePriceAfterDiscount from '@/utils/price';
-import WhatsAppLogo from '@/assets/img/WhatsApp_logo-color-vertical.svg';
-import InstagramLogo from '@/assets/img/Instagram-Gradient-Logo-PNG.png';
-import TiktokIcon from '@/assets/img/Tiktok_icon.svg';
+import { ProductImageGallery } from '@/components/product/ProductImageGallery';
+import { ShareButtons } from '@/components/product/ShareButtons';
+import { ProductPrice } from '@/components/product/ProductPrice';
+import { QuantitySelector } from '@/components/product/QuantitySelector';
+import { ProductSpecs } from '@/components/product/ProductSpecs';
+import { ProductReviews } from '@/components/product/ProductReviews';
+import type { ProductRatingData } from '@/types/review';
+import type { Product } from '@/types/product';
+import { asProductId } from '@/types/product';
+import { formatPriceIDR } from '@/utils/currency';
 
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  image_url: string;
-  image_gallery?: string[];
-  category: string;
-  stock_quantity: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  // explicit spec columns (may be null)
-  brand?: string | null;
-  product_type?: string | null;
-  pet_type?: string | null;
-  origin_country?: string | null;
-  expiry_date?: string | null;
-  age_category?: string | null;
-  // SEO fields (auto-generated)
-  meta_title?: string;
-  meta_description?: string;
-  meta_keywords?: string;
-  og_title?: string;
-  og_description?: string;
-  og_image?: string;
-  canonical_url?: string;
-  seo_structured_data?: Record<string, unknown>;
-}
+// Product type moved to '@/types/product'
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -81,23 +60,7 @@ export default function ProductDetail() {
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
 
-  // Image zoom (lens) refs and state
-  const imgRef = useRef<HTMLImageElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [lensVisible, setLensVisible] = useState(false);
-  const [lensPos, setLensPos] = useState({ x: 0, y: 0 }); // pixels relative to image
-  const [bgPos, setBgPos] = useState({ x: 50, y: 50 }); // percent for background-position
-  // remove separate lens box; we'll scale the original image itself
-  const LENS_WIDTH = 0; // unused
-  const LENS_HEIGHT = 0; // unused
-  const ZOOM = 2; // 2x zoom
-  // main image index for gallery selection
-  const [mainIndex, setMainIndex] = useState(0);
-
-  // Reset main index whenever product changes so cover (image_url) is selected by default
-  useEffect(() => {
-    setMainIndex(0);
-  }, [product?.image_url, product?.image_gallery]);
+  // Image gallery logic handled inside ProductImageGallery
 
   const fetchProduct = useCallback(async (productId: string) => {
     try {
@@ -109,7 +72,10 @@ export default function ProductDetail() {
         .single();
 
       if (error) throw error;
-      setProduct(data);
+      // Brand the product id to ProductId
+      const row = data as Omit<Product, 'id'> & { id: string };
+      const normalized: Product = { ...row, id: asProductId(row.id) };
+      setProduct(normalized);
     } catch (error) {
       console.error('Error fetching product:', error);
       toast({
@@ -153,13 +119,7 @@ export default function ProductDetail() {
 
     void fetchRelated();
   }, [product]);
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(price);
-  };
+  const formatPrice = formatPriceIDR;
 
   const handleAddToCart = () => {
     setConfirmOpen(true);
@@ -454,124 +414,13 @@ export default function ProductDetail() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Product Image */}
-          <div className="space-y-4">
-            <div className="relative overflow-hidden rounded-lg">
-              {/* Main square image (1:1) */}
-              <div
-                ref={containerRef}
-                className="w-full aspect-square bg-gray-100 relative overflow-hidden"
-                style={{ cursor: 'zoom-in' }}
-                onMouseEnter={() => setLensVisible(true)}
-                onMouseMove={(e) => {
-                  const img = imgRef.current;
-                  if (!img) return;
-                  const rect = img.getBoundingClientRect();
-                  const x = e.clientX - rect.left;
-                  const y = e.clientY - rect.top;
-                  const cx = Math.max(0, Math.min(x, rect.width));
-                  const cy = Math.max(0, Math.min(y, rect.height));
-                  const px = (cx / rect.width) * 100;
-                  const py = (cy / rect.height) * 100;
-                  setLensPos({ x: cx, y: cy });
-                  setBgPos({ x: px, y: py });
-                  setLensVisible(true);
-                }}
-                onMouseLeave={() => setLensVisible(false)}
-              >
-                {(() => {
-                  // Build gallery ensuring image_url (cover) is first
-                  const galleryRaw = Array.isArray(product.image_gallery) ? product.image_gallery.slice() : [];
-                  const gallery = (() => {
-                    const g = galleryRaw.filter(Boolean);
-                    if (product.image_url) {
-                      // ensure image_url is first and not duplicated
-                      const idx = g.indexOf(product.image_url);
-                      if (idx !== -1) g.splice(idx, 1);
-                      g.unshift(product.image_url);
-                    }
-                    return g;
-                  })();
-
-                  const clampedIndex = Math.min(Math.max(mainIndex, 0), Math.max(gallery.length - 1, 0));
-                  const main = gallery[clampedIndex] ?? 'https://images.unsplash.com/photo-1548681528-6a5c45b66b42?w=600';
-                  return (
-                    <img
-                      ref={imgRef}
-                      src={main}
-                      alt={product.name}
-                      className="w-full h-full object-cover transform-gpu"
-                      style={{
-                        transformOrigin: `${bgPos.x}% ${bgPos.y}%`,
-                        transform: lensVisible ? `scale(${ZOOM})` : 'none',
-                        transition: 'transform 0.08s linear',
-                      }}
-                      onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1548681528-6a5c45b66b42?w=600'; }}
-                    />
-                  );
-                })()}
-              </div>
-
-              {/* Discount badge on image (more visible) */}
-              {(() => {
-                const discount = (product as Product & { discount_percent?: number }).discount_percent ?? 0;
-                if (typeof discount === 'number' && discount > 0) {
-                  return (
-                    <div className="absolute top-3 right-3 z-20">
-                      <span className="inline-block bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded-md shadow-lg">
-                        {`Diskon ${discount}%`}
-                      </span>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-
-              {isOutOfStock && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center pointer-events-none">
-                  <Badge variant="destructive" className="text-lg p-2">Stok Habis</Badge>
-                </div>
-              )}
-            </div>
-
-            {/* Thumbnails (show only if more than 1 image) */}
-            {(() => {
-              // Rebuild gallery with cover first (same logic as main image above)
-              const galleryRaw = Array.isArray(product.image_gallery) ? product.image_gallery.slice() : [];
-              const gallery = (() => {
-                const g = galleryRaw.filter(Boolean);
-                if (product.image_url) {
-                  const idx = g.indexOf(product.image_url);
-                  if (idx !== -1) g.splice(idx, 1);
-                  g.unshift(product.image_url);
-                }
-                return g;
-              })();
-              if (gallery.length <= 1) return null;
-              const list = gallery.slice(0, 4);
-              return (
-                <div className="flex items-center gap-3">
-                  {list.map((src, i) => {
-                    const selected = i === Math.min(mainIndex, list.length - 1);
-                    return (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setMainIndex(i)}
-                        className={`w-20 h-20 rounded-md overflow-hidden border ${selected ? 'border-primary ring-2 ring-primary/30' : 'border-gray-200 hover:border-primary/60'} transition-colors`}
-                      >
-                        <img
-                          src={src}
-                          alt={`thumb-${i}`}
-                          className="w-full h-full object-cover"
-                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1548681528-6a5c45b66b42?w=400'; }}
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-          </div>
+          <ProductImageGallery
+            imageUrl={product.image_url}
+            imageGallery={product.image_gallery}
+            productName={product.name}
+            discountPercent={(product as Product & { discount_percent?: number }).discount_percent ?? 0}
+            isOutOfStock={isOutOfStock}
+          />
 
           {/* Product Details */}
           <div className="space-y-6">
@@ -595,24 +444,11 @@ export default function ProductDetail() {
                 </span>
               </div>
 
-              {(() => {
-                const discount = (product as Product & { discount_percent?: number }).discount_percent ?? 0;
-                const hasDiscount = typeof discount === 'number' && discount > 0;
-                const discountedPrice = hasDiscount ? Math.round(product.price * (1 - discount / 100)) : product.price;
-                return (
-                  <div className="mb-4">
-                    {hasDiscount ? (
-                      <div>
-                        <div className="text-lg text-muted-foreground line-through font-medium">{formatPrice(product.price)}</div>
-                        <div className="text-4xl font-bold text-primary">{formatPrice(discountedPrice)}</div>
-                        <div className="text-sm text-red-600 font-semibold">Diskon {discount}%</div>
-                      </div>
-                    ) : (
-                      <div className="text-4xl font-bold text-primary">{formatPrice(product.price)}</div>
-                    )}
-                  </div>
-                );
-              })()}
+              <ProductPrice
+                price={product.price}
+                discountPercent={(product as Product & { discount_percent?: number }).discount_percent ?? 0}
+                formatPrice={formatPrice}
+              />
 
 
 
@@ -627,28 +463,7 @@ export default function ProductDetail() {
             {/* Quantity Selector */}
             {!isOutOfStock && (
               <div className="space-y-4">
-                <div className="flex items-center space-x-4">
-                  <span className="text-sm font-medium">Jumlah:</span>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-primary text-primary hover:bg-transparent hover:text-primary"
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    >
-                      -
-                    </Button>
-                    <span className="w-12 text-center font-medium">{quantity}</span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-primary text-primary hover:bg-transparent hover:text-primary"
-                      onClick={() => setQuantity(Math.min(product.stock_quantity, quantity + 1))}
-                    >
-                      +
-                    </Button>
-                  </div>
-                </div>
+                <QuantitySelector value={quantity} stock={product.stock_quantity} onChange={setQuantity} />
 
                 <div className="flex flex-col gap-3">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -685,76 +500,8 @@ export default function ProductDetail() {
                   </div>
                 </div>
 
-                {/* Share buttons: WA, IG, TikTok, generic share */}
-                <div className="mt-3 flex items-center gap-2">
-                  {(() => {
-                    const productUrl = typeof window !== 'undefined' ? `${window.location.origin}/product/${product.id}` : `/product/${product.id}`;
-                    const shortDesc = product.description ? product.description.slice(0, 120) : '';
-                    const shareText = `${product.name}${shortDesc ? ' - ' + shortDesc : ''}\n${productUrl}`;
-
-                    const copyLink = async () => {
-                      try {
-                        await navigator.clipboard.writeText(productUrl);
-                        toast({ title: 'Link disalin', description: 'Tautan produk telah disalin ke clipboard.' });
-                      } catch (err) {
-                        // fallback: prompt
-                        window.prompt('Salin tautan ini:', productUrl);
-                      }
-                    };
-
-                    const shareWeb = async () => {
-                      if (navigator.share) {
-                        try {
-                          await navigator.share({ title: product.name, text: shortDesc, url: productUrl });
-                        } catch (e) {
-                          // user cancelled or error
-                        }
-                        return;
-                      }
-                      await copyLink();
-                    };
-
-                    const shareWhatsApp = () => {
-                      const url = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
-                      window.open(url, '_blank');
-                    };
-
-                    const shareToIG = async () => {
-                      if (navigator.share) {
-                        await shareWeb();
-                        return;
-                      }
-                      await copyLink();
-                      toast({ title: 'Bagikan ke Instagram', description: 'Link disalin. Buka Instagram dan tempelkan tautan di Story/DM.' });
-                    };
-
-                    const shareToTikTok = async () => {
-                      if (navigator.share) {
-                        await shareWeb();
-                        return;
-                      }
-                      await copyLink();
-                      toast({ title: 'Bagikan ke TikTok', description: 'Link disalin. Buka TikTok dan tempelkan tautan di DM atau bio.' });
-                    };
-
-                    return (
-                      <>
-                        <button type="button" onClick={shareWhatsApp} aria-label="Bagikan ke WhatsApp" className="px-2 py-1 rounded border text-sm bg-white hover:bg-primary/5 border-gray-200">
-                          <img src={WhatsAppLogo} alt="WhatsApp" className="h-5 w-5 object-contain" />
-                        </button>
-                        <button type="button" onClick={shareToIG} aria-label="Bagikan ke Instagram" className="px-2 py-1 rounded border text-sm bg-white hover:bg-primary/5 border-gray-200">
-                          <img src={InstagramLogo} alt="Instagram" className="h-5 w-5 object-contain" />
-                        </button>
-                        <button type="button" onClick={shareToTikTok} aria-label="Bagikan ke TikTok" className="px-2 py-1 rounded border text-sm bg-white hover:bg-primary/5 border-gray-200">
-                          <img src={TiktokIcon} alt="TikTok" className="h-5 w-5 object-contain" />
-                        </button>
-                        <button type="button" onClick={shareWeb} aria-label="Share" className="ml-auto px-3 py-2 rounded border text-sm bg-white hover:bg-primary/5 border-gray-200">
-                          <Share2 className="h-5 w-5" />
-                        </button>
-                      </>
-                    );
-                  })()}
-                </div>
+                {/* Share buttons */}
+                <ShareButtons productId={product.id} name={product.name} description={product.description} />
 
               </div>
             )}
@@ -767,40 +514,16 @@ export default function ProductDetail() {
           <Card>
             <CardContent className="p-6">
               <h2 className="text-lg font-semibold mb-3 text-primary">Spesifikasi Produk</h2>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Kategori:</span>
-                  <p className="font-medium">{product.category}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Stok:</span>
-                  <p className="font-medium">{product.stock_quantity} kaleng</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Merek:</span>
-                  <p className="font-medium">{product.brand ?? '-'}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Jenis Produk:</span>
-                  <p className="font-medium">{product.product_type ?? '-'}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Jenis Hewan:</span>
-                  <p className="font-medium">{product.pet_type ?? '-'}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Negara Asal:</span>
-                  <p className="font-medium">{product.origin_country ?? '-'}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Tanggal Kadaluarsa:</span>
-                  <p className="font-medium">{product.expiry_date ?? '-'}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Usia:</span>
-                  <p className="font-medium">{product.age_category ?? '-'}</p>
-                </div>
-              </div>
+              <ProductSpecs
+                category={product.category}
+                stock_quantity={product.stock_quantity}
+                brand={product.brand}
+                product_type={product.product_type}
+                pet_type={product.pet_type}
+                origin_country={product.origin_country}
+                expiry_date={product.expiry_date}
+                age_category={product.age_category}
+              />
             </CardContent>
           </Card>
         </div>
@@ -823,72 +546,7 @@ export default function ProductDetail() {
                 <MessageCircle className="h-5 w-5" />
                 Ulasan & Rating
               </h3>
-
-              {ratingData.totalReviews > 0 ? (
-                <div className="space-y-6">
-                  {/* Rating Summary */}
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div>
-                      <div className="text-center mb-4">
-                        <div className="text-4xl font-bold text-primary mb-2">
-                          {ratingData.averageRating.toFixed(1)}
-                        </div>
-                        <StarRating rating={ratingData.averageRating} size="lg" />
-                        <p className="text-sm text-muted-foreground mt-2">
-                          Berdasarkan {ratingData.totalReviews} ulasan
-                        </p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="font-medium mb-3">Distribusi Rating</h4>
-                      <RatingDistribution
-                        distribution={ratingData.ratingDistribution}
-                        totalReviews={ratingData.totalReviews}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Individual Reviews */}
-                  <div className="border-t pt-6">
-                    <h4 className="font-medium mb-4">Ulasan Pelanggan</h4>
-                    <div className="space-y-4 max-h-96 overflow-y-auto">
-                      {ratingData.reviews.map((review) => (
-                        <div key={review.id} className="border rounded-lg p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <p className="font-medium text-sm">
-                                {maskName(review.profiles?.full_name, 1)}
-                              </p>
-                              <StarRating rating={review.rating} size="sm" />
-                            </div>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(review.created_at).toLocaleDateString('id-ID', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}
-                            </span>
-                          </div>
-                          {review.comment && (
-                            <p className="text-sm text-muted-foreground">
-                              {review.comment}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <MessageCircle className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-                  <p className="text-muted-foreground">Belum ada ulasan untuk produk ini</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Jadilah yang pertama memberikan ulasan setelah membeli produk ini
-                  </p>
-                </div>
-              )}
+              <ProductReviews ratingData={ratingData as ProductRatingData} />
             </CardContent>
           </Card>
         </div>

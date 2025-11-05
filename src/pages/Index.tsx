@@ -9,7 +9,8 @@ import heroImg from '@/assets/img/heroimg.svg';
 import catVideo from '@/assets/video/kucing.mp4';
 import ProductShowcase from '@/components/ProductShowcase';
 import AboutSection from '@/components/AboutSection';
-import ReferralCareerSection from '@/components/ReferralCareerSection';
+import BusinessOpportunitySection from '@/components/BusinessOpportunitySection';
+// import ReferralCareerSection from '@/components/ReferralCareerSection';
 import TestimonialSection from '@/components/TestimonialSection';
 import BlogSection from '@/components/BlogSection';
 import ContactSection from '@/components/ContactSection';
@@ -62,7 +63,7 @@ const Index = () => {
     { id: 'showcase', label: 'Produk Unggulan', selector: '#showcase-section' },
     { id: 'products', label: 'Produk Terbaru', selector: '#products-section' },
     { id: 'about', label: 'Tentang Kami', selector: '#about-section' },
-    { id: 'referral', label: 'Karir & Referral', selector: '#referral-section' },
+    { id: 'opportunity', label: 'Peluang Bisnis', selector: '#opportunity-section' },
     { id: 'testimonials', label: 'Testimoni', selector: '#testimonials-section' },
     { id: 'blog', label: 'Artikel', selector: '#blog-section' },
     { id: 'contact', label: 'Kontak', selector: '#contact-section' }
@@ -321,12 +322,19 @@ const Index = () => {
         </ScrollAnimation>
       </section>
 
+      {/* Business Opportunity Section (after About) */}
+      <section id="opportunity-section">
+        <ScrollAnimation animation="slideUp" duration={800} delay={100}>
+          <BusinessOpportunitySection />
+        </ScrollAnimation>
+      </section>
+
       {/* Referral / Career Section */}
-      <section id="referral-section">
+      {/* <section id="referral-section">
         <FadeInUp duration={800} delay={200}>
           <ReferralCareerSection />
         </FadeInUp>
-      </section>
+      </section> */}
 
       {/* Testimonials (marquee) */}
       <section id="testimonials-section">
