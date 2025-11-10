@@ -2,7 +2,12 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { TurnstileAPI, TurnstileWidgetSize } from '@/types/turnstile';
 import { resolveTurnstileSitekey, isLocalHost } from '@/utils/env';
 
-export function useTurnstile() {
+export const useTurnstile = () => {
+  // Read from environment variable with fallback
+  const TURNSTILE_SITEKEY = import.meta.env.VITE_TURNSTILE_SITEKEY || 
+                            import.meta.env.VITE_TURNSTILE_SITEKEY_DEV || 
+                            null;
+
   const hostname = window.location.hostname;
   const sitekey = useMemo(() => resolveTurnstileSitekey(hostname), [hostname]);
   const containerRef = useRef<HTMLDivElement | null>(null);
