@@ -98,7 +98,7 @@ jobs:
           VITE_SUPABASE_URL: ${{ steps.sel.outputs.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ steps.sel.outputs.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_SUPABASE_PROJECT_ID: ${{ steps.sel.outputs.VITE_SUPABASE_PROJECT_ID }}
-          VITE_TURNSTILE_SITE_KEY: ${{ steps.sel.outputs.VITE_TURNSTILE_SITE_KEY }}
+          VITE_TURNSTILE_SITEKEY: ${{ steps.sel.outputs.VITE_TURNSTILE_SITE_KEY }}
         run: npm run build
 
       - name: Deploy via FTPS to cPanel
