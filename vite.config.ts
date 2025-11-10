@@ -3,16 +3,12 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
-  // Use relative paths for built assets in production so it works under subdomains/subfolders on cPanel
-  base: mode === 'production' ? './' : '/',
+export default defineConfig({
+  // Use absolute path for production deployment on cPanel
+  base: "/",
   server: {
     host: "::",
     port: 8080,
-    // Temporarily disable CSP headers for dev to fix white screen
-    // headers: {
-    //   "Content-Security-Policy": "..."
-    // }
   },
   plugins: [react()],
   resolve: {
@@ -20,4 +16,14 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-}));
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom", "react-router-dom"],
+          supabase: ["@supabase/supabase-js"],
+        },
+      },
+    },
+  },
+});
