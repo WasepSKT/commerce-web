@@ -18,7 +18,7 @@ export const useImageGallery = (imageUrl: string, imageGallery?: string[]) => {
       if (idx !== -1) g.splice(idx, 1);
       g.unshift(imageUrl);
     }
-    return g;
+    return g.length > 0 ? g : [imageUrl]; // Ensure at least one image
   };
 
   const gallery = buildGallery();
@@ -44,6 +44,8 @@ export const useImageGallery = (imageUrl: string, imageGallery?: string[]) => {
     setLensVisible(true);
   };
 
+  const hasMultipleImages = gallery.length > 1;
+
   return {
     imgRef,
     containerRef,
@@ -55,5 +57,6 @@ export const useImageGallery = (imageUrl: string, imageGallery?: string[]) => {
     ZOOM,
     gallery,
     handleMouseMove,
+    hasMultipleImages,
   };
 };

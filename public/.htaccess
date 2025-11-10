@@ -17,6 +17,13 @@ Options -MultiViews
 
   # SPA fallback: route everything else to index.html
   RewriteRule . /index.html [L]
+
+  # Redirect index.html to the root
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME} !-l
+  RewriteRule . /index.html [L]
 </IfModule>
 
 # Compression (if deflate is available on server)

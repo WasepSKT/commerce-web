@@ -1,14 +1,12 @@
 import { Button } from '@/components/ui/button';
 
-interface Props {
+interface QuantitySelectorProps {
   value: number;
   stock: number;
   onChange: (value: number) => void;
 }
 
-export function QuantitySelector({ value, stock, onChange }: Props) {
-  const dec = () => onChange(Math.max(1, value - 1));
-  const inc = () => onChange(Math.min(stock, value + 1));
+export const QuantitySelector = ({ value, stock, onChange }: QuantitySelectorProps) => {
   return (
     <div className="flex items-center space-x-4">
       <span className="text-sm font-medium">Jumlah:</span>
@@ -17,7 +15,7 @@ export function QuantitySelector({ value, stock, onChange }: Props) {
           variant="outline"
           size="sm"
           className="border-primary text-primary hover:bg-transparent hover:text-primary"
-          onClick={dec}
+          onClick={() => onChange(Math.max(1, value - 1))}
         >
           -
         </Button>
@@ -26,13 +24,13 @@ export function QuantitySelector({ value, stock, onChange }: Props) {
           variant="outline"
           size="sm"
           className="border-primary text-primary hover:bg-transparent hover:text-primary"
-          onClick={inc}
+          onClick={() => onChange(Math.min(stock, value + 1))}
         >
           +
         </Button>
       </div>
     </div>
   );
-}
+};
 
 

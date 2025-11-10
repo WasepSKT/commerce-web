@@ -1,4 +1,4 @@
-export type ProductId = string & { readonly brand: 'ProductId' };
+export type ProductId = string & { readonly __brand: 'ProductId' };
 export type DiscountPercent = number; // 0-100
 export type StockQuantity = number; // >= 0
 export const asProductId = (id: string): ProductId => id as ProductId;
