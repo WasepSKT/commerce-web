@@ -5,28 +5,29 @@
 # Prevent content negotiation issues
 Options -MultiViews
 
-# Enable rewriting
+# Enable rewrite engine
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
-
-  # Don't rewrite files or directories
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteCond %{REQUEST_FILENAME} !-l
   
-  # Rewrite everything else to index.html to allow html5 state links
-  RewriteRule ^ index.html [L]
-
-  # SPA fallback: route everything else to index.html
-  RewriteRule . /index.html [L]
-
-  # Redirect index.html to the root
-  RewriteRule ^index\.html$ - [L]
+  # Don't rewrite files or directories that exist
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteCond %{REQUEST_FILENAME} !-l
-  RewriteRule . /index.html [L]
+  # Don't rewrite for assets folder
+  RewriteCond %{REQUEST_URI} !^/assets/ml to allow html5 state links
+  RewriteRule ^ index.html [L]
+  # Rewrite everything else to index.html
+  RewriteRule . /index.html [L]ing else to index.html
+</IfModule>le . /index.html [L]
+
+# Set proper MIME types to the root
+AddType text/css .css.html$ - [L]
+AddType text/javascript .jsENAME} !-f
+AddType application/json .json!-d
+DirectoryIndex index.htmlME} !-l
+ErrorDocument 404 /index.html
+  RewriteRule . /index.html [L]ge/webp .webp
 </IfModule>
 
 # Compression (if deflate is available on server)
