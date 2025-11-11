@@ -64,7 +64,7 @@ export default function CareerBenefits() {
                 <Link to="/career/openings">Lihat Lowongan</Link>
               </Button>
               <Button variant="ghost" asChild className="rounded-full px-5 py-2 border border-[#7A1316] text-[#7A1316] hover:text-brand">
-                <a href="mailto:hr@regalpaw.example">Kirim Pertanyaan</a>
+                <a href="mailto:hr@regalpaw.id">Kirim Pertanyaan</a>
               </Button>
             </div>
           </div>
