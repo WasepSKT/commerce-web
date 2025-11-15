@@ -82,7 +82,7 @@ jobs:
           cp .htaccess deploy-temp/
           cp -r public deploy-temp/ 2>/dev/null || true
 
-          # Create restart marker
+          # Create restart marker directory
           mkdir -p deploy-temp/tmp
 
       - name: Deploy via FTPS to cPanel

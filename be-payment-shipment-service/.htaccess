@@ -3,16 +3,10 @@
 PassengerEnabled On
 PassengerAppType node
 PassengerStartupFile dist/server.js
-
-# IMPORTANT: Ganti 'regalpaw' dengan username cPanel Anda yang sebenarnya
-
 PassengerAppRoot /home/regalpaw/api-payment.regalpaw.id
 PassengerAppLogFile /home/regalpaw/logs/api-payment.log
 PassengerFriendlyErrorPages off
-
-# Use Node.js version from cPanel selector
-
-PassengerNodejs /opt/cpanel/ea-nodejs20/bin/node
+PassengerNodejs /home/regalpaw/nodevenv/api-payment.regalpaw.id/20/bin/node
 
 # Security headers
 

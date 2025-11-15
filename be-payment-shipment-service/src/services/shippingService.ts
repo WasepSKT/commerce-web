@@ -1,7 +1,7 @@
 import { config } from '../config';
 import { getJubelioClient } from '../clients/jubelioClient';
 import { CreateShipmentRequest, RateQuote, RateQuoteRequest, Shipment } from '../types';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
 type HttpError = Error & { status?: number };
 
@@ -75,13 +75,14 @@ export async function getRates(req: RateQuoteRequest): Promise<RateQuote[]> {
     currency: 'IDR',
   }));
   return mapped;
-  } catch (err) {
-    if (axios.isAxiosError(err)) {
-      const status = err.response?.status || 400;
-      const msg = typeof err.response?.data === 'string' ? err.response?.data : (err.response?.data?.message || err.message || 'Failed to fetch rates');
-      throw httpError(`Jubelio rates error: ${msg}`, status);
-    }
-    throw err as Error;
+  } catch (err: unknown) {
+    const axiosErr = err as AxiosError<{ message?: string }>;
+    const status = axiosErr.response?.status || 400;
+    const responseData = axiosErr.response?.data;
+    const msg = typeof responseData === 'string' 
+      ? responseData 
+      : (responseData?.message || axiosErr.message || 'Failed to fetch rates');
+    throw httpError(`Jubelio rates error: ${msg}`, status);
   }
 }
 
@@ -217,24 +218,23 @@ export async function createShipment(payload: CreateShipmentRequest): Promise<Sh
       service: payload.service,
       status: 'CREATED',
     };
-  } catch (err) {
-    if (axios.isAxiosError(err)) {
-      const status = err.response?.status || 400;
-      // Include provider error details if available to aid debugging
-      let msg: string;
-      if (typeof err.response?.data === 'string') {
-        msg = err.response.data;
-      } else if (err.response?.data) {
-        try {
-          msg = JSON.stringify(err.response.data);
-        } catch {
-          msg = err.message || 'Failed to create shipment';
-        }
-      } else {
-        msg = err.message || 'Failed to create shipment';
+  } catch (err: unknown) {
+    const axiosErr = err as AxiosError<{ message?: string }>;
+    const status = axiosErr.response?.status || 400;
+    let msg = 'Failed to create shipment';
+    
+    const responseData = axiosErr.response?.data;
+    if (typeof responseData === 'string') {
+      msg = responseData;
+    } else if (responseData) {
+      try {
+        msg = responseData.message || JSON.stringify(responseData);
+      } catch {
+        msg = axiosErr.message || 'Failed to create shipment';
       }
-      throw httpError(`Jubelio create error: ${msg}`, status);
+    } else {
+      msg = axiosErr.message || 'Failed to create shipment';
     }
-    throw err as Error;
+    throw httpError(`Jubelio create error: ${msg}`, status);
   }
 }
