@@ -46,8 +46,13 @@ export const isDevelopment = import.meta.env.DEV;
 export const isProduction = import.meta.env.PROD;
 export const currentEnv = import.meta.env.MODE; // 'development' atau 'production'
 
-// Usage:
-// import { isDevelopment } from '@/utils/env';
-// if (isDevelopment) { console.log('Dev mode'); }
+// Payment API Configuration
+export const PAYMENT_API_URL = import.meta.env.VITE_PAYMENT_API_URL || 'https://api-payment.regalpaw.id';
+export const SERVICE_API_KEY = import.meta.env.VITE_SERVICE_API_KEY || '';
+
+// Validate required env vars
+if (!SERVICE_API_KEY) {
+  console.error('❌ VITE_SERVICE_API_KEY is not set');
+}
 
 

@@ -1,40 +1,55 @@
+import { PAYMENT_API_URL, SERVICE_API_KEY } from '@/utils/env';
+
 export interface CreateSessionResult {
   provider: string;
   session_id?: string;
   checkout_url?: string;
-  // Some payment providers (or our server) may return `url` instead of `checkout_url`.
-  // Accept both to be flexible at the call sites.
   url?: string;
 }
 
-// The payment endpoint accepts either an `order_id` (existing server order) or
-// a full `order` payload when running in dry-run/test mode so the frontend
-// can create a payment session without persisting database rows.
 export type CreatePaymentPayload =
   | { order_id: string; return_url?: string; payment_method?: string; test?: boolean }
   | { order?: unknown; return_url?: string; payment_method?: string; test: true };
 
-export async function createPaymentSession(payload: CreatePaymentPayload): Promise<CreateSessionResult> {
+export const createPaymentSession = async (orderData: {
+  order_id: string;
+  amount: number;
+  customer: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  items: Array<{
+    name: string;
+    quantity: number;
+    price: number;
+  }>;
+  return_url?: string;
+}) => {
   try {
-  const base = (import.meta.env && (import.meta.env as Record<string, string>)["VITE_PAYMENT_API_URL"]) as string | undefined;
-    const endpoint = (base ? `${base.replace(/\/$/, '')}` : '') + `/api/payments/create-session`;
-    const res = await fetch(endpoint || '/api/payments/create-session', {
+    const response = await fetch(`${PAYMENT_API_URL}/api/payments/create-session`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(payload),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': SERVICE_API_KEY,
+      },
+      body: JSON.stringify({
+        ...orderData,
+        return_url: orderData.return_url || `${window.location.origin}/payment/success`,
+      }),
     });
 
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(txt || `Failed to create payment session (${res.status})`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Payment session failed' }));
+      throw new Error(errorData.message || `HTTP ${response.status}`);
     }
 
-    const json = await res.json();
-    return json as CreateSessionResult;
-  } catch (err) {
-    console.error('createPaymentSession error', err);
-    throw err;
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('createPaymentSession error', error);
+    throw error;
   }
-}
+};
 
 export default { createPaymentSession };
