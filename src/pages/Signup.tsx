@@ -25,7 +25,7 @@ export default function Signup() {
     TURNSTILE_SITEKEY
   );
 
-  // Debug Turnstile configuration (development only)
+
   useEffect(() => {
     logTurnstileDebug(TURNSTILE_SITEKEY);
   }, [TURNSTILE_SITEKEY]);
