@@ -20,7 +20,7 @@
 
 ## 🎯 **Overview**
 
-Dokumen ini berisi panduan lengkap untuk menyiapkan environment testing dan data test yang diperlukan untuk menjalankan UAT dan SIT pada sistem Regal Purrfect Shop.
+Dokumen ini berisi panduan lengkap untuk menyiapkan environment testing dan data test yang diperlukan untuk menjalankan UAT dan SIT pada sistem Regalpaw.
 
 ---
 
