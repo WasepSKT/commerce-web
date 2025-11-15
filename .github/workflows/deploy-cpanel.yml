@@ -118,7 +118,6 @@ jobs:
           protocol: ftps
           local-dir: dist/
           server-dir: ${{ steps.sel.outputs.CPANEL_DEST }}
-          # IMPORTANT: Set to false to preserve .htaccess
           dangerous-clean-slate: false
           exclude: |
             **/.git*
