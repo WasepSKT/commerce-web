@@ -42,4 +42,12 @@ export function isLocalHost(hostname: string): boolean {
   return hostname === 'localhost' || hostname === '127.0.0.1';
 }
 
+export const isDevelopment = import.meta.env.DEV;
+export const isProduction = import.meta.env.PROD;
+export const currentEnv = import.meta.env.MODE; // 'development' atau 'production'
+
+// Usage:
+// import { isDevelopment } from '@/utils/env';
+// if (isDevelopment) { console.log('Dev mode'); }
+
 

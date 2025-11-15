@@ -119,6 +119,8 @@ jobs:
           local-dir: dist/
           server-dir: ${{ steps.sel.outputs.CPANEL_DEST }}
           dangerous-clean-slate: false
+          log-level: verbose # Enable verbose logging
+          timeout: 60000
           exclude: |
             **/.git*
             **/.github/**
