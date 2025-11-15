@@ -1,0 +1,39 @@
+# Apache Passenger configuration for Node.js app
+
+PassengerEnabled On
+PassengerAppType node
+PassengerStartupFile dist/server.js
+
+# IMPORTANT: Ganti 'regalpaw' dengan username cPanel Anda yang sebenarnya
+
+PassengerAppRoot /home/regalpaw/api-payment.regalpaw.id
+PassengerAppLogFile /home/regalpaw/logs/api-payment.log
+PassengerFriendlyErrorPages off
+
+# Use Node.js version from cPanel selector
+
+PassengerNodejs /opt/cpanel/ea-nodejs20/bin/node
+
+# Security headers
+
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "DENY"
+  Header set X-XSS-Protection "1; mode=block"
+  Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# Disable directory listing
+
+Options -Indexes
+
+# Force HTTPS
+
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^(.\*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Error documents
+
+ErrorDocument 404 /public/404.json
+ErrorDocument 500 /public/500.json

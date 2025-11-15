@@ -1,6 +1,17 @@
-# Regal Paw - Premium Cat Food E-commerce
+# Regal Paw - E-commerce Platform
 
-A modern e-commerce platform for premium cat food and pet supplies, built with React, TypeScript, and Supabase.
+Monorepo untuk Regal Paw E-commerce (Frontend + Backend)
+
+## 📁 Project Structure
+
+- `apps/` - Frontend applications
+  - `frontend` - React frontend application
+- `packages/` - Shared packages
+  - `shared-utils` - Shared utilities
+  - `shared-components` - Shared components
+- `tools/` - Development tools
+- `docs/` - Documentation
+- `scripts/` - Scripts
 
 ## 🐱 About Regal Paw
 
@@ -63,7 +74,7 @@ Regal Paw is a comprehensive e-commerce solution for cat owners who want the bes
 1. **Clone the repository**
 
    ```bash
-git clone <YOUR_GIT_URL>
+   git clone <YOUR_GIT_URL>
    cd regal-purrfect-shop
    ```
 
@@ -92,7 +103,9 @@ git clone <YOUR_GIT_URL>
 5. **Start development server**
 
    ```bash
-npm run dev
+   npm run dev
+   ```
+
 ```
 
 6. **Open your browser**
@@ -185,3 +198,4 @@ For support and questions:
 - Backend powered by Supabase
 - Icons by Lucide React
 - Styling with Tailwind CSS
+```

@@ -1,0 +1,120 @@
+name: Deploy Backend to cPanel
+
+on:
+  push:
+    branches:
+      - dev
+      - staging
+      - main
+    paths:
+      - "be-payment-shipment-service/**"
+      - ".github/workflows/deploy-be-cpanel.yml"
+
+jobs:
+  deploy-backend:
+    name: Build and Deploy Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: be-payment-shipment-service/package-lock.json
+
+      - name: Select deployment target
+        id: sel
+        shell: bash
+        run: |
+          BRANCH="${GITHUB_REF##*/}"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+          if [[ "$BRANCH" == "dev" ]]; then
+            echo "env=dev" >> $GITHUB_OUTPUT
+            echo "CPANEL_HOST=${{ secrets.CPANEL_HOST_BE_DEV }}" >> $GITHUB_OUTPUT
+            echo "CPANEL_USER=${{ secrets.CPANEL_USER_BE_DEV }}" >> $GITHUB_OUTPUT
+            echo "CPANEL_PASSWORD=${{ secrets.CPANEL_PASSWORD_BE_DEV }}" >> $GITHUB_OUTPUT
+            dest="${{ secrets.CPANEL_DEST_BE_DEV }}"
+            if [[ "$dest" != */ ]]; then dest="$dest/"; fi
+            echo "CPANEL_DEST=$dest" >> $GITHUB_OUTPUT
+          elif [[ "$BRANCH" == "staging" ]]; then
+            echo "env=staging" >> $GITHUB_OUTPUT
+            echo "CPANEL_HOST=${{ secrets.CPANEL_HOST_BE_STG }}" >> $GITHUB_OUTPUT
+            echo "CPANEL_USER=${{ secrets.CPANEL_USER_BE_STG }}" >> $GITHUB_OUTPUT
+            echo "CPANEL_PASSWORD=${{ secrets.CPANEL_PASSWORD_BE_STG }}" >> $GITHUB_OUTPUT
+            dest="${{ secrets.CPANEL_DEST_BE_STG }}"
+            if [[ "$dest" != */ ]]; then dest="$dest/"; fi
+            echo "CPANEL_DEST=$dest" >> $GITHUB_OUTPUT
+          else
+            echo "env=prod" >> $GITHUB_OUTPUT
+            echo "CPANEL_HOST=${{ secrets.CPANEL_HOST_BE_PROD }}" >> $GITHUB_OUTPUT
+            echo "CPANEL_USER=${{ secrets.CPANEL_USER_BE_PROD }}" >> $GITHUB_OUTPUT
+            echo "CPANEL_PASSWORD=${{ secrets.CPANEL_PASSWORD_BE_PROD }}" >> $GITHUB_OUTPUT
+            dest="${{ secrets.CPANEL_DEST_BE_PROD }}"
+            if [[ "$dest" != */ ]]; then dest="$dest/"; fi
+            echo "CPANEL_DEST=$dest" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install dependencies
+        working-directory: be-payment-shipment-service
+        run: npm ci --production
+
+      - name: Build TypeScript
+        working-directory: be-payment-shipment-service
+        env:
+          NODE_ENV: production
+        run: npm run build
+
+      - name: Create deployment package
+        working-directory: be-payment-shipment-service
+        run: |
+          # Create a clean deployment directory
+          mkdir -p deploy-temp
+
+          # Copy necessary files
+          cp -r dist deploy-temp/
+          cp -r node_modules deploy-temp/
+          cp package.json package-lock.json deploy-temp/
+          cp .htaccess deploy-temp/
+          cp -r public deploy-temp/ 2>/dev/null || true
+
+          # Create restart marker
+          mkdir -p deploy-temp/tmp
+
+      - name: Deploy via FTPS to cPanel
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ steps.sel.outputs.CPANEL_HOST }}
+          username: ${{ steps.sel.outputs.CPANEL_USER }}
+          password: ${{ steps.sel.outputs.CPANEL_PASSWORD }}
+          port: 21
+          protocol: ftps
+          local-dir: be-payment-shipment-service/deploy-temp/
+          server-dir: ${{ steps.sel.outputs.CPANEL_DEST }}
+          dangerous-clean-slate: false
+          exclude: |
+            **/.git*
+            **/.github/**
+            **/src/**
+            **/*.ts
+            !**/dist/**
+            **/tsconfig*.json
+            **/.env*
+            **/README.md
+            **/deploy-temp/**
+
+      - name: Trigger Passenger restart
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ steps.sel.outputs.CPANEL_HOST }}
+          username: ${{ steps.sel.outputs.CPANEL_USER }}
+          password: ${{ steps.sel.outputs.CPANEL_PASSWORD }}
+          port: 21
+          protocol: ftps
+          local-dir: be-payment-shipment-service/deploy-temp/tmp/
+          server-dir: ${{ steps.sel.outputs.CPANEL_DEST }}tmp/
+          dangerous-clean-slate: false
