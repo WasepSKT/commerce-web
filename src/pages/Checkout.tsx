@@ -21,7 +21,6 @@ import OrderSummaryCard from '@/components/checkout/OrderSummaryCard';
 import CheckoutCaptcha from '@/components/checkout/CheckoutCaptcha';
 import { useCheckoutInitialization } from '@/hooks/useCheckoutInitialization';
 import { useCheckoutShippingRates } from '@/hooks/useCheckoutShippingRates';
-import { useDryRun } from '@/hooks/useDryRun';
 import type { Order, OrderItem } from '@/types/checkout';
 
 // types moved to src/types/checkout.ts; query is provided by useCheckoutInitialization
@@ -33,9 +32,6 @@ export default function CheckoutPage() {
   const { order, setOrder, items, setItems, initializing, query } = useCheckoutInitialization();
   const { rates, selectedRate, setSelectedRate, loadingRates } = useCheckoutShippingRates(profile, items);
 
-  // Dry-run mode: when true the checkout will NOT persist orders/order_items
-  // to the database. Enable via query ?dry_run=1 or automatically on localhost.
-  const dryRun = useDryRun(query.get('dry_run'));
   const [creatingSession, setCreatingSession] = useState(false);
   const [captchaVerified, setCaptchaVerified] = useState(false);
   // Turnstile via hook
@@ -116,34 +112,6 @@ export default function CheckoutPage() {
       let oid = order?.id;
 
       if (!oid) {
-        if (dryRun) {
-          // In dry-run mode we do NOT persist orders/order_items. Instead build
-          // a lightweight order payload and pass it to the payment session
-          // creation API so the server can create test transactions without
-          // creating DB rows.
-          const tempOrder = {
-            total_amount: subtotal,
-            status: 'pending',
-            customer_name: profile?.full_name ?? '',
-            customer_phone: profile?.phone ?? '',
-            customer_address: profile?.address ?? '',
-            user_id: profile?.user_id ?? null,
-            items: items.map(i => ({ product_id: i.product_id, product_name: i.product_name, quantity: i.quantity ?? 1, price: i.price ?? i.unit_price ?? 0, unit_price: i.unit_price ?? i.price ?? 0 })),
-          } as const;
-
-          // Pass the full order payload with `test: true` so the server knows
-          // this is a dry-run and should not persist the order. The server can
-          // respond with a provider checkout URL for testing.
-          // Note: For dry run mode, you might need a separate test API endpoint
-          // For now, we'll skip dry run payment session creation
-          toast({
-            title: 'Mode Uji Coba',
-            description: 'Ini adalah mode uji — tidak ada data yang disimpan.'
-          });
-          setCreatingSession(false);
-          return;
-        }
-
         // Create order in database
         type OrderInsert = Database['public']['Tables']['orders']['Insert'];
         const orderPayload: OrderInsert = {
@@ -246,7 +214,7 @@ export default function CheckoutPage() {
     } finally {
       setCreatingSession(false);
     }
-  }, [dryRun, items, order, profile, selectedRate, subtotal, total, toast, TURNSTILE_SITEKEY, executeTurnstile, setOrder, captchaVerified]);
+  }, [items, order, profile, selectedRate, subtotal, total, toast, TURNSTILE_SITEKEY, executeTurnstile, setOrder, captchaVerified]);
 
   if (initializing) return null;
 

@@ -19,7 +19,7 @@ headers: {
 
 ### 1. Create Payment Session
 
-Membuat session pembayaran baru untuk order.
+Membuat session pembayaran baru untuk order. User akan diarahkan ke halaman Xendit untuk memilih metode pembayaran (QRIS, E-Wallet, Bank Transfer, dll).
 
 **Endpoint:** `POST /payments/create-session`
 
@@ -38,10 +38,8 @@ Membuat session pembayaran baru untuk order.
 
 ```javascript
 {
-  "order_id": "ORDER123",           // Required
-  "return_url": "https://regalpaw.id/payment/success",  // Optional
-  "payment_method": "EWALLET",       // Optional: EWALLET, BANK_TRANSFER, QRIS, CARD
-  "payment_channel": "SHOPEEPAY"     // Optional: SHOPEEPAY, OVO, DANA, BCA, etc
+  "order_id": "ORDER123",                                      // Required
+  "return_url": "https://regalpaw.id/payment/success"         // Optional - URL redirect setelah pembayaran
 }
 ```
 
@@ -51,11 +49,9 @@ Membuat session pembayaran baru untuk order.
 {
   "test": true,
   "order": {
-    "total": 100000,                 // Amount in IDR
-    "total_amount": 100000           // Alias untuk total
+    "total": 100000                  // Amount in IDR (bisa juga pakai "total_amount")
   },
-  "return_url": "https://regalpaw.id/payment/success",
-  "payment_method": "QRIS"
+  "return_url": "https://regalpaw.id/payment/success"
 }
 ```
 
@@ -73,7 +69,7 @@ Membuat session pembayaran baru untuk order.
 **Usage Example:**
 
 ```javascript
-// React/Vue/Vanilla JS
+// React/Vue/Vanilla JS - Simple Flow
 async function createPayment(orderId) {
   const response = await fetch(
     "https://api-payment.regalpaw.id/api/payments/create-session",
@@ -85,112 +81,39 @@ async function createPayment(orderId) {
       body: JSON.stringify({
         order_id: orderId,
         return_url: `${window.location.origin}/payment/success`,
-        payment_method: "EWALLET",
-        payment_channel: "SHOPEEPAY",
       }),
     }
   );
 
   const data = await response.json();
 
-  // Redirect user ke checkout page
+  // Redirect user ke Xendit payment page
+  // User akan pilih metode pembayaran di halaman Xendit
   window.location.href = data.checkout_url;
 }
 ```
 
-**Payment Methods Available:**
+**Flow Pembayaran:**
 
-| Method          | Channel Options                           |
-| --------------- | ----------------------------------------- |
-| `EWALLET`       | `SHOPEEPAY`, `OVO`, `DANA`, `LINKAJA`     |
-| `BANK_TRANSFER` | `BCA`, `BNI`, `MANDIRI`, `BRI`, `PERMATA` |
-| `QRIS`          | Auto-detect (DANA, GoPay, OVO, etc)       |
-| `CARD`          | Credit/Debit cards                        |
-| `RETAIL_OUTLET` | `ALFAMART`, `INDOMARET`                   |
+1. Frontend memanggil `/payments/create-session` dengan `order_id`
+2. Backend membuat invoice di Xendit dan mengembalikan `checkout_url`
+3. Frontend redirect user ke `checkout_url`
+4. User memilih metode pembayaran di halaman Xendit (QRIS, E-Wallet, Bank Transfer, dll)
+5. User melakukan pembayaran
+6. Xendit mengirim webhook ke backend untuk update status order
+7. User di-redirect ke `return_url` setelah selesai
 
----
+**Metode Pembayaran yang Tersedia di Xendit:**
 
-### 2. Create QR Code Payment (QRIS)
-
-**⚡ NEW!** Endpoint khusus untuk QRIS yang return QR code untuk ditampilkan di website.
-
-**Endpoint:** `POST /payments/qr/create`
-
-**Headers:**
-
-```javascript
-{
-  'Content-Type': 'application/json'
-  // No API key required (public endpoint)
-}
-```
-
-**Request Body:**
-
-```javascript
-{
-  "order_id": "ORDER123",      // Optional: Order ID dari database
-  "amount": 100000,            // Optional: Manual amount (jika tidak pakai order_id)
-  "return_url": "https://regalpaw.id/payment/success"  // Optional
-}
-```
-
-**Response:**
-
-```javascript
-{
-  "provider": "xendit",
-  "qr_id": "qr_abc123...",
-  "qr_string": "00020101021126...",  // String untuk generate QR code image
-  "amount": 100000,
-  "status": "ACTIVE"
-}
-```
-
-**Usage Example (React):**
-
-```javascript
-import QRCode from 'qrcode.react';
-
-async function createQRISPayment(orderId) {
-  const response = await fetch('https://api-payment.regalpaw.id/api/payments/qr/create', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      order_id: orderId,
-      return_url: window.location.origin + '/payment/success'
-    })
-  });
-
-  const data = await response.json();
-  
-  // Display QR Code
-  return (
-    <div>
-      <h3>Scan QR Code untuk bayar</h3>
-      <QRCode value={data.qr_string} size={256} />
-      <p>Total: Rp {data.amount.toLocaleString()}</p>
-    </div>
-  );
-}
-```
-
-**Install QR Code Library:**
-
-```bash
-# React
-npm install qrcode.react
-
-# Vue
-npm install vue-qrcode
-
-# Vanilla JS
-npm install qrcode
-```
+- **QRIS** - QR Code untuk semua e-wallet (DANA, GoPay, OVO, ShopeePay, dll)
+- **E-Wallet** - OVO, DANA, LinkAja, ShopeePay
+- **Bank Transfer** - BCA, BNI, Mandiri, BRI, Permata
+- **Credit/Debit Card** - Visa, Mastercard
+- **Retail Outlet** - Alfamart, Indomaret
 
 ---
 
-### 3. Get Invoice Details
+### 2. Get Invoice Details
 
 Mendapatkan detail invoice/payment.
 
@@ -224,7 +147,7 @@ Mendapatkan detail invoice/payment.
 
 ## 📦 Shipping APIs
 
-### 3. Get Shipping Rates
+### 1. Get Shipping Rates
 
 Mendapatkan estimasi ongkir untuk berbagai kurir.
 
@@ -253,22 +176,22 @@ Mendapatkan estimasi ongkir untuk berbagai kurir.
 ```javascript
 [
   {
-    "provider": "JNE",
-    "service_code": "REG",
-    "service_name": "REG",
-    "cost": 15000,
-    "etd": "2-3 hari",
-    "currency": "IDR"
+    provider: "JNE",
+    service_code: "REG",
+    service_name: "REG",
+    cost: 15000,
+    etd: "2-3 hari",
+    currency: "IDR",
   },
   {
-    "provider": "JNT",
-    "service_code": "EZ",
-    "service_name": "EZ",
-    "cost": 12000,
-    "etd": "3-4 hari",
-    "currency": "IDR"
-  }
-]
+    provider: "JNT",
+    service_code: "EZ",
+    service_name: "EZ",
+    cost: 12000,
+    etd: "3-4 hari",
+    currency: "IDR",
+  },
+];
 ```
 
 **Usage Example:**
@@ -352,7 +275,7 @@ Membuat order pengiriman (booking kurir).
 
 ## 🌍 Region/Area APIs
 
-### 5. Search Regions
+### 3. Search Regions
 
 ⚠️ **DISABLED** - Endpoint ini di-disable untuk mencegah OOM error.
 
@@ -370,24 +293,24 @@ Membuat order pengiriman (booking kurir).
 async function getRegionHierarchy() {
   // 1. Get provinces
   const provinces = await fetch(
-    'https://api-payment.regalpaw.id/api/region/provinces'
-  ).then(r => r.json());
-  
+    "https://api-payment.regalpaw.id/api/region/provinces"
+  ).then((r) => r.json());
+
   // 2. Get cities by province
   const cities = await fetch(
     `https://api-payment.regalpaw.id/api/region/cities/${provinceId}`
-  ).then(r => r.json());
-  
+  ).then((r) => r.json());
+
   // 3. Get districts by city
   const districts = await fetch(
     `https://api-payment.regalpaw.id/api/region/districts/${cityId}`
-  ).then(r => r.json());
-  
+  ).then((r) => r.json());
+
   // 4. Get areas (kelurahan) by district - RETURN area_id!
   const areas = await fetch(
     `https://api-payment.regalpaw.id/api/region/areas/${districtId}`
-  ).then(r => r.json());
-  
+  ).then((r) => r.json());
+
   // Use area.area_id for shipping!
   return areas;
 }
@@ -416,7 +339,7 @@ async function getRegionHierarchy() {
 
 ---
 
-### 7. Get Cities by Province
+### 5. Get Cities by Province
 
 **Endpoint:** `GET /region/cities/:province_id`
 
@@ -434,13 +357,13 @@ async function getRegionHierarchy() {
 
 ---
 
-### 8. Get Districts by City
+### 6. Get Districts by City
 
 **Endpoint:** `GET /region/districts/:city_id`
 
 ---
 
-### 9. Get Areas by District
+### 7. Get Areas by District
 
 **Endpoint:** `GET /region/areas/:district_id`
 
@@ -507,18 +430,16 @@ async function createPayment(orderId) {
 async function getShippingRates(toPostal, weight) {
   const params = new URLSearchParams({
     to_postal: toPostal,
-    weight: weight.toString()
+    weight: weight.toString(),
   });
-  
+
   const res = await fetch(`${API_BASE}/shipping/rates?${params}`);
   return await res.json(); // Returns array directly
 }
 
 // 3. Get Areas (untuk dapatkan area_id)
 async function getAreas(districtId) {
-  const res = await fetch(
-    `${API_BASE}/region/areas/${districtId}`
-  );
+  const res = await fetch(`${API_BASE}/region/areas/${districtId}`);
   return await res.json();
 }
 
