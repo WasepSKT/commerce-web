@@ -601,6 +601,10 @@ html {
       animation-name: fade-left;
     }
   }
+
+  .animate-bounce-slow {
+    animation: bounce 2s infinite;
+  }
 }
 
 /* Disable scroll animations for users who prefer reduced motion */

@@ -3,6 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { createQRPayment } from '@/services/paymentService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface QRISPaymentProps {
   orderId: string;
@@ -15,6 +16,7 @@ export function QRISPayment({ orderId, amount, onSuccess, onError }: QRISPayment
   const [qrData, setQrData] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchQRCode = async () => {
@@ -22,7 +24,17 @@ export function QRISPayment({ orderId, amount, onSuccess, onError }: QRISPayment
         setLoading(true);
         const result = await createQRPayment(orderId, { amount });
         setQrData(result.qr_string);
+
+        // Poll for payment status
+        const pollInterval = setInterval(async () => {
+          // Check payment status from your API
+          // If successful, redirect to success page
+          // navigate(`/payment/success?status=success&order_id=${orderId}&amount=${amount}`);
+        }, 3000);
+
         onSuccess?.();
+
+        return () => clearInterval(pollInterval);
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Failed to generate QR code';
         setError(errorMsg);
@@ -33,7 +45,7 @@ export function QRISPayment({ orderId, amount, onSuccess, onError }: QRISPayment
     };
 
     fetchQRCode();
-  }, [orderId, amount, onSuccess, onError]);
+  }, [orderId, amount, onSuccess, onError, navigate]);
 
   if (loading) {
     return (

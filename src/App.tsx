@@ -50,6 +50,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import ScrollToTopOnNav from './components/ScrollToTopOnNav';
+import { PaymentSuccessPage } from '@/pages/PaymentSuccessPage';
 
 const queryClient = new QueryClient();
 
@@ -113,6 +114,7 @@ export default function App() {
                   <MyOrders />
                 </ProtectedRoute>
               } />
+              <Route path="/payment/success" element={<PaymentSuccessPage />} />
 
               {/* Admin Routes */}
               <Route
