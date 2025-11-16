@@ -67,12 +67,12 @@ export function QRISPayment({ orderId, amount, onSuccess, onError }: QRISPayment
       <CardHeader className="text-center pb-4">
         <CardTitle className="text-xl font-semibold">Scan QR Code untuk Bayar</CardTitle>
       </CardHeader>
-      
+
       <CardContent className="flex flex-col items-center space-y-6 pb-8">
         {/* QR Code Display */}
         <div className="bg-white p-6 rounded-xl border-2 border-gray-200 shadow-sm">
-          <QRCodeSVG 
-            value={qrData} 
+          <QRCodeSVG
+            value={qrData}
             size={256}
             level="H"
             includeMargin={true}
@@ -90,7 +90,7 @@ export function QRISPayment({ orderId, amount, onSuccess, onError }: QRISPayment
         {/* Instructions */}
         <div className="bg-blue-50 rounded-lg p-4 w-full">
           <p className="text-xs text-blue-900 text-center leading-relaxed">
-            Buka aplikasi e-wallet (GoPay, OVO, DANA, ShopeePay, LinkAja) 
+            Buka aplikasi e-wallet (GoPay, OVO, DANA, ShopeePay, LinkAja)
             dan scan QR code di atas untuk menyelesaikan pembayaran
           </p>
         </div>

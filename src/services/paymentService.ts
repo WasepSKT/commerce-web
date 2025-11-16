@@ -162,4 +162,47 @@ export const createQRPayment = async (
   }
 };
 
-export default { createPaymentSession, createPaymentSessionTest, createQRPayment };
+// Smart wrapper - auto-detect test mode vs production mode
+export const initiatePayment = async (
+  orderDataOrId: string | {
+    order: {
+      total_amount: number;
+      customer_name?: string;
+      customer_phone?: string;
+      customer_address?: string;
+    };
+    payment_method?: 'EWALLET' | 'BANK_TRANSFER' | 'QRIS' | 'CARD' | 'RETAIL_OUTLET';
+    payment_channel?: string;
+    return_url?: string;
+    test?: boolean;
+  }
+): Promise<CreateSessionResult> => {
+  // Check if it's test mode (object dengan property test)
+  if (typeof orderDataOrId === 'object' && orderDataOrId.test) {
+    console.log('🧪 Using test mode payment');
+    return createPaymentSessionTest(
+      orderDataOrId.order,
+      {
+        payment_method: orderDataOrId.payment_method,
+        payment_channel: orderDataOrId.payment_channel,
+        return_url: orderDataOrId.return_url,
+      }
+    );
+  }
+
+  // Check if it's production mode (string order_id)
+  if (typeof orderDataOrId === 'string') {
+    console.log('💳 Using production mode payment');
+    return createPaymentSession(orderDataOrId);
+  }
+
+  // Invalid input
+  throw new Error('Invalid payment data: expected string order_id or test mode object');
+};
+
+export default { 
+  createPaymentSession, 
+  createPaymentSessionTest, 
+  createQRPayment,
+  initiatePayment // Export wrapper function
+};
