@@ -73,7 +73,7 @@ export function useCartCheckout(
     }
 
     // Navigate directly to the Checkout page in dry-run/test mode
-    const target = `${CART_ROUTES.CHECKOUT}?dry_run=1&from_cart=1`;
+    const target = `${CART_ROUTES.CHECKOUT}?from_cart=1`;
     console.debug('[Cart] Redirecting to checkout (dry-run):', target);
     if (typeof window !== 'undefined') {
       window.location.assign(target);

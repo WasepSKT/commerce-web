@@ -139,7 +139,7 @@ export const useProductCheckout = (product: Product | null, profile: Profile | n
       return;
     }
 
-    navigate(`/checkout?product_id=${productId}&quantity=${quantity}&dry_run=1&from_product=1`);
+    navigate(`/checkout?product_id=${productId}&quantity=${quantity}&from_product=1`);
   };
 
   return {

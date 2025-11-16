@@ -44,7 +44,7 @@ export default function OrderSummary({
           <span>{formatPrice(subtotal)}</span>
         </div>
         {isProfileComplete ? (
-          <a href={`${CART_ROUTES.CHECKOUT}?dry_run=1&from_cart=1`} className="inline-block w-full">
+          <a href={`${CART_ROUTES.CHECKOUT}?from_cart=1`} className="inline-block w-full">
             <Button className="w-full">{CART_MESSAGES.CHECKOUT}</Button>
           </a>
         ) : (

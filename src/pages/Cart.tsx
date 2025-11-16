@@ -59,7 +59,7 @@ export default function CartPage() {
   const proceedToCheckout = useCallback(async () => {
     try {
       setShowRecap(false);
-      navigate(`${CART_ROUTES.CHECKOUT}?dry_run=1`);
+      navigate(`${CART_ROUTES.CHECKOUT}`);
     } catch (err) {
       console.error('Failed navigate to checkout', err);
       const msg = err instanceof Error ? err.message : String(err);
