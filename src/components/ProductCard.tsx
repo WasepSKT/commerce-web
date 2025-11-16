@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +8,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { StarRating } from '@/components/ui/StarRating';
 import computePriceAfterDiscount from '@/utils/price';
 import { useProductRating } from '@/hooks/useProductRating';
+import { isProductMaintenanceMode } from '@/utils/maintenance';
+import { MarketplaceModal } from '@/components/maintenance/MarketplaceModal';
 
 
 interface Product {
@@ -29,6 +32,21 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { ratingData } = useProductRating(product.id);
+  const [showMarketplace, setShowMarketplace] = useState(false);
+  const isClosingRef = useRef(false);
+
+  const maintenanceMode = isProductMaintenanceMode();
+
+  // Reset isClosing flag after modal closes
+  useEffect(() => {
+    if (!showMarketplace && isClosingRef.current) {
+      // Wait for next tick to ensure click event has fully propagated
+      const timer = setTimeout(() => {
+        isClosingRef.current = false;
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [showMarketplace]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -40,10 +58,32 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
 
   const isOutOfStock = product.stock_quantity === 0;
 
-  const goToDetail = () => navigate(`/product/${product.id}`);
+  const goToDetail = () => {
+    if (maintenanceMode) {
+      setShowMarketplace(true);
+      return;
+    }
+    navigate(`/product/${product.id}`);
+  };
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Prevent re-opening modal if it was just closed
+    if (isClosingRef.current || showMarketplace) {
+      e.stopPropagation();
+      return;
+    }
+    goToDetail();
+  };
+
+  const handleModalClose = (open: boolean) => {
+    if (!open) {
+      isClosingRef.current = true;
+    }
+    setShowMarketplace(open);
+  };
 
   return (
-    <Card onClick={goToDetail} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') goToDetail(); }} className="group rounded-lg overflow-hidden shadow-card bg-white hover:shadow-lg cursor-pointer flex flex-col h-full">
+    <Card onClick={handleCardClick} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' && !showMarketplace && !isClosingRef.current) goToDetail(); }} className="group rounded-lg overflow-hidden shadow-card bg-white hover:shadow-lg cursor-pointer flex flex-col h-full">
       {/* Header: full-width image */}
       <div className="relative bg-white rounded-t-lg overflow-hidden">
         <div className="w-full aspect-square bg-white">
@@ -146,6 +186,13 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           )}
         </div>
       </div> */}
+
+      {/* Marketplace Modal */}
+      <MarketplaceModal
+        open={showMarketplace}
+        onOpenChange={handleModalClose}
+        productName={product.name}
+      />
     </Card>
   );
 }

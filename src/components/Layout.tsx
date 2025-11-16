@@ -27,6 +27,8 @@ import Footer from '@/components/Footer';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { CustomerNotificationDropdown } from '@/components/CustomerNotificationDropdown';
 import PerformanceOptimizer from '@/components/seo/PerformanceOptimizer';
+import { isAuthMaintenanceMode } from '@/utils/maintenance';
+import { ComingSoonModal } from '@/components/maintenance/ComingSoonModal';
 
 interface LayoutProps {
   children: ReactNode;
@@ -36,10 +38,12 @@ import { NotificationsProvider } from '@/contexts/NotificationsProvider';
 export function Layout({ children }: LayoutProps) {
   const { profile, signOut, isAuthenticated } = useAuth();
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [showComingSoon, setShowComingSoon] = useState(false);
   const { totalItems } = useCart();
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const maintenanceMode = isAuthMaintenanceMode();
 
   return (
     <NotificationsProvider>
@@ -184,11 +188,21 @@ export function Layout({ children }: LayoutProps) {
                   </>
                 ) : (
                   <div className="hidden md:flex items-center space-x-3">
-                    <Button asChild size="sm" className="rounded-full px-4 py-4" style={{ backgroundColor: '#7A1316', color: '#F8DF7C' }}>
-                      <Link to="/auth">Login</Link>
+                    <Button
+                      size="sm"
+                      className="rounded-full px-4 py-4"
+                      style={{ backgroundColor: '#7A1316', color: '#F8DF7C' }}
+                      onClick={() => maintenanceMode ? setShowComingSoon(true) : navigate('/auth')}
+                    >
+                      Login
                     </Button>
-                    <Button asChild size="sm" className="rounded-full px-4 py-2" style={{ backgroundColor: '#7A1316', color: '#F8DF7C' }}>
-                      <Link to="/auth/signup">Sign Up</Link>
+                    <Button
+                      size="sm"
+                      className="rounded-full px-4 py-2"
+                      style={{ backgroundColor: '#7A1316', color: '#F8DF7C' }}
+                      onClick={() => maintenanceMode ? setShowComingSoon(true) : navigate('/auth/signup')}
+                    >
+                      Sign Up
                     </Button>
                   </div>
                 )}
@@ -209,6 +223,9 @@ export function Layout({ children }: LayoutProps) {
 
         {/* Mobile bottom navigation */}
         <MobileBottomNav />
+
+        {/* Coming Soon Modal */}
+        <ComingSoonModal open={showComingSoon} onOpenChange={setShowComingSoon} />
       </div>
     </NotificationsProvider>
   );

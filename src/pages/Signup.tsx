@@ -7,6 +7,7 @@ import { useSignupHandlers } from '@/hooks/useSignupHandlers';
 import { getRoleBasedRedirect, UserRole } from '@/utils/rolePermissions';
 import { logTurnstileDebug } from '@/utils/turnstileDebug';
 import { AUTH_ROUTES } from '@/constants/auth';
+import { isAuthMaintenanceMode } from '@/utils/maintenance';
 import { generateBreadcrumbStructuredData } from '@/utils/seoData';
 import bgLogin from '@/assets/bg/bg-login.webp';
 import logoImg from '/regalpaw.png';
@@ -25,10 +26,17 @@ export default function Signup() {
     TURNSTILE_SITEKEY
   );
 
+  // Check maintenance mode - redirect to home if active
+  const maintenanceMode = isAuthMaintenanceMode();
 
   useEffect(() => {
     logTurnstileDebug(TURNSTILE_SITEKEY);
   }, [TURNSTILE_SITEKEY]);
+
+  // Redirect to home if maintenance mode is active
+  if (maintenanceMode) {
+    return <Navigate to="/" replace />;
+  }
 
   // Redirect if already authenticated
   if (isAuthenticated) {

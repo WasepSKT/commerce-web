@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { validateLoginForm } from '@/utils/authValidation';
 import { logTurnstileDebug } from '@/utils/turnstileDebug';
 import { AUTH_MESSAGES, AUTH_ROUTES } from '@/constants/auth';
+import { isAuthMaintenanceMode } from '@/utils/maintenance';
 import bgLogin from '@/assets/bg/bg-login.webp';
 import googleLogo from '@/assets/img/Google__G__logo.svg.png';
 import logoImg from '/regalpaw.png';
@@ -27,6 +28,9 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  // Check maintenance mode - redirect to home if active
+  const maintenanceMode = isAuthMaintenanceMode();
+
   // Turnstile via hook (handles sitekey, script, render, execute)
   const { sitekey: TURNSTILE_SITEKEY, containerRef: widgetContainerRef, execute: executeTurnstile } = useTurnstile();
 
@@ -34,6 +38,11 @@ export default function Auth() {
   useEffect(() => {
     logTurnstileDebug(TURNSTILE_SITEKEY);
   }, [TURNSTILE_SITEKEY]);
+
+  // Redirect to home if maintenance mode is active
+  if (maintenanceMode) {
+    return <Navigate to="/" replace />;
+  }
 
   /**
    * Handle Google sign-in with CAPTCHA verification
