@@ -53,10 +53,10 @@ jobs:
             echo "VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY_DEV }}" >> $GITHUB_OUTPUT
             echo "VITE_SUPABASE_PROJECT_ID=${{ secrets.VITE_SUPABASE_PROJECT_ID_DEV }}" >> $GITHUB_OUTPUT
             echo "VITE_TURNSTILE_SITE_KEY=${{ secrets.VITE_TURNSTILE_SITE_KEY_DEV }}" >> $GITHUB_OUTPUT
-            echo "VITE_MAINTENANCE_AUTH=${{ secrets.VITE_MAINTENANCE_AUTH_DEV }}" >> $GITHUB_OUTPUT
-            echo "VITE_MAINTENANCE_PRODUCT=${{ secrets.VITE_MAINTENANCE_PRODUCT_DEV }}" >> $GITHUB_OUTPUT
-            echo "VITE_SHOPEE_URL=${{ secrets.VITE_SHOPEE_URL }}" >> $GITHUB_OUTPUT
-            echo "VITE_TIKTOK_SHOP_URL=${{ secrets.VITE_TIKTOK_SHOP_URL }}" >> $GITHUB_OUTPUT
+            echo "VITE_MAINTENANCE_AUTH=${{ secrets.VITE_MAINTENANCE_AUTH_DEV || 'false' }}" >> $GITHUB_OUTPUT
+            echo "VITE_MAINTENANCE_PRODUCT=${{ secrets.VITE_MAINTENANCE_PRODUCT_DEV || 'false' }}" >> $GITHUB_OUTPUT
+            echo "VITE_SHOPEE_URL=${{ secrets.VITE_SHOPEE_URL || 'https://shopee.co.id' }}" >> $GITHUB_OUTPUT
+            echo "VITE_TIKTOK_SHOP_URL=${{ secrets.VITE_TIKTOK_SHOP_URL || 'https://www.tiktok.com' }}" >> $GITHUB_OUTPUT
           elif [[ "$BRANCH" == "stg" ]]; then
             echo "env=stg" >> $GITHUB_OUTPUT
             echo "CPANEL_HOST=${{ secrets.CPANEL_HOST_STG }}" >> $GITHUB_OUTPUT
@@ -70,10 +70,10 @@ jobs:
             echo "VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY_STG }}" >> $GITHUB_OUTPUT
             echo "VITE_SUPABASE_PROJECT_ID=${{ secrets.VITE_SUPABASE_PROJECT_ID_STG }}" >> $GITHUB_OUTPUT
             echo "VITE_TURNSTILE_SITE_KEY=${{ secrets.VITE_TURNSTILE_SITE_KEY_STG }}" >> $GITHUB_OUTPUT
-            echo "VITE_MAINTENANCE_AUTH=${{ secrets.VITE_MAINTENANCE_AUTH_STG }}" >> $GITHUB_OUTPUT
-            echo "VITE_MAINTENANCE_PRODUCT=${{ secrets.VITE_MAINTENANCE_PRODUCT_STG }}" >> $GITHUB_OUTPUT
-            echo "VITE_SHOPEE_URL=${{ secrets.VITE_SHOPEE_URL }}" >> $GITHUB_OUTPUT
-            echo "VITE_TIKTOK_SHOP_URL=${{ secrets.VITE_TIKTOK_SHOP_URL }}" >> $GITHUB_OUTPUT
+            echo "VITE_MAINTENANCE_AUTH=${{ secrets.VITE_MAINTENANCE_AUTH_STG || 'false' }}" >> $GITHUB_OUTPUT
+            echo "VITE_MAINTENANCE_PRODUCT=${{ secrets.VITE_MAINTENANCE_PRODUCT_STG || 'false' }}" >> $GITHUB_OUTPUT
+            echo "VITE_SHOPEE_URL=${{ secrets.VITE_SHOPEE_URL || 'https://shopee.co.id' }}" >> $GITHUB_OUTPUT
+            echo "VITE_TIKTOK_SHOP_URL=${{ secrets.VITE_TIKTOK_SHOP_URL || 'https://www.tiktok.com' }}" >> $GITHUB_OUTPUT
           else
             echo "env=prod" >> $GITHUB_OUTPUT
             echo "CPANEL_HOST=${{ secrets.CPANEL_HOST_PROD }}" >> $GITHUB_OUTPUT
@@ -87,10 +87,10 @@ jobs:
             echo "VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY_PROD }}" >> $GITHUB_OUTPUT
             echo "VITE_SUPABASE_PROJECT_ID=${{ secrets.VITE_SUPABASE_PROJECT_ID_PROD }}" >> $GITHUB_OUTPUT
             echo "VITE_TURNSTILE_SITE_KEY=${{ secrets.VITE_TURNSTILE_SITE_KEY_PROD }}" >> $GITHUB_OUTPUT
-            echo "VITE_MAINTENANCE_AUTH=${{ secrets.VITE_MAINTENANCE_AUTH_PROD }}" >> $GITHUB_OUTPUT
-            echo "VITE_MAINTENANCE_PRODUCT=${{ secrets.VITE_MAINTENANCE_PRODUCT_PROD }}" >> $GITHUB_OUTPUT
-            echo "VITE_SHOPEE_URL=${{ secrets.VITE_SHOPEE_URL }}" >> $GITHUB_OUTPUT
-            echo "VITE_TIKTOK_SHOP_URL=${{ secrets.VITE_TIKTOK_SHOP_URL }}" >> $GITHUB_OUTPUT
+            echo "VITE_MAINTENANCE_AUTH=${{ secrets.VITE_MAINTENANCE_AUTH_PROD || 'false' }}" >> $GITHUB_OUTPUT
+            echo "VITE_MAINTENANCE_PRODUCT=${{ secrets.VITE_MAINTENANCE_PRODUCT_PROD || 'false' }}" >> $GITHUB_OUTPUT
+            echo "VITE_SHOPEE_URL=${{ secrets.VITE_SHOPEE_URL || 'https://shopee.co.id' }}" >> $GITHUB_OUTPUT
+            echo "VITE_TIKTOK_SHOP_URL=${{ secrets.VITE_TIKTOK_SHOP_URL || 'https://www.tiktok.com' }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Install dependencies
@@ -135,7 +135,7 @@ jobs:
           local-dir: dist/
           server-dir: ${{ steps.sel.outputs.CPANEL_DEST }}
           dangerous-clean-slate: false
-          log-level: verbose # Enable verbose logging
+          log-level: verbose
           timeout: 60000
           exclude: |
             **/.git*
