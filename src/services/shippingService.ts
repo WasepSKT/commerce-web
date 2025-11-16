@@ -9,7 +9,7 @@ export interface ShippingRate {
   currency: string;
 }
 
-// Mock shipping rates untuk development
+// Mock shipping rates untuk development (gunakan saat backend belum ready)
 const MOCK_SHIPPING_RATES: ShippingRate[] = [
   {
     provider: 'JNE',
@@ -17,6 +17,14 @@ const MOCK_SHIPPING_RATES: ShippingRate[] = [
     service_name: 'Regular',
     cost: 15000,
     etd: '2-3 hari',
+    currency: 'IDR',
+  },
+  {
+    provider: 'JNE',
+    service_code: 'YES',
+    service_name: 'Yakin Esok Sampai',
+    cost: 25000,
+    etd: '1 hari',
     currency: 'IDR',
   },
   {
@@ -35,25 +43,26 @@ const MOCK_SHIPPING_RATES: ShippingRate[] = [
     etd: '2-3 hari',
     currency: 'IDR',
   },
-  {
-    provider: 'JNE',
-    service_code: 'YES',
-    service_name: 'Yakin Esok Sampai',
-    cost: 25000,
-    etd: '1 hari',
-    currency: 'IDR',
-  },
 ];
 
-// Get shipping rates - dengan fallback ke mock data
+// Flag untuk force mock mode (set true untuk always use mock)
+const FORCE_MOCK_MODE = true; // Set false jika backend sudah ready
+
+// Get shipping rates dengan unique key untuk prevent duplicates
 export const getShippingRates = async (
   toPostal: string,
   weight: number,
   originPostal?: string
 ): Promise<ShippingRate[]> => {
+  // Force mock mode untuk development
+  if (FORCE_MOCK_MODE) {
+    console.log('🚚 Using mock shipping rates');
+    return MOCK_SHIPPING_RATES;
+  }
+
   // Validate inputs
   if (!toPostal || !weight || weight <= 0) {
-    console.warn('Invalid shipping parameters, using mock data');
+    console.warn('⚠️ Invalid shipping parameters, using mock data');
     return MOCK_SHIPPING_RATES;
   }
 
@@ -75,18 +84,37 @@ export const getShippingRates = async (
     );
 
     if (!response.ok) {
-      console.warn('Shipping API error, using mock data');
+      console.warn('⚠️ Shipping API error, using mock data');
       return MOCK_SHIPPING_RATES;
     }
 
     const data = await response.json();
-    return Array.isArray(data) && data.length > 0 ? data : MOCK_SHIPPING_RATES;
+
+    // Remove duplicates based on provider + service_code
+    const uniqueRates = removeDuplicateRates(data);
+
+    return Array.isArray(uniqueRates) && uniqueRates.length > 0
+      ? uniqueRates
+      : MOCK_SHIPPING_RATES;
   } catch (error) {
-    console.error('getShippingRates error, using mock data:', error);
-    // Return mock data sebagai fallback
+    console.error('❌ getShippingRates error, using mock data:', error);
     return MOCK_SHIPPING_RATES;
   }
 };
+
+// Helper function to remove duplicate shipping rates
+function removeDuplicateRates(rates: ShippingRate[]): ShippingRate[] {
+  const seen = new Map<string, ShippingRate>();
+
+  rates.forEach(rate => {
+    const key = `${rate.provider}-${rate.service_code}`;
+    if (!seen.has(key)) {
+      seen.set(key, rate);
+    }
+  });
+
+  return Array.from(seen.values());
+}
 
 // Get mock shipping rates (untuk testing)
 export const getMockShippingRates = (): ShippingRate[] => {

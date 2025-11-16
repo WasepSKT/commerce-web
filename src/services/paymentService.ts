@@ -7,11 +7,7 @@ export interface CreateSessionResult {
   url?: string;
 }
 
-export type CreatePaymentPayload =
-  | { order_id: string; return_url?: string; payment_method?: string; payment_channel?: string; test?: boolean }
-  | { order?: unknown; return_url?: string; payment_method?: string; test: true };
-
-// Sesuai API Doc - Simple version dengan order_id
+// Production-ready payment session
 export const createPaymentSession = async (
   orderId: string,
   options?: {
@@ -21,26 +17,37 @@ export const createPaymentSession = async (
   }
 ): Promise<CreateSessionResult> => {
   try {
+    const requestBody = {
+      order_id: orderId,
+      return_url: options?.return_url || `${window.location.origin}/payment/success`,
+      payment_method: options?.payment_method,
+      payment_channel: options?.payment_channel,
+    };
+
+    // Debug: log request body
+    console.log('📤 Payment request:', requestBody);
+
     const response = await fetch(`${PAYMENT_API_URL}/api/payments/create-session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(SERVICE_API_KEY && { 'x-api-key': SERVICE_API_KEY }),
       },
-      body: JSON.stringify({
-        order_id: orderId,
-        return_url: options?.return_url || `${window.location.origin}/payment/success`,
-        payment_method: options?.payment_method,
-        payment_channel: options?.payment_channel,
-      }),
+      body: JSON.stringify(requestBody),
     });
+
+    // Debug: log response status
+    console.log('📥 Payment response status:', response.status);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Payment session failed' }));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
+      // Debug: log error response
+      console.error('❌ Payment error response:', errorData);
+      throw new Error(errorData.error || JSON.stringify(errorData) || `HTTP ${response.status}`);
     }
 
     const data = await response.json();
+    console.log('✅ Payment success:', data);
     return data;
   } catch (error) {
     console.error('createPaymentSession error', error);
@@ -48,42 +55,4 @@ export const createPaymentSession = async (
   }
 };
 
-// Test mode version - tanpa order di database
-export const createPaymentSessionTest = async (
-  amount: number,
-  options?: {
-    return_url?: string;
-    payment_method?: 'EWALLET' | 'BANK_TRANSFER' | 'QRIS' | 'CARD' | 'RETAIL_OUTLET';
-  }
-): Promise<CreateSessionResult> => {
-  try {
-    const response = await fetch(`${PAYMENT_API_URL}/api/payments/create-session`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        test: true,
-        order: {
-          total: amount,
-          total_amount: amount,
-        },
-        return_url: options?.return_url || `${window.location.origin}/payment/success`,
-        payment_method: options?.payment_method || 'QRIS',
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Payment session failed' }));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('createPaymentSessionTest error', error);
-    throw error;
-  }
-};
-
-export default { createPaymentSession, createPaymentSessionTest };
+export default { createPaymentSession };
