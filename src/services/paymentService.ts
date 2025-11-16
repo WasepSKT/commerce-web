@@ -7,7 +7,7 @@ export interface CreateSessionResult {
   url?: string;
 }
 
-// Production-ready payment session
+// Production mode - dengan order_id string dari database
 export const createPaymentSession = async (
   orderId: string,
   options?: {
@@ -18,14 +18,13 @@ export const createPaymentSession = async (
 ): Promise<CreateSessionResult> => {
   try {
     const requestBody = {
-      order_id: orderId,
+      order_id: orderId, // Harus string, bukan object!
       return_url: options?.return_url || `${window.location.origin}/payment/success`,
       payment_method: options?.payment_method,
       payment_channel: options?.payment_channel,
     };
 
-    // Debug: log request body
-    console.log('📤 Payment request:', requestBody);
+    console.log('📤 Payment request (production):', requestBody);
 
     const response = await fetch(`${PAYMENT_API_URL}/api/payments/create-session`, {
       method: 'POST',
@@ -36,12 +35,10 @@ export const createPaymentSession = async (
       body: JSON.stringify(requestBody),
     });
 
-    // Debug: log response status
     console.log('📥 Payment response status:', response.status);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Payment session failed' }));
-      // Debug: log error response
       console.error('❌ Payment error response:', errorData);
       throw new Error(errorData.error || JSON.stringify(errorData) || `HTTP ${response.status}`);
     }
@@ -55,4 +52,53 @@ export const createPaymentSession = async (
   }
 };
 
-export default { createPaymentSession };
+// Test mode - FLAT object sesuai API Doc Option B
+export const createPaymentSessionTest = async (
+  amount: number,
+  options?: {
+    return_url?: string;
+    payment_method?: 'EWALLET' | 'BANK_TRANSFER' | 'QRIS' | 'CARD' | 'RETAIL_OUTLET';
+    payment_channel?: string;
+  }
+): Promise<CreateSessionResult> => {
+  try {
+    // FLAT object - sesuai API Doc Option B
+    const requestBody = {
+      test: true,
+      order: {
+        total: amount,
+        total_amount: amount,
+      },
+      return_url: options?.return_url || `${window.location.origin}/payment/success`,
+      payment_method: options?.payment_method || 'QRIS',
+      payment_channel: options?.payment_channel,
+    };
+
+    console.log('📤 Payment request (test mode):', requestBody);
+
+    const response = await fetch(`${PAYMENT_API_URL}/api/payments/create-session`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    console.log('📥 Payment response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Payment session failed' }));
+      console.error('❌ Payment error response:', errorData);
+      throw new Error(errorData.error || JSON.stringify(errorData) || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ Payment test success:', data);
+    return data;
+  } catch (error) {
+    console.error('createPaymentSessionTest error', error);
+    throw error;
+  }
+};
+
+export default { createPaymentSession, createPaymentSessionTest };

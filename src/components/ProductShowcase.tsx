@@ -18,7 +18,7 @@ const slidesData: Slide[] = [
     id: 'tuna',
     title: 'TUNA',
     description:
-      'Produk ini terbuat dari tuna dan hasil sampingan ikan, dipadukan dengan bahan pembentuk gel, serta diperkaya dengan vitamin dan mineral esensial.',
+      'Produk ini terbuat dari tuna yang berkualitas dan hasil sampingan ikan, dipadukan dengan bahan pembentuk gel, serta diperkaya dengan vitamin dan mineral esensial.',
     img: tunaImg,
   },
   {
