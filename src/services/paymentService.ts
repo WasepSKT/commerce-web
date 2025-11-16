@@ -7,6 +7,14 @@ export interface CreateSessionResult {
   url?: string;
 }
 
+export interface QRPaymentResult {
+  provider: string;
+  qr_id: string;
+  qr_string: string;
+  amount: number;
+  status: string;
+}
+
 // Production mode - dengan order_id string dari database
 export const createPaymentSession = async (
   orderId: string,
@@ -18,7 +26,7 @@ export const createPaymentSession = async (
 ): Promise<CreateSessionResult> => {
   try {
     const requestBody = {
-      order_id: orderId, // Harus string, bukan object!
+      order_id: orderId,
       return_url: options?.return_url || `${window.location.origin}/payment/success`,
       payment_method: options?.payment_method,
       payment_channel: options?.payment_channel,
@@ -62,7 +70,6 @@ export const createPaymentSessionTest = async (
   }
 ): Promise<CreateSessionResult> => {
   try {
-    // FLAT object - sesuai API Doc Option B
     const requestBody = {
       test: true,
       order: {
@@ -101,4 +108,46 @@ export const createPaymentSessionTest = async (
   }
 };
 
-export default { createPaymentSession, createPaymentSessionTest };
+// Create QR payment (QRIS) - returns QR string
+export const createQRPayment = async (
+  orderId: string,
+  options?: {
+    amount?: number;
+    return_url?: string;
+  }
+): Promise<QRPaymentResult> => {
+  try {
+    const requestBody = {
+      order_id: orderId,
+      amount: options?.amount,
+      return_url: options?.return_url || `${window.location.origin}/payment/success`,
+    };
+
+    console.log('📤 QR Payment request:', requestBody);
+
+    const response = await fetch(`${PAYMENT_API_URL}/api/payments/qr/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    console.log('📥 QR Payment response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'QR payment failed' }));
+      console.error('❌ QR Payment error:', errorData);
+      throw new Error(errorData.error || JSON.stringify(errorData) || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ QR Payment success:', data);
+    return data;
+  } catch (error) {
+    console.error('createQRPayment error', error);
+    throw error;
+  }
+};
+
+export default { createPaymentSession, createPaymentSessionTest, createQRPayment };

@@ -110,7 +110,87 @@ async function createPayment(orderId) {
 
 ---
 
-### 2. Get Invoice Details
+### 2. Create QR Code Payment (QRIS)
+
+**⚡ NEW!** Endpoint khusus untuk QRIS yang return QR code untuk ditampilkan di website.
+
+**Endpoint:** `POST /payments/qr/create`
+
+**Headers:**
+
+```javascript
+{
+  'Content-Type': 'application/json'
+  // No API key required (public endpoint)
+}
+```
+
+**Request Body:**
+
+```javascript
+{
+  "order_id": "ORDER123",      // Optional: Order ID dari database
+  "amount": 100000,            // Optional: Manual amount (jika tidak pakai order_id)
+  "return_url": "https://regalpaw.id/payment/success"  // Optional
+}
+```
+
+**Response:**
+
+```javascript
+{
+  "provider": "xendit",
+  "qr_id": "qr_abc123...",
+  "qr_string": "00020101021126...",  // String untuk generate QR code image
+  "amount": 100000,
+  "status": "ACTIVE"
+}
+```
+
+**Usage Example (React):**
+
+```javascript
+import QRCode from 'qrcode.react';
+
+async function createQRISPayment(orderId) {
+  const response = await fetch('https://api-payment.regalpaw.id/api/payments/qr/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      order_id: orderId,
+      return_url: window.location.origin + '/payment/success'
+    })
+  });
+
+  const data = await response.json();
+  
+  // Display QR Code
+  return (
+    <div>
+      <h3>Scan QR Code untuk bayar</h3>
+      <QRCode value={data.qr_string} size={256} />
+      <p>Total: Rp {data.amount.toLocaleString()}</p>
+    </div>
+  );
+}
+```
+
+**Install QR Code Library:**
+
+```bash
+# React
+npm install qrcode.react
+
+# Vue
+npm install vue-qrcode
+
+# Vanilla JS
+npm install qrcode
+```
+
+---
+
+### 3. Get Invoice Details
 
 Mendapatkan detail invoice/payment.
 
