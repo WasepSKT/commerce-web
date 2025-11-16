@@ -25,12 +25,6 @@ export const createPaymentSession = async (
   }
 ): Promise<CreateSessionResult> => {
   try {
-    // Pastikan orderId adalah string, bukan object!
-    if (typeof orderId !== 'string') {
-      console.error('❌ Invalid orderId type:', typeof orderId, orderId);
-      throw new Error('order_id must be a string');
-    }
-
     const requestBody = {
       order_id: orderId,
       return_url: options?.return_url || `${window.location.origin}/payment/success`,
@@ -66,7 +60,7 @@ export const createPaymentSession = async (
   }
 };
 
-// Test mode - untuk dry run tanpa order_id
+// Test mode - FLAT object sesuai API Doc Option B
 export const createPaymentSessionTest = async (
   order: {
     total_amount: number;
@@ -78,7 +72,6 @@ export const createPaymentSessionTest = async (
     return_url?: string;
     payment_method?: 'EWALLET' | 'BANK_TRANSFER' | 'QRIS' | 'CARD' | 'RETAIL_OUTLET';
     payment_channel?: string;
-    turnstile_token?: string;
   }
 ): Promise<CreateSessionResult> => {
   try {
@@ -118,6 +111,44 @@ export const createPaymentSessionTest = async (
     console.error('createPaymentSessionTest error', error);
     throw error;
   }
+};
+
+// Smart wrapper - auto-detect test mode vs production mode
+export const initiatePayment = async (
+  orderDataOrId: string | {
+    order: {
+      total_amount: number;
+      customer_name?: string;
+      customer_phone?: string;
+      customer_address?: string;
+    };
+    payment_method?: 'EWALLET' | 'BANK_TRANSFER' | 'QRIS' | 'CARD' | 'RETAIL_OUTLET';
+    payment_channel?: string;
+    return_url?: string;
+    test?: boolean;
+  }
+): Promise<CreateSessionResult> => {
+  // Check if it's test mode (object dengan property test)
+  if (typeof orderDataOrId === 'object' && orderDataOrId.test) {
+    console.log('🧪 Using test mode payment');
+    return createPaymentSessionTest(
+      orderDataOrId.order,
+      {
+        payment_method: orderDataOrId.payment_method,
+        payment_channel: orderDataOrId.payment_channel,
+        return_url: orderDataOrId.return_url,
+      }
+    );
+  }
+
+  // Check if it's production mode (string order_id)
+  if (typeof orderDataOrId === 'string') {
+    console.log('💳 Using production mode payment');
+    return createPaymentSession(orderDataOrId);
+  }
+
+  // Invalid input
+  throw new Error('Invalid payment data: expected string order_id or test mode object');
 };
 
 // Create QR payment
@@ -162,47 +193,9 @@ export const createQRPayment = async (
   }
 };
 
-// Smart wrapper - auto-detect test mode vs production mode
-export const initiatePayment = async (
-  orderDataOrId: string | {
-    order: {
-      total_amount: number;
-      customer_name?: string;
-      customer_phone?: string;
-      customer_address?: string;
-    };
-    payment_method?: 'EWALLET' | 'BANK_TRANSFER' | 'QRIS' | 'CARD' | 'RETAIL_OUTLET';
-    payment_channel?: string;
-    return_url?: string;
-    test?: boolean;
-  }
-): Promise<CreateSessionResult> => {
-  // Check if it's test mode (object dengan property test)
-  if (typeof orderDataOrId === 'object' && orderDataOrId.test) {
-    console.log('🧪 Using test mode payment');
-    return createPaymentSessionTest(
-      orderDataOrId.order,
-      {
-        payment_method: orderDataOrId.payment_method,
-        payment_channel: orderDataOrId.payment_channel,
-        return_url: orderDataOrId.return_url,
-      }
-    );
-  }
-
-  // Check if it's production mode (string order_id)
-  if (typeof orderDataOrId === 'string') {
-    console.log('💳 Using production mode payment');
-    return createPaymentSession(orderDataOrId);
-  }
-
-  // Invalid input
-  throw new Error('Invalid payment data: expected string order_id or test mode object');
-};
-
 export default { 
   createPaymentSession, 
   createPaymentSessionTest, 
   createQRPayment,
-  initiatePayment // Export wrapper function
+  initiatePayment
 };
