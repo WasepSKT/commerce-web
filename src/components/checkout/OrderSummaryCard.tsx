@@ -21,33 +21,43 @@ interface OrderSummaryCardProps {
 export default function OrderSummaryCard({ items, subtotal, selectedRate, total, children }: OrderSummaryCardProps) {
   return (
     <div className="p-6 border rounded">
-      <h3 className="font-semibold mb-2 text-primary">{CHECKOUT_MESSAGES.ORDER_SUMMARY}</h3>
-      {children}
-      <div className="space-y-2 text-sm">
+      <h3 className="font-semibold mb-4 text-primary text-lg">{CHECKOUT_MESSAGES.ORDER_SUMMARY}</h3>
+
+      {/* Order Items */}
+      <div className="space-y-2 text-sm mb-4">
         {items.map((it, idx) => (
-          <div key={idx} className="flex justify-between">
-            <div>
-              {it.product_name || it.product_id} x{it.quantity}
+          <div key={idx} className="flex justify-between items-start">
+            <div className="flex-1">
+              <p className="font-medium">{it.product_name || it.product_id}</p>
+              <p className="text-xs text-muted-foreground">Qty: {it.quantity}</p>
             </div>
-            <div>{formatPrice(((it.unit_price ?? it.price) ?? 0) * (it.quantity ?? 1))}</div>
+            <div className="font-medium">{formatPrice(((it.unit_price ?? it.price) ?? 0) * (it.quantity ?? 1))}</div>
           </div>
         ))}
       </div>
 
-      <div className="mt-4 border-t pt-3">
-        <div className="flex justify-between text-muted-foreground">
-          {CHECKOUT_MESSAGES.SUBTOTAL}
-          <div>{formatPrice(subtotal)}</div>
+      {/* Totals */}
+      <div className="border-t pt-3 space-y-2">
+        <div className="flex justify-between text-sm text-muted-foreground">
+          <span>{CHECKOUT_MESSAGES.SUBTOTAL}</span>
+          <span>{formatPrice(subtotal)}</span>
         </div>
-        <div className="flex justify-between text-muted-foreground">
-          {CHECKOUT_MESSAGES.SHIPPING_FEE}
-          <div>{formatPrice(selectedRate?.cost ?? 0)}</div>
+        <div className="flex justify-between text-sm text-muted-foreground">
+          <span>{CHECKOUT_MESSAGES.SHIPPING_FEE}</span>
+          <span>{formatPrice(selectedRate?.cost ?? 0)}</span>
         </div>
-        <div className="flex justify-between font-semibold text-lg">
-          {CHECKOUT_MESSAGES.TOTAL}
-          <div>{formatPrice(total)}</div>
+        <div className="flex justify-between font-bold text-lg pt-2 border-t">
+          <span>{CHECKOUT_MESSAGES.TOTAL}</span>
+          <span className="text-primary">{formatPrice(total)}</span>
         </div>
       </div>
+
+      {/* Payment Controls (Captcha + Button) */}
+      {children && (
+        <div className="mt-6 pt-4 border-t">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

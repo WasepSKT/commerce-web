@@ -1,13 +1,6 @@
 import { CHECKOUT_MESSAGES } from '@/constants/checkout';
 import { formatPrice } from '@/utils/format';
-
-export interface ShippingRate {
-  provider: string;
-  service_code: string;
-  service_name?: string;
-  cost: number;
-  etd?: string;
-}
+import { ShippingRate } from '@/services/shippingService';
 
 interface ShippingRateListProps {
   loading: boolean;
@@ -27,7 +20,7 @@ export default function ShippingRateList({ loading, rates, selected, onSelect }:
           {rates.map((r) => (
             <div
               key={`${r.provider}-${r.service_code}`}
-              className={`p-3 border rounded cursor-pointer ${selected?.service_code === r.service_code ? 'border-primary bg-primary/5' : 'border-transparent'}`}
+              className={`p-3 border rounded cursor-pointer ${selected?.provider === r.provider && selected?.service_code === r.service_code ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-primary/50'}`}
               onClick={() => onSelect(r)}
             >
               <div className="flex justify-between items-center">

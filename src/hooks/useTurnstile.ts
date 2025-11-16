@@ -56,7 +56,18 @@ export const useTurnstile = () => {
             requestAnimationFrame(tryRender);
             return;
           }
-          const id = win.turnstile.render(el, { sitekey, size: 'flexible', theme: 'light' });
+          const id = win.turnstile.render(el, { 
+            sitekey, 
+            size: 'flexible', 
+            theme: 'light',
+            callback: (token: string) => {
+              // Call the global callback if it exists
+              const globalCallback = (window as Window & { onTurnstileSuccess?: (token: string) => void }).onTurnstileSuccess;
+              if (typeof globalCallback === 'function') {
+                globalCallback(token);
+              }
+            }
+          });
           widgetIdRef.current = typeof id === 'number' || typeof id === 'string' ? id : null;
         };
         tryRender();

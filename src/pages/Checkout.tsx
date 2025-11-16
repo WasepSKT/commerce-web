@@ -10,14 +10,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Layout } from '@/components/Layout';
 import SEOHead from '@/components/seo/SEOHead';
 import { getShippingRates, ShippingRate } from '@/services/shippingService';
-import { createPaymentSession, CreateSessionResult, CreatePaymentPayload } from '@/services/paymentService';
+import { createPaymentSession, CreateSessionResult } from '@/services/paymentService';
 import computePriceAfterDiscount from '@/utils/price';
 import { safeJsonParse } from '@/utils/storage';
 import { Edit } from 'lucide-react';
-import { CHECKOUT_MESSAGES, PAYMENT_METHODS } from '@/constants/checkout';
+import { CHECKOUT_MESSAGES } from '@/constants/checkout';
 import AddressBlock from '@/components/checkout/AddressBlock';
 import ShippingRateList from '@/components/checkout/ShippingRateList';
-import PaymentMethodSelector from '@/components/checkout/PaymentMethodSelector';
 import OrderSummaryCard from '@/components/checkout/OrderSummaryCard';
 import CheckoutCaptcha from '@/components/checkout/CheckoutCaptcha';
 import { useCheckoutInitialization } from '@/hooks/useCheckoutInitialization';
@@ -33,18 +32,12 @@ export default function CheckoutPage() {
   const { toast } = useToast();
   const { order, setOrder, items, setItems, initializing, query } = useCheckoutInitialization();
   const { rates, selectedRate, setSelectedRate, loadingRates } = useCheckoutShippingRates(profile, items);
-  // Xendit payment method identifiers (frontend labels). When wiring real
-  // Xendit integrations server-side, these should match the provider's expected
-  // method parameters (e.g. 'CARD', 'QRIS', 'EWALLET', 'VIRTUAL_ACCOUNT').
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>(PAYMENT_METHODS[0].id);
-  // Specific channel selection for certain methods
-  const [selectedEwallet, setSelectedEwallet] = useState<string>('OVO');
-  const [selectedBank, setSelectedBank] = useState<string>('BCA');
 
   // Dry-run mode: when true the checkout will NOT persist orders/order_items
   // to the database. Enable via query ?dry_run=1 or automatically on localhost.
   const dryRun = useDryRun(query.get('dry_run'));
   const [creatingSession, setCreatingSession] = useState(false);
+  const [captchaVerified, setCaptchaVerified] = useState(false);
   // Turnstile via hook
   const { sitekey: TURNSTILE_SITEKEY, containerRef: widgetContainerRef, execute: executeTurnstile } = useTurnstile();
 
@@ -97,6 +90,27 @@ export default function CheckoutPage() {
   const formatPrice = (v: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v);
 
   const handlePay = useMemo(() => async () => {
+    // Validate shipping selection
+    if (!selectedRate) {
+      toast({
+        variant: 'destructive',
+        title: '📦 Pilih Jasa Pengiriman',
+        description: 'Mohon pilih metode pengiriman sebelum melanjutkan ke pembayaran.',
+      });
+      return;
+    }
+
+    // Validate captcha when user clicks pay
+    if (TURNSTILE_SITEKEY && !captchaVerified) {
+      toast({
+        variant: 'destructive',
+        title: '🔒 Verifikasi Keamanan Diperlukan',
+        description: 'Mohon selesaikan verifikasi captcha terlebih dahulu untuk melanjutkan pembayaran.',
+        duration: 5000,
+      });
+      return;
+    }
+
     setCreatingSession(true);
     try {
       // If Turnstile sitekey is configured, obtain a token and include it in payloads
@@ -104,8 +118,9 @@ export default function CheckoutPage() {
       if (TURNSTILE_SITEKEY && executeTurnstile) {
         turnstileToken = await executeTurnstile();
         if (!turnstileToken) {
-          throw new Error('Gagal mendapatkan token perlindungan (Turnstile). Coba lagi.');
+          throw new Error('Gagal memverifikasi captcha. Silakan coba lagi.');
         }
+        setCaptchaVerified(true);
       }
       let oid = order?.id;
       if (!oid) {
@@ -127,24 +142,12 @@ export default function CheckoutPage() {
           // Pass the full order payload with `test: true` so the server knows
           // this is a dry-run and should not persist the order. The server can
           // respond with a provider checkout URL for testing.
-          const payload: CreatePaymentPayload = {
-            order: tempOrder,
-            return_url: window.location.href,
-            payment_method: selectedPaymentMethod,
-            test: true,
-            ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
-            // include specific channel if applicable
-            ...(selectedPaymentMethod === 'EWALLET' ? { payment_channel: selectedEwallet } : {}),
-            ...(selectedPaymentMethod === 'VIRTUAL_ACCOUNT' ? { payment_channel: selectedBank } : {}),
-          };
-          const session = await createPaymentSession(payload);
-          const redirectUrl = session?.url ?? session?.checkout_url;
-          if (redirectUrl) {
-            window.location.href = redirectUrl;
-            return;
-          }
-
-          toast({ title: 'Sesi pembayaran (uji) dibuat', description: 'Ini adalah mode uji — tidak ada data yang disimpan.' });
+          // Note: For dry run mode, you might need a separate test API endpoint
+          // For now, we'll skip dry run payment session creation
+          toast({
+            title: 'Mode Uji Coba',
+            description: 'Ini adalah mode uji — tidak ada data yang disimpan.'
+          });
           setCreatingSession(false);
           return;
         }
@@ -180,14 +183,13 @@ export default function CheckoutPage() {
       }
 
       // create payment session via server wrapper
-      const session: CreateSessionResult | null = await createPaymentSession({
-        order_id: oid as string,
-        return_url: window.location.href,
-        payment_method: selectedPaymentMethod,
-        ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
-        ...(selectedPaymentMethod === 'EWALLET' ? { payment_channel: selectedEwallet } : {}),
-        ...(selectedPaymentMethod === 'VIRTUAL_ACCOUNT' ? { payment_channel: selectedBank } : {}),
-      });
+      // User will select payment method on Xendit hosted page
+      const session: CreateSessionResult | null = await createPaymentSession(
+        oid as string,
+        {
+          return_url: `${window.location.origin}/payment/success`,
+        }
+      );
       const redirectUrl = session?.url ?? session?.checkout_url;
       if (redirectUrl) {
         window.location.href = redirectUrl;
@@ -197,11 +199,36 @@ export default function CheckoutPage() {
       toast({ title: 'Sesi pembayaran dibuat', description: 'Lanjutkan ke penyedia pembayaran.' });
     } catch (err) {
       console.error('Failed to initiate payment', err);
-      toast({ variant: 'destructive', title: 'Gagal memulai pembayaran', description: String(err) });
+      const errorMessage = err instanceof Error ? err.message : String(err);
+
+      // Provide specific error messages based on error type
+      let title = '❌ Pembayaran Gagal';
+      let description = errorMessage;
+
+      if (errorMessage.includes('captcha') || errorMessage.includes('Turnstile')) {
+        title = '🔒 Verifikasi Keamanan Gagal';
+        description = 'Gagal memverifikasi captcha. Mohon refresh halaman dan coba lagi.';
+      } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+        title = '🌐 Koneksi Bermasalah';
+        description = 'Tidak dapat terhubung ke server pembayaran. Periksa koneksi internet Anda.';
+      } else if (errorMessage.includes('order') || errorMessage.includes('pesanan')) {
+        title = '📋 Kesalahan Pesanan';
+        description = 'Gagal membuat pesanan. Mohon coba lagi atau hubungi customer service.';
+      }
+
+      toast({
+        variant: 'destructive',
+        title,
+        description,
+        duration: 5000,
+      });
+
+      // Reset captcha verification on error
+      setCaptchaVerified(false);
     } finally {
       setCreatingSession(false);
     }
-  }, [dryRun, items, order, profile, selectedPaymentMethod, selectedEwallet, selectedBank, selectedRate, subtotal, total, toast, TURNSTILE_SITEKEY, executeTurnstile, setOrder]);
+  }, [dryRun, items, order, profile, selectedRate, subtotal, total, toast, TURNSTILE_SITEKEY, executeTurnstile, setOrder, captchaVerified]);
 
   if (initializing) return null;
 
@@ -277,19 +304,57 @@ export default function CheckoutPage() {
 
           <div className="space-y-4">
             <OrderSummaryCard items={items} subtotal={subtotal} selectedRate={selectedRate} total={total}>
-              <PaymentMethodSelector
-                selectedMethod={selectedPaymentMethod}
-                setSelectedMethod={setSelectedPaymentMethod}
-                selectedEwallet={selectedEwallet}
-                setSelectedEwallet={setSelectedEwallet}
-                selectedBank={selectedBank}
-                setSelectedBank={setSelectedBank}
-              />
+              {/* Info about payment gateway */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-blue-900 text-center font-medium">
+                  🔒 Pembayaran aman melalui Xendit
+                </p>
+                <p className="text-xs text-blue-700 text-center mt-1">
+                  Pilih metode pembayaran (QRIS, E-Wallet, Transfer Bank, Kartu Kredit) di halaman selanjutnya
+                </p>
+              </div>
 
               {/* Turnstile Widget Container (Visible & Responsive) */}
-              <CheckoutCaptcha sitekey={TURNSTILE_SITEKEY} containerRef={widgetContainerRef as unknown as React.RefObject<HTMLDivElement>} />
+              {selectedRate && TURNSTILE_SITEKEY && (
+                <div className="space-y-2">
+                  <CheckoutCaptcha
+                    sitekey={TURNSTILE_SITEKEY}
+                    containerRef={widgetContainerRef as unknown as React.RefObject<HTMLDivElement>}
+                    onVerified={setCaptchaVerified}
+                  />
+                  {!captchaVerified && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      <p className="text-xs text-amber-800 text-center font-medium">
+                        ⚠️ Selesaikan verifikasi keamanan di atas sebelum melanjutkan
+                      </p>
+                    </div>
+                  )}
+                  {captchaVerified && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <p className="text-xs text-green-800 text-center font-medium">
+                        ✅ Verifikasi berhasil! Anda dapat melanjutkan pembayaran
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
-              <Button className="w-full mt-3 mb-2" onClick={handlePay} disabled={creatingSession || !selectedRate}>{creatingSession ? 'Mengarahkan...' : 'Bayar & Lanjutkan'}</Button>
+              <Button
+                className="w-full mt-3 mb-2"
+                onClick={handlePay}
+                disabled={creatingSession || !selectedRate}
+              >
+                {creatingSession ? 'Mengarahkan ke Pembayaran...' : 'Lanjutkan ke Pembayaran'}
+              </Button>
+
+              {/* Helper text for disabled button */}
+              {!selectedRate && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
+                  <p className="text-xs text-blue-800 text-center font-medium">
+                    📦 Pilih jasa pengiriman terlebih dahulu
+                  </p>
+                </div>
+              )}
             </OrderSummaryCard>
           </div>
         </div>

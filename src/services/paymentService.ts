@@ -5,6 +5,8 @@ export interface CreateSessionResult {
   session_id?: string;
   checkout_url?: string;
   url?: string;
+  qr_string?: string; // For QRIS payments
+  qr_id?: string;
 }
 
 export interface QRPaymentResult {
@@ -151,7 +153,7 @@ export const initiatePayment = async (
   throw new Error('Invalid payment data: expected string order_id or test mode object');
 };
 
-// Create QR payment
+// Create QR payment (for QRIS)
 export const createQRPayment = async (
   orderId: string,
   options?: {
@@ -172,6 +174,7 @@ export const createQRPayment = async (
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(SERVICE_API_KEY && { 'x-api-key': SERVICE_API_KEY }),
       },
       body: JSON.stringify(requestBody),
     });
@@ -195,7 +198,7 @@ export const createQRPayment = async (
 
 export default { 
   createPaymentSession, 
-  createPaymentSessionTest, 
+  createPaymentSessionTest,
   createQRPayment,
   initiatePayment
 };
