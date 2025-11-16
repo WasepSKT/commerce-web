@@ -51,8 +51,8 @@ export const PAYMENT_API_URL = import.meta.env.VITE_PAYMENT_API_URL || 'https://
 export const SERVICE_API_KEY = import.meta.env.VITE_SERVICE_API_KEY || '';
 
 // Validate required env vars
-if (!SERVICE_API_KEY) {
-  console.error('❌ VITE_SERVICE_API_KEY is not set');
+if (!SERVICE_API_KEY && import.meta.env.PROD) {
+  console.warn('⚠️ VITE_SERVICE_API_KEY is not set in production');
 }
 
 
