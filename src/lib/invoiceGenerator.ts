@@ -37,16 +37,8 @@ interface Order {
 export const generateInvoiceHTML = (order: Order): string => {
   const items = order.order_items ?? [];
   
-  // Format full address with village, district, city, province, postal
-  const addressParts = [];
-  if (order.customer_address) addressParts.push(order.customer_address);
-  if (order.village) addressParts.push(order.village);
-  if (order.district) addressParts.push(`Kec. ${order.district}`);
-  if (order.city) addressParts.push(order.city);
-  if (order.province) addressParts.push(order.province);
-  if (order.postal_code) addressParts.push(order.postal_code);
-  
-  const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : '-';
+  // Use customer_address directly without adding other fields
+  const fullAddress = order.customer_address || '-';
   
   // Payment method
   const paymentMethod = order.payment_method || order.payment_channel || 'Xendit Invoice';
