@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { createQRPayment } from '@/services/paymentService';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2 } from 'lucide-react';
 
 interface QRISPaymentProps {
   orderId: string;
@@ -34,18 +37,24 @@ export function QRISPayment({ orderId, amount, onSuccess, onError }: QRISPayment
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        <p className="mt-4 text-sm text-muted-foreground">Generating QR Code...</p>
-      </div>
+      <Card className="w-full max-w-md mx-auto">
+        <CardContent className="flex flex-col items-center justify-center p-8">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="mt-4 text-sm text-muted-foreground">Membuat QR Code...</p>
+        </CardContent>
+      </Card>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-destructive/10 border border-destructive rounded-lg p-4">
-        <p className="text-destructive text-sm">{error}</p>
-      </div>
+      <Card className="w-full max-w-md mx-auto border-destructive">
+        <CardContent className="p-6">
+          <div className="bg-destructive/10 rounded-lg p-4">
+            <p className="text-destructive text-sm text-center">{error}</p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -54,26 +63,44 @@ export function QRISPayment({ orderId, amount, onSuccess, onError }: QRISPayment
   }
 
   return (
-    <div className="flex flex-col items-center justify-center p-6 bg-white rounded-lg shadow-sm">
-      <h3 className="text-lg font-semibold mb-4">Scan QR Code untuk Bayar</h3>
-
-      {/* QR Code Display - menggunakan iframe dari Xendit atau render manual */}
-      <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
-        {/* Temporary: Display QR string sebagai text, nanti bisa diganti dengan QR image */}
-        <div className="w-64 h-64 flex items-center justify-center bg-gray-50 rounded">
-          <p className="text-xs text-center break-all p-2">{qrData.substring(0, 50)}...</p>
-          {/* TODO: Generate QR image dari qr_string menggunakan library atau API */}
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader className="text-center pb-4">
+        <CardTitle className="text-xl font-semibold">Scan QR Code untuk Bayar</CardTitle>
+      </CardHeader>
+      
+      <CardContent className="flex flex-col items-center space-y-6 pb-8">
+        {/* QR Code Display */}
+        <div className="bg-white p-6 rounded-xl border-2 border-gray-200 shadow-sm">
+          <QRCodeSVG 
+            value={qrData} 
+            size={256}
+            level="H"
+            includeMargin={true}
+          />
         </div>
-      </div>
 
-      <div className="mt-4 text-center">
-        <p className="text-sm font-medium">Total Pembayaran</p>
-        <p className="text-2xl font-bold text-primary">Rp {amount.toLocaleString('id-ID')}</p>
-      </div>
+        {/* Payment Amount */}
+        <div className="text-center space-y-1">
+          <p className="text-sm font-medium text-muted-foreground">Total Pembayaran</p>
+          <p className="text-3xl font-bold text-primary">
+            Rp {amount.toLocaleString('id-ID')}
+          </p>
+        </div>
 
-      <div className="mt-4 text-xs text-muted-foreground text-center max-w-xs">
-        <p>Buka aplikasi e-wallet (GoPay, OVO, DANA, dll) dan scan QR code di atas untuk menyelesaikan pembayaran</p>
-      </div>
-    </div>
+        {/* Instructions */}
+        <div className="bg-blue-50 rounded-lg p-4 w-full">
+          <p className="text-xs text-blue-900 text-center leading-relaxed">
+            Buka aplikasi e-wallet (GoPay, OVO, DANA, ShopeePay, LinkAja) 
+            dan scan QR code di atas untuk menyelesaikan pembayaran
+          </p>
+        </div>
+
+        {/* Status Indicator */}
+        <div className="flex items-center justify-center space-x-2 text-xs text-muted-foreground">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          <span>Menunggu pembayaran...</span>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

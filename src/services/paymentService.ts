@@ -25,6 +25,12 @@ export const createPaymentSession = async (
   }
 ): Promise<CreateSessionResult> => {
   try {
+    // Pastikan orderId adalah string, bukan object!
+    if (typeof orderId !== 'string') {
+      console.error('❌ Invalid orderId type:', typeof orderId, orderId);
+      throw new Error('order_id must be a string');
+    }
+
     const requestBody = {
       order_id: orderId,
       return_url: options?.return_url || `${window.location.origin}/payment/success`,
@@ -60,21 +66,27 @@ export const createPaymentSession = async (
   }
 };
 
-// Test mode - FLAT object sesuai API Doc Option B
+// Test mode - untuk dry run tanpa order_id
 export const createPaymentSessionTest = async (
-  amount: number,
+  order: {
+    total_amount: number;
+    customer_name?: string;
+    customer_phone?: string;
+    customer_address?: string;
+  },
   options?: {
     return_url?: string;
     payment_method?: 'EWALLET' | 'BANK_TRANSFER' | 'QRIS' | 'CARD' | 'RETAIL_OUTLET';
     payment_channel?: string;
+    turnstile_token?: string;
   }
 ): Promise<CreateSessionResult> => {
   try {
     const requestBody = {
       test: true,
       order: {
-        total: amount,
-        total_amount: amount,
+        total: order.total_amount,
+        total_amount: order.total_amount,
       },
       return_url: options?.return_url || `${window.location.origin}/payment/success`,
       payment_method: options?.payment_method || 'QRIS',
@@ -108,7 +120,7 @@ export const createPaymentSessionTest = async (
   }
 };
 
-// Create QR payment (QRIS) - returns QR string
+// Create QR payment
 export const createQRPayment = async (
   orderId: string,
   options?: {
