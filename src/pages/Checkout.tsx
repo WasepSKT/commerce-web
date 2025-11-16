@@ -41,15 +41,6 @@ export default function CheckoutPage() {
   // Turnstile via hook
   const { sitekey: TURNSTILE_SITEKEY, containerRef: widgetContainerRef, execute: executeTurnstile } = useTurnstile();
 
-  // Debug Turnstile configuration
-  useEffect(() => {
-    console.log('🔧 Turnstile Debug Info (Checkout):', {
-      sitekey: TURNSTILE_SITEKEY,
-      hasSitekey: !!TURNSTILE_SITEKEY,
-      sitekeyLength: TURNSTILE_SITEKEY?.length || 0
-    });
-  }, [TURNSTILE_SITEKEY]);
-  // initializing comes from useCheckoutInitialization
   // Address editing state (persist to profile via useAuth.updateProfile)
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [savingAddress, setSavingAddress] = useState(false);
@@ -113,7 +104,7 @@ export default function CheckoutPage() {
 
     setCreatingSession(true);
     try {
-      // If Turnstile sitekey is configured, obtain a token and include it in payloads
+      // Get Turnstile token if enabled
       let turnstileToken: string | null = null;
       if (TURNSTILE_SITEKEY && executeTurnstile) {
         turnstileToken = await executeTurnstile();
@@ -123,6 +114,7 @@ export default function CheckoutPage() {
         setCaptchaVerified(true);
       }
       let oid = order?.id;
+
       if (!oid) {
         if (dryRun) {
           // In dry-run mode we do NOT persist orders/order_items. Instead build
@@ -152,7 +144,7 @@ export default function CheckoutPage() {
           return;
         }
 
-        // Normal mode: persist the order in DB and create items
+        // Create order in database
         type OrderInsert = Database['public']['Tables']['orders']['Insert'];
         const orderPayload: OrderInsert = {
           total_amount: subtotal,
@@ -163,67 +155,93 @@ export default function CheckoutPage() {
           user_id: profile?.user_id ?? '' as string,
         } as OrderInsert;
 
-        const insertRes = await supabase.from('orders').insert([orderPayload]).select().single();
+        const insertRes = await supabase
+          .from('orders')
+          .insert([orderPayload])
+          .select()
+          .single();
+
         const created = (insertRes as { data?: Order | null }).data;
         if (!created?.id) throw new Error('Gagal membuat pesanan');
+
         oid = created.id;
 
-        // order_items table in DB expects (order_id, product_id, price, quantity)
-        const itemsPayload = items.map(i => ({ order_id: oid, product_id: i.product_id, quantity: i.quantity ?? 1, price: i.price ?? i.unit_price ?? 0, unit_price: i.unit_price ?? i.price ?? 0 }));
-        // attempt insert; use a narrow runtime wrapper to avoid TypeScript complaining about generated types
-        const sb = (supabase as unknown) as { from: (table: string) => { insert: (v: unknown) => Promise<unknown> } };
-        await sb.from('order_items').insert(itemsPayload);
+        // Create order items
+        const itemsPayload = items.map(i => ({
+          order_id: oid,
+          product_id: i.product_id,
+          quantity: i.quantity ?? 1,
+          price: i.price ?? i.unit_price ?? 0,
+          unit_price: i.unit_price ?? i.price ?? 0,
+        }));
+
+        await supabase.from('order_items').insert(itemsPayload);
         setOrder({ id: oid, total_amount: subtotal, user_id: profile?.user_id });
       }
 
-      // attach shipping selection to order via server endpoint or update order (simplified here)
+      // Update order with shipping info
       if (selectedRate) {
-        // The orders table has `shipping_courier` column; update that and total_amount
-        await supabase.from('orders').update({ shipping_courier: selectedRate.provider, total_amount: total }).eq('id', oid);
+        await supabase
+          .from('orders')
+          .update({
+            shipping_courier: selectedRate.provider,
+            total_amount: total,
+          })
+          .eq('id', oid);
       }
 
-      // create payment session via server wrapper
-      // User will select payment method on Xendit hosted page
-      const session: CreateSessionResult | null = await createPaymentSession(
-        oid as string,
-        {
-          return_url: `${window.location.origin}/payment/success`,
-        }
-      );
+      // Create payment session and redirect to Xendit
+      const session = await createPaymentSession(oid as string, {
+        return_url: `${window.location.origin}/payment/success`,
+      });
+
       const redirectUrl = session?.url ?? session?.checkout_url;
       if (redirectUrl) {
         window.location.href = redirectUrl;
         return;
       }
 
-      toast({ title: 'Sesi pembayaran dibuat', description: 'Lanjutkan ke penyedia pembayaran.' });
+      toast({
+        title: 'Sesi pembayaran dibuat',
+        description: 'Lanjutkan ke penyedia pembayaran.',
+      });
     } catch (err) {
-      console.error('Failed to initiate payment', err);
+      console.error('Payment initiation failed:', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
 
-      // Provide specific error messages based on error type
-      let title = '❌ Pembayaran Gagal';
-      let description = errorMessage;
+      // Determine error type and show appropriate message
+      const getErrorInfo = (msg: string) => {
+        if (msg.includes('captcha') || msg.includes('Turnstile')) {
+          return {
+            title: '🔒 Verifikasi Keamanan Gagal',
+            description: 'Gagal memverifikasi captcha. Mohon refresh halaman dan coba lagi.',
+          };
+        }
+        if (msg.includes('network') || msg.includes('fetch')) {
+          return {
+            title: '🌐 Koneksi Bermasalah',
+            description: 'Tidak dapat terhubung ke server pembayaran. Periksa koneksi internet Anda.',
+          };
+        }
+        if (msg.includes('order') || msg.includes('pesanan')) {
+          return {
+            title: '📋 Kesalahan Pesanan',
+            description: 'Gagal membuat pesanan. Mohon coba lagi atau hubungi customer service.',
+          };
+        }
+        return {
+          title: '❌ Pembayaran Gagal',
+          description: msg,
+        };
+      };
 
-      if (errorMessage.includes('captcha') || errorMessage.includes('Turnstile')) {
-        title = '🔒 Verifikasi Keamanan Gagal';
-        description = 'Gagal memverifikasi captcha. Mohon refresh halaman dan coba lagi.';
-      } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
-        title = '🌐 Koneksi Bermasalah';
-        description = 'Tidak dapat terhubung ke server pembayaran. Periksa koneksi internet Anda.';
-      } else if (errorMessage.includes('order') || errorMessage.includes('pesanan')) {
-        title = '📋 Kesalahan Pesanan';
-        description = 'Gagal membuat pesanan. Mohon coba lagi atau hubungi customer service.';
-      }
-
+      const errorInfo = getErrorInfo(errorMessage);
       toast({
         variant: 'destructive',
-        title,
-        description,
+        ...errorInfo,
         duration: 5000,
       });
 
-      // Reset captcha verification on error
       setCaptchaVerified(false);
     } finally {
       setCreatingSession(false);
