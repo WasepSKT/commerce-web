@@ -34,7 +34,7 @@ Membuat session pembayaran baru untuk order. User akan diarahkan ke halaman Xend
 
 **Request Body:**
 
-**Option A - Dengan Order ID (dari database):**
+**Option A - Production Mode (dengan Order ID dari database):**
 
 ```javascript
 {
@@ -43,15 +43,16 @@ Membuat session pembayaran baru untuk order. User akan diarahkan ke halaman Xend
 }
 ```
 
-**Option B - Test Mode (tanpa order di database):**
+**Option B - Test Mode (untuk testing tanpa order di database):**
 
 ```javascript
 {
-  "test": true,
+  "test": true,                                                // Required untuk test mode
   "order": {
-    "total": 100000                  // Amount in IDR (bisa juga pakai "total_amount")
+    "total": 100000,                                           // Amount in IDR
+    "total_amount": 100000                                     // Alias untuk total
   },
-  "return_url": "https://regalpaw.id/payment/success"
+  "return_url": "https://regalpaw.id/payment/success"         // Optional
 }
 ```
 
