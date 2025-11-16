@@ -7,19 +7,22 @@ export function PaymentSuccessPage() {
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
 
+  // Xendit sends: external_id (our order_id), status, etc
   const status = searchParams.get('status') as 'success' | 'pending' | 'failed' || 'success';
-  const orderId = searchParams.get('order_id') || undefined;
-  const transactionId = searchParams.get('transaction_id') || undefined;
+  const orderId = searchParams.get('order_id') || searchParams.get('external_id') || undefined;
+  const transactionId = searchParams.get('transaction_id') || searchParams.get('id') || undefined;
   const amount = searchParams.get('amount') ? Number(searchParams.get('amount')) : undefined;
 
   useEffect(() => {
-    // Simulate checking payment status
+    // Log all params for debugging
+    console.log('Payment callback params:', Object.fromEntries(searchParams.entries()));
+
     const timer = setTimeout(() => {
       setLoading(false);
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [searchParams]);
 
   if (loading) {
     return (

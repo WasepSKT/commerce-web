@@ -6,6 +6,9 @@ interface OrderItem {
   qty?: number;
   unit_price?: number;
   price?: number;
+  products?: {
+    name?: string;
+  };
   [key: string]: unknown;
 }
 
@@ -16,10 +19,17 @@ interface Order {
   user_id?: string;
   customer_phone?: string;
   customer_address?: string;
+  province?: string;
+  city?: string;
+  district?: string;
+  village?: string;
+  postal_code?: string;
   total_amount?: number;
   status?: string;
   shipping_courier?: string | null;
   tracking_number?: string | null;
+  payment_method?: string | null;
+  payment_channel?: string | null;
   order_items?: OrderItem[];
   [key: string]: unknown;
 }
@@ -27,8 +37,29 @@ interface Order {
 export const generateInvoiceHTML = (order: Order): string => {
   const items = order.order_items ?? [];
   
-  const rowsHtml = items.map((it) => {
-    const name = String(it.name ?? it.product_name ?? it.title ?? '-');
+  // Format full address with village, district, city, province, postal
+  const addressParts = [];
+  if (order.customer_address) addressParts.push(order.customer_address);
+  if (order.village) addressParts.push(order.village);
+  if (order.district) addressParts.push(`Kec. ${order.district}`);
+  if (order.city) addressParts.push(order.city);
+  if (order.province) addressParts.push(order.province);
+  if (order.postal_code) addressParts.push(order.postal_code);
+  
+  const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : '-';
+  
+  // Payment method
+  const paymentMethod = order.payment_method || order.payment_channel || 'Xendit Invoice';
+  
+  const rowsHtml = items.length > 0 ? items.map((it) => {
+    // Get product name from multiple possible sources
+    const name = String(
+      it.products?.name ?? 
+      it.name ?? 
+      it.product_name ?? 
+      it.title ?? 
+      '-'
+    );
     const quantity = Number(it.quantity ?? it.qty ?? 1);
     const unitPrice = Number(it.unit_price ?? it.price ?? 0);
     const total = unitPrice * quantity;
@@ -41,7 +72,11 @@ export const generateInvoiceHTML = (order: Order): string => {
         <td style="padding:6px;border:1px solid #ddd;text-align:right">Rp ${total.toLocaleString('id-ID')}</td>
       </tr>
     `;
-  }).join('');
+  }).join('') : `
+    <tr>
+      <td colspan="4" style="padding:20px;text-align:center;color:#999;">Tidak ada detail produk tersedia</td>
+    </tr>
+  `;
 
   const shippingInfo = (order.status === 'dikirim' || order.status === 'shipped') ? `
     <hr style="margin:20px 0" />
@@ -168,7 +203,7 @@ export const generateInvoiceHTML = (order: Order): string => {
           <tr style="border:none;">
             <td style="border:none;padding:4px 8px;font-weight:bold;vertical-align:top;">Alamat Lengkap:</td>
             <td style="border:none;padding:4px 8px;white-space:pre-line;">
-              ${order.customer_address || '-'}
+              ${fullAddress}
             </td>
           </tr>
         </table>
@@ -191,6 +226,20 @@ export const generateInvoiceHTML = (order: Order): string => {
 
       <div class="total-section">
         Total Pembayaran: Rp ${Number(order.total_amount ?? 0).toLocaleString('id-ID')}
+      </div>
+
+      <div style="background:#f8f9fa;padding:15px;border-radius:8px;margin:20px 0;">
+        <h3 style="margin:0 0 10px 0;color:#7A1316;">Informasi Pembayaran</h3>
+        <table style="border:none;width:100%;">
+          <tr style="border:none;">
+            <td style="border:none;padding:4px 8px;font-weight:bold;">Metode Pembayaran:</td>
+            <td style="border:none;padding:4px 8px;">${paymentMethod}</td>
+          </tr>
+          <tr style="border:none;">
+            <td style="border:none;padding:4px 8px;font-weight:bold;">Status:</td>
+            <td style="border:none;padding:4px 8px;text-transform:capitalize;">${order.status ?? 'pending'}</td>
+          </tr>
+        </table>
       </div>
 
       ${shippingInfo}
