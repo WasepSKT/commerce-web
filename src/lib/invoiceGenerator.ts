@@ -35,12 +35,7 @@ interface Order {
 }
 
 export const generateInvoiceHTML = (order: Order): string => {
-  console.log('=== INVOICE GENERATOR ===');
-  console.log('Full Order Object:', JSON.stringify(order, null, 2));
-  
   const items = order.order_items ?? [];
-  console.log('Order Items Array:', items);
-  console.log('Items Count:', items.length);
   
   // Use customer_address directly without adding other fields
   const fullAddress = order.customer_address || '-';
@@ -48,8 +43,7 @@ export const generateInvoiceHTML = (order: Order): string => {
   // Payment method
   const paymentMethod = order.payment_method || order.payment_channel || 'Xendit Invoice';
   
-  const rowsHtml = items.length > 0 ? items.map((it, index) => {
-    
+  const rowsHtml = items.length > 0 ? items.map((it) => {
     // Get product name from multiple possible sources
     const name = String(
       it.product_name ??
@@ -61,8 +55,6 @@ export const generateInvoiceHTML = (order: Order): string => {
     const quantity = Number(it.quantity ?? it.qty ?? 0);
     const unitPrice = Number(it.unit_price ?? it.price ?? 0);
     const total = unitPrice * quantity;
-    
-    console.log('Final values:', { name, quantity, unitPrice, total });
     
     return `
       <tr>

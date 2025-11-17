@@ -175,13 +175,10 @@ export function usePaymentProcessing() {
       price: i.price ?? i.unit_price ?? 0
     }));
     
-    console.log('Inserting order items:', itemsPayload);
-    
     const sb = (supabase as unknown) as { 
       from: (table: string) => { insert: (v: unknown) => Promise<unknown> } 
     };
-    const result = await sb.from('order_items').insert(itemsPayload);
-    console.log('Order items insert result:', result);
+    await sb.from('order_items').insert(itemsPayload);
   };
 
   const updateOrderWithShipping = async (orderId: string, selectedRate: any, total: number) => {

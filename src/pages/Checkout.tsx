@@ -142,15 +142,11 @@ export default function CheckoutPage() {
           price: i.unit_price ?? i.price ?? 0
         }));
 
-        console.log('Inserting order items from checkout:', itemsPayload);
         const itemsInsert = await supabase.from('order_items').insert(itemsPayload);
 
         if (itemsInsert.error) {
-          console.error('Failed to insert order items:', itemsInsert.error);
           throw new Error('Gagal membuat detail pesanan');
         }
-
-        console.log('Order items inserted successfully');
         setOrder({ id: oid, total_amount: subtotal, user_id: profile?.user_id });
       }
 

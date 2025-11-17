@@ -93,8 +93,6 @@ export const useProductCheckout = (product: Product | null, profile: Profile | n
         price: priceInfo.discounted
       }];
 
-      console.log('Inserting order items from product checkout:', itemsPayload);
-
       const stockResult = await StockService.decrementStockForOrder(orderId);
       if (!stockResult.success) {
         console.warn('Failed to decrement stock:', stockResult.error);
@@ -104,12 +102,9 @@ export const useProductCheckout = (product: Product | null, profile: Profile | n
       const itemsError = itemsRes?.error ?? null;
 
       if (itemsError || !itemsRes?.data?.length) {
-        console.error('Failed to insert order items:', itemsError);
         await supabase.from('orders').delete().eq('id', orderId);
         throw new Error('Failed to insert order items');
       }
-
-      console.log('Order items inserted successfully:', itemsRes.data);
 
       setPendingOrderId(orderId);
       return orderId;
