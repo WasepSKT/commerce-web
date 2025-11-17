@@ -128,9 +128,9 @@ export function PaymentStatus({
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl shadow-xl">
         <CardContent className="p-8">
-          {/* Icon with Animation */}
+          {/* Icon without bouncing animation */}
           <div className="flex justify-center mb-6">
-            <div className={`${config.bgColor} rounded-full p-6 animate-bounce-slow`}>
+            <div className={`${config.bgColor} rounded-full p-6`}>
               <Icon className={`h-16 w-16 ${config.color}`} strokeWidth={2} />
             </div>
           </div>

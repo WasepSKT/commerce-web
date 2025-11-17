@@ -27,9 +27,15 @@ export const createPaymentSession = async (
   }
 ): Promise<CreateSessionResult> => {
   try {
+    // Build return URL with order_id parameter
+    const baseReturnUrl = options?.return_url || `${window.location.origin}/payment/success`;
+    const returnUrl = baseReturnUrl.includes('?') 
+      ? `${baseReturnUrl}&order_id=${orderId}` 
+      : `${baseReturnUrl}?order_id=${orderId}`;
+
     const requestBody = {
       order_id: orderId,
-      return_url: options?.return_url || `${window.location.origin}/payment/success`,
+      return_url: returnUrl,
       payment_method: options?.payment_method,
       payment_channel: options?.payment_channel,
     };
