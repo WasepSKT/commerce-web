@@ -20,6 +20,7 @@ export function useCheckoutInitialization() {
   const productId = query.get('product_id');
   const fromCartParam = query.get('from_cart');
   const quantityParam = Number(query.get('quantity') ?? '1');
+    const { user } = useAuth();
 
   useEffect(() => {
     const init = async () => {
@@ -41,45 +42,62 @@ export function useCheckoutInitialization() {
           setItems([{ product_id: prod.id, product_name: prod.name, unit_price: priceInfo.discounted, quantity: Math.max(1, quantityParam) }]);
         } else if (fromCartParam === '1' || fromCartParam === 'true') {
           try {
-            const raw = localStorage.getItem('rp_cart_v1');
-            if (!raw) throw new Error('Keranjang kosong');
-
-            let parsedRaw: unknown = safeJsonParse(raw, null);
-            if (!parsedRaw) throw new Error('Data keranjang tidak valid');
-
-            let entries: Array<{ id?: string; quantity?: number }> = [];
-            if (Array.isArray(parsedRaw)) {
-              entries = parsedRaw as Array<{ id?: string; quantity?: number }>;
-            } else if (parsedRaw && typeof parsedRaw === 'object') {
-              const obj = parsedRaw as Record<string, unknown>;
-              if (Array.isArray((obj as unknown as { items?: unknown }).items)) {
-                entries = (obj as unknown as { items?: Array<{ id?: string; quantity?: number }> }).items as Array<{ id?: string; quantity?: number }>;
-              } else {
-                entries = Object.keys(obj).map(k => {
-                  const v = obj[k];
-                  if (v && typeof v === 'object' && 'quantity' in (v as Record<string, unknown>)) {
-                    const q = (v as Record<string, unknown>)['quantity'];
-                    return { id: k, quantity: typeof q === 'number' ? q as number : Number(q) || 1 };
-                  }
-                  return { id: k, quantity: typeof v === 'number' ? Number(v) : 1 };
-                });
+              // If user is logged in, prefer server-side cart (supabase `carts` table)
+              let entries: Array<{ id?: string; quantity?: number }> = [];
+              if (user && user.id) {
+                const cartRes = await supabase.from('carts').select('items').eq('user_id', user.id).maybeSingle();
+                const cartRow = (cartRes as { data?: Record<string, unknown> | null }).data ?? null;
+                const serverItems = cartRow && typeof cartRow === 'object' && Array.isArray(cartRow.items) ? (cartRow.items as unknown[]) : [];
+                if (Array.isArray(serverItems) && serverItems.length > 0) {
+                  entries = serverItems.map(it => {
+                    if (!it || typeof it !== 'object') return { id: undefined, quantity: 0 };
+                    const rec = it as Record<string, unknown>;
+                    return { id: String(rec['product_id'] ?? rec['id'] ?? ''), quantity: typeof rec['quantity'] === 'number' ? (rec['quantity'] as number) : Number(rec['quantity']) || 1 };
+                  }).filter(e => !!e.id);
+                }
               }
-            }
 
-            const ids = Array.from(new Set(entries.map(p => p.id).filter(Boolean) as string[]));
-            if (ids.length === 0) throw new Error('Tidak ada produk di keranjang');
+              // Fallback: legacy localStorage cart for unauthenticated users or empty server cart
+              if (entries.length === 0) {
+                const raw = localStorage.getItem('rp_cart_v1');
+                if (!raw) throw new Error('Keranjang kosong');
 
-            type ProdRow = { id: string; name: string; price: number; image_url?: string; discount_percent?: number | null };
-            const prodRes = await supabase.from('products').select('id,name,price,image_url,discount_percent').in('id', ids);
-            const prodData = (prodRes as { data?: ProdRow[] | null }).data ?? [];
-            const itemsBuilt: OrderItem[] = entries.map(entry => {
-              const prod = prodData.find(p => p.id === entry.id);
-              if (!prod) return null;
-              const priceInfo = computePriceAfterDiscount({ price: prod.price ?? 0, discount_percent: prod.discount_percent ?? 0 });
-              return { product_id: prod.id, product_name: prod.name, unit_price: priceInfo.discounted, price: prod.price, quantity: entry.quantity ?? 1 } as OrderItem;
-            }).filter((x): x is OrderItem => x !== null && x !== undefined);
-            if (itemsBuilt.length === 0) throw new Error('Produk keranjang tidak tersedia');
-            setItems(itemsBuilt);
+                let parsedRaw: unknown = safeJsonParse(raw, null);
+                if (!parsedRaw) throw new Error('Data keranjang tidak valid');
+
+                if (Array.isArray(parsedRaw)) {
+                  entries = parsedRaw as Array<{ id?: string; quantity?: number }>;
+                } else if (parsedRaw && typeof parsedRaw === 'object') {
+                  const obj = parsedRaw as Record<string, unknown>;
+                  if (Array.isArray((obj as unknown as { items?: unknown }).items)) {
+                    entries = (obj as unknown as { items?: Array<{ id?: string; quantity?: number }> }).items as Array<{ id?: string; quantity?: number }>;
+                  } else {
+                    entries = Object.keys(obj).map(k => {
+                      const v = obj[k];
+                      if (v && typeof v === 'object' && 'quantity' in (v as Record<string, unknown>)) {
+                        const q = (v as Record<string, unknown>)['quantity'];
+                        return { id: k, quantity: typeof q === 'number' ? q as number : Number(q) || 1 };
+                      }
+                      return { id: k, quantity: typeof v === 'number' ? Number(v) : 1 };
+                    });
+                  }
+                }
+              }
+
+              const ids = Array.from(new Set(entries.map(p => p.id).filter(Boolean) as string[]));
+              if (ids.length === 0) throw new Error('Tidak ada produk di keranjang');
+
+              type ProdRow = { id: string; name: string; price: number; image_url?: string; discount_percent?: number | null };
+              const prodRes = await supabase.from('products').select('id,name,price,image_url,discount_percent').in('id', ids);
+              const prodData = (prodRes as { data?: ProdRow[] | null }).data ?? [];
+              const itemsBuilt: OrderItem[] = entries.map(entry => {
+                const prod = prodData.find(p => p.id === entry.id);
+                if (!prod) return null;
+                const priceInfo = computePriceAfterDiscount({ price: prod.price ?? 0, discount_percent: prod.discount_percent ?? 0 });
+                return { product_id: prod.id, product_name: prod.name, unit_price: priceInfo.discounted, price: prod.price, quantity: entry.quantity ?? 1 } as OrderItem;
+              }).filter((x): x is OrderItem => x !== null && x !== undefined);
+              if (itemsBuilt.length === 0) throw new Error('Produk keranjang tidak tersedia');
+              setItems(itemsBuilt);
           } catch (err) {
             console.error('Failed to initialize from cart', err);
             toast({ variant: 'destructive', title: CHECKOUT_MESSAGES.CART_LOAD_FAIL, description: String(err) });
