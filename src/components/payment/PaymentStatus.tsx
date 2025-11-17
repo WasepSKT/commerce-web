@@ -137,14 +137,14 @@ export function PaymentStatus({
 
           {/* Title and Description */}
           <div className="text-center space-y-2 mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">{config.title}</h1>
+            <h1 className="text-3xl font-bold text-primary">{config.title}</h1>
             <p className="text-gray-600">{config.description}</p>
           </div>
 
           {/* Customer Info */}
           {order && (
             <div className="bg-gray-50 rounded-lg p-4 mb-4">
-              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <h3 className="font-semibold text-primary mb-3 flex items-center gap-2">
                 <Package className="h-4 w-4" />
                 Informasi Pelanggan
               </h3>
@@ -157,7 +157,7 @@ export function PaymentStatus({
                   <span className="text-gray-600">Telepon:</span>
                   <span className="font-medium text-gray-900">{order.customer_phone}</span>
                 </div>
-                <div className="flex flex-col gap-1">
+                <div className="flex justify-between">
                   <span className="text-gray-600">Alamat Lengkap:</span>
                   <span className="font-medium text-gray-900">{order.customer_address}</span>
                 </div>
@@ -168,7 +168,7 @@ export function PaymentStatus({
           {/* Order Items */}
           {order?.order_items && order.order_items.length > 0 && (
             <div className="bg-gray-50 rounded-lg p-4 mb-4">
-              <h3 className="font-semibold text-gray-900 mb-3">Detail Pesanan</h3>
+              <h3 className="font-semibold text-primary mb-3">Detail Pesanan</h3>
               <div className="space-y-3">
                 {/* Table Header */}
                 <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-gray-600 pb-2 border-b">

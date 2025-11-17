@@ -38,6 +38,16 @@ interface Order {
   created_at: string;
   user_id: string;
   order_items?: OrderItem[];
+  session_id?: string | null;
+}
+
+interface Payment {
+  id: string;
+  order_id?: string | null;
+  session_id?: string | null;
+  payment_method?: string | null;
+  payment_channel?: string | null;
+  created_at?: string | null;
 }
 
 export default function OrderDetail() {
@@ -78,7 +88,51 @@ export default function OrderDetail() {
         if (error) throw error;
 
         if (data) {
-          setOrder(data as unknown as Order);
+          console.debug('[OrderDetail] fetched order:', data);
+          // Try to load related payment record (some systems store payment info
+          // in a separate `payments` table). Prefer the latest payment for this order.
+          try {
+            // Try primary lookup: payments by order_id
+            const payByOrderRes = await supabase
+              .from('payments')
+              .select('id, order_id, session_id, payment_method, payment_channel, created_at')
+              .eq('order_id', orderId)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            // Narrow the response shape to a typed object to avoid `any`.
+            const payByOrderData = (payByOrderRes as { data?: Payment | null } | null)?.data ?? null;
+            let payment: Payment | null = payByOrderData;
+
+            // Fallback: if no payment found and order has session_id, lookup by session_id
+            if (!payment && (data as Order).session_id) {
+              console.debug('[OrderDetail] no payment by order_id, falling back to session_id', (data as Order).session_id);
+              const payBySessionRes = await supabase
+                .from('payments')
+                .select('id, order_id, session_id, payment_method, payment_channel, created_at')
+                .eq('session_id', (data as Order).session_id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              const payBySessionData = (payBySessionRes as { data?: Payment | null } | null)?.data ?? null;
+              payment = payBySessionData;
+            }
+
+            if (payment) {
+              const merged: Order = {
+                ...(data as Order),
+                payment_method: payment.payment_method ?? (data as Order).payment_method,
+                payment_channel: payment.payment_channel ?? (data as Order).payment_channel,
+              };
+              setOrder(merged);
+            } else {
+              setOrder(data as Order);
+            }
+          } catch (err) {
+            console.debug('[OrderDetail] failed to fetch payments for order (both lookups):', err);
+            setOrder(data as Order);
+          }
         }
       } catch (error) {
         console.error('Error fetching order:', error);
@@ -179,7 +233,7 @@ export default function OrderDetail() {
             <CardHeader>
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                  <CardTitle className="text-2xl">Pesanan #{order.id.slice(0, 8)}</CardTitle>
+                  <CardTitle className="text-2xl text-primary">Pesanan #{order.id.slice(0, 8)}</CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">
                     Dibuat pada {new Date(order.created_at).toLocaleString('id-ID')}
                   </p>
@@ -195,8 +249,8 @@ export default function OrderDetail() {
           {/* Customer Info */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-primary">
+                <MapPin className="h-5 w-5 text-primary" />
                 Informasi Pengiriman
               </CardTitle>
             </CardHeader>
@@ -231,8 +285,8 @@ export default function OrderDetail() {
           {/* Order Items */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-primary">
+                <Package className="h-5 w-5 text-primary" />
                 Produk yang Dipesan
               </CardTitle>
             </CardHeader>
@@ -274,24 +328,20 @@ export default function OrderDetail() {
           {/* Payment Info */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-primary">
+                <CreditCard className="h-5 w-5 text-primary" />
                 Informasi Pembayaran
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {order.payment_method && (
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Metode Pembayaran</span>
-                  <span className="font-medium">{order.payment_method}</span>
-                </div>
-              )}
-              {order.payment_channel && (
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Channel</span>
-                  <span className="font-medium">{order.payment_channel}</span>
-                </div>
-              )}
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Metode Pembayaran</span>
+                <span className="font-medium">{order.payment_method ?? 'Belum tersedia'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Channel</span>
+                <span className="font-medium">{order.payment_channel ?? 'Belum tersedia'}</span>
+              </div>
               <div className="flex justify-between pt-3 border-t">
                 <span className="font-semibold">Total Pembayaran</span>
                 <span className="text-lg font-bold text-primary">
