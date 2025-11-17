@@ -16,6 +16,7 @@ import CheckoutPage from "./pages/Checkout";
 import CartPage from './pages/Cart';
 import ProfilePage from './pages/Profile';
 import MyOrders from './pages/MyOrders';
+import OrderDetail from './pages/OrderDetail';
 import Auth from "./pages/Auth";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
@@ -112,6 +113,11 @@ export default function App() {
               <Route path="/my-orders" element={
                 <ProtectedRoute>
                   <MyOrders />
+                </ProtectedRoute>
+              } />
+              <Route path="/orders/:orderId" element={
+                <ProtectedRoute>
+                  <OrderDetail />
                 </ProtectedRoute>
               } />
               <Route path="/payment/success" element={<PaymentSuccessPage />} />

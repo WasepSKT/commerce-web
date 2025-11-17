@@ -17,17 +17,17 @@ export function PaymentSuccessPage() {
         console.log('Payment callback params:', params);
 
         // Try to get order_id from URL params first
-        let orderId = searchParams.get('order_id') || 
-                      searchParams.get('external_id') || 
-                      searchParams.get('id') ||
-                      undefined;
+        let orderId = searchParams.get('order_id') ||
+          searchParams.get('external_id') ||
+          searchParams.get('id') ||
+          undefined;
 
         let amount = searchParams.get('amount') ? Number(searchParams.get('amount')) : undefined;
 
         // If no order_id in URL, fetch the latest pending order for current user
         if (!orderId) {
           console.log('No order_id in URL params, fetching latest order...');
-          
+
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
             const { data: orders } = await supabase

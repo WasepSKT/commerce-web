@@ -1,0 +1,319 @@
+import { useEffect, useState } from 'react';
+import { useParams, Navigate, useNavigate } from 'react-router-dom';
+import { Layout } from '@/components/Layout';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ArrowLeft, Package, MapPin, CreditCard, Truck } from 'lucide-react';
+import { ORDER_STATUS_CONFIG } from '@/constants/orderStatus';
+import SEOHead from '@/components/seo/SEOHead';
+import { useToast } from '@/hooks/use-toast';
+
+interface OrderItem {
+  id: string;
+  product_id: string;
+  quantity: number;
+  price: number;
+  products?: {
+    name: string;
+    image_url?: string;
+  };
+}
+
+interface Order {
+  id: string;
+  total_amount: number;
+  status: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_address: string;
+  shipping_courier?: string;
+  tracking_number?: string;
+  payment_method?: string;
+  payment_channel?: string;
+  notes?: string;
+  created_at: string;
+  user_id: string;
+  order_items?: OrderItem[];
+}
+
+export default function OrderDetail() {
+  const { orderId } = useParams<{ orderId: string }>();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { isAuthenticated, profile, loading: authLoading } = useAuth();
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOrderDetail = async () => {
+      if (!orderId || !profile?.user_id) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select(`
+            *,
+            order_items (
+              id,
+              product_id,
+              quantity,
+              price,
+              products (
+                name,
+                image_url
+              )
+            )
+          `)
+          .eq('id', orderId)
+          .eq('user_id', profile.user_id)
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
+          setOrder(data as unknown as Order);
+        }
+      } catch (error) {
+        console.error('Error fetching order:', error);
+        toast({
+          title: 'Gagal',
+          description: 'Tidak dapat memuat detail pesanan',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (isAuthenticated && profile?.user_id) {
+      void fetchOrderDetail();
+    }
+  }, [orderId, profile?.user_id, isAuthenticated, toast]);
+
+  if (authLoading || loading) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
+          <Skeleton className="h-8 w-48 mb-6" />
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  if (!order) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">Pesanan Tidak Ditemukan</h3>
+              <p className="text-muted-foreground mb-6">
+                Pesanan yang Anda cari tidak ditemukan atau tidak memiliki akses.
+              </p>
+              <Button onClick={() => navigate('/my-orders')}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Kembali ke Pesanan Saya
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+
+  const statusConfig = ORDER_STATUS_CONFIG[order.status as keyof typeof ORDER_STATUS_CONFIG] || ORDER_STATUS_CONFIG.pending;
+  const StatusIcon = statusConfig.icon;
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+    }).format(price);
+  };
+
+  return (
+    <Layout>
+      <SEOHead
+        title={`Detail Pesanan #${orderId?.slice(0, 8)} - Regal Paw`}
+        description="Detail pesanan makanan kucing premium dari Regal Paw"
+        canonical={`/orders/${orderId}`}
+        noindex={true}
+      />
+
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <Button
+          variant="ghost"
+          onClick={() => navigate('/my-orders')}
+          className="mb-6"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Kembali ke Pesanan Saya
+        </Button>
+
+        <div className="space-y-6">
+          {/* Order Header */}
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <CardTitle className="text-2xl">Pesanan #{order.id.slice(0, 8)}</CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Dibuat pada {new Date(order.created_at).toLocaleString('id-ID')}
+                  </p>
+                </div>
+                <Badge variant={statusConfig.variant} className="w-fit">
+                  <StatusIcon className={`mr-2 h-4 w-4 ${statusConfig.color}`} />
+                  {statusConfig.label}
+                </Badge>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Customer Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Informasi Pengiriman
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div>
+                <p className="text-sm text-muted-foreground">Nama Penerima</p>
+                <p className="font-medium">{order.customer_name}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Nomor Telepon</p>
+                <p className="font-medium">{order.customer_phone}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Alamat Lengkap</p>
+                <p className="font-medium">{order.customer_address}</p>
+              </div>
+              {order.shipping_courier && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Kurir</p>
+                  <p className="font-medium">{order.shipping_courier}</p>
+                </div>
+              )}
+              {order.tracking_number && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Nomor Resi</p>
+                  <p className="font-medium font-mono">{order.tracking_number}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Order Items */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Produk yang Dipesan
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {order.order_items && order.order_items.length > 0 ? (
+                  order.order_items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-4 p-4 border rounded-lg"
+                    >
+                      {item.products?.image_url && (
+                        <img
+                          src={item.products.image_url}
+                          alt={item.products.name}
+                          className="w-16 h-16 object-cover rounded"
+                        />
+                      )}
+                      <div className="flex-1">
+                        <p className="font-medium">
+                          {item.products?.name || `Product ${item.product_id.slice(0, 8)}`}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.quantity} x {formatPrice(item.price)}
+                        </p>
+                      </div>
+                      <p className="font-semibold">
+                        {formatPrice(item.price * item.quantity)}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">Tidak ada produk</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Payment Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Informasi Pembayaran
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {order.payment_method && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Metode Pembayaran</span>
+                  <span className="font-medium">{order.payment_method}</span>
+                </div>
+              )}
+              {order.payment_channel && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Channel</span>
+                  <span className="font-medium">{order.payment_channel}</span>
+                </div>
+              )}
+              <div className="flex justify-between pt-3 border-t">
+                <span className="font-semibold">Total Pembayaran</span>
+                <span className="text-lg font-bold text-primary">
+                  {formatPrice(order.total_amount)}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Notes */}
+          {order.notes && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Catatan</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm">{order.notes}</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+    </Layout>
+  );
+}
