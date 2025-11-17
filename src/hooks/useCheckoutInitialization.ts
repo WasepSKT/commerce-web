@@ -46,15 +46,27 @@ export function useCheckoutInitialization() {
               // If user is logged in, prefer server-side cart (supabase `carts` table)
               let entries: Array<{ id?: string; quantity?: number }> = [];
               if (user && user.id) {
-                const cartRes = await supabase.from('carts').select('items').eq('user_id', user.id).maybeSingle();
-                const cartRow = (cartRes as { data?: Record<string, unknown> | null }).data ?? null;
-                const serverItems = cartRow && typeof cartRow === 'object' && Array.isArray(cartRow.items) ? (cartRow.items as unknown[]) : [];
-                if (Array.isArray(serverItems) && serverItems.length > 0) {
-                  entries = serverItems.map(it => {
-                    if (!it || typeof it !== 'object') return { id: undefined, quantity: 0 };
-                    const rec = it as Record<string, unknown>;
-                    return { id: String(rec['product_id'] ?? rec['id'] ?? ''), quantity: typeof rec['quantity'] === 'number' ? (rec['quantity'] as number) : Number(rec['quantity']) || 1 };
-                  }).filter(e => !!e.id);
+                // Try to load server-side cart; if the request errors (RLS, network, etc.)
+                // we fall back to reading localStorage below.
+                try {
+                  const cartRes = await supabase.from('carts').select('items').eq('user_id', user.id).maybeSingle();
+                  // supabase-js returns { data, error }
+                  const cartRow = (cartRes as { data?: Record<string, unknown> | null, error?: unknown }).data ?? null;
+                  const fetchError = (cartRes as { error?: unknown }).error;
+                  if (fetchError) {
+                    console.debug('[useCheckoutInitialization] server cart fetch error', fetchError);
+                  } else {
+                    const serverItems = cartRow && typeof cartRow === 'object' && Array.isArray(cartRow.items) ? (cartRow.items as unknown[]) : [];
+                    if (Array.isArray(serverItems) && serverItems.length > 0) {
+                      entries = serverItems.map(it => {
+                        if (!it || typeof it !== 'object') return { id: undefined, quantity: 0 };
+                        const rec = it as Record<string, unknown>;
+                        return { id: String(rec['product_id'] ?? rec['id'] ?? ''), quantity: typeof rec['quantity'] === 'number' ? (rec['quantity'] as number) : Number(rec['quantity']) || 1 };
+                      }).filter(e => !!e.id);
+                    }
+                  }
+                } catch (e) {
+                  console.debug('[useCheckoutInitialization] server cart fetch threw', e);
                 }
               }
 
