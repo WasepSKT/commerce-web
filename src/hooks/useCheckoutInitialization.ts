@@ -6,6 +6,7 @@ import { safeJsonParse } from '@/utils/storage';
 import { useToast } from '@/hooks/use-toast';
 import type { Order, OrderItem } from '@/types/checkout';
 import { CHECKOUT_MESSAGES } from '@/constants/checkout';
+import { useAuth } from '@/hooks/useAuth';
 
 export function useCheckoutInitialization() {
   const query = new URLSearchParams(useLocation().search);
