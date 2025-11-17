@@ -63,7 +63,7 @@ export default function ContactSection() {
                   </div>
                   <div className="flex items-center gap-3">
                     <MapPin className="h-5 w-5 text-white/90" />
-                    <span className="text-sm md:text-base">Jl. Contoh No. 123, Jakarta</span>
+                    <span className="text-sm md:text-base">Ruko Citra Raya Square I Blok B2A NO 17 & 18, Kec. Cikupa, Kab. Tangerang - Banten 15710</span>
                   </div>
                 </div>
               </div>

@@ -35,14 +35,14 @@ export const organizationData = {
   "url": "https://regalpaw.id",
   "logo": "https://regalpaw.id/logo.png",
   "image": "https://regalpaw.id/og-image.jpg",
-  "telephone": "+62-xxx-xxx-xxxx",
+  "telephone": "+62 859 3215 3777",
   "email": "info@regalpaw.com",
   "address": {
     "@type": "PostalAddress",
-    "streetAddress": "Jl. Contoh No. 123",
+    "streetAddress": "Ruko Citra Raya Square I Blok B2A NO 17 & 18, Kec. Cikupa, Kab. Tangerang - Banten",
     "addressLocality": "Jakarta",
     "addressRegion": "DKI Jakarta",
-    "postalCode": "12345",
+    "postalCode": "15710",
     "addressCountry": "ID"
   },
   "sameAs": [
@@ -50,7 +50,7 @@ export const organizationData = {
     "https://www.facebook.com/regalpaw",
     "https://www.twitter.com/regalpaw"
   ],
-  "foundingDate": "2024",
+  "foundingDate": "2025",
   "slogan": "Nutrisi Terbaik untuk Kucing Kesayangan"
 };
 
