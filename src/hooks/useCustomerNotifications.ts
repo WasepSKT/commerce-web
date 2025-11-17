@@ -144,12 +144,28 @@ export function useCustomerNotifications(isActive: boolean = true) {
     if (!isActive) return;
 
     if (notificationsProvider) {
-      const listener = () => {
-        void fetchNotifications();
+      const listener = (payload: unknown) => {
+        try {
+          // Supabase realtime payload may contain `new`, `old`, or `record` fields depending on configuration.
+          const p = payload as Record<string, unknown> | null;
+          const maybeRecord = p?.new ?? p?.record ?? p?.payload ?? null;
+          let changedUserId: string | null = null;
+          if (maybeRecord && typeof maybeRecord === 'object') {
+            const rec = maybeRecord as Record<string, unknown>;
+            const uid = rec['user_id'] ?? rec['userId'];
+            if (typeof uid === 'string') changedUserId = uid;
+          }
+          if (changedUserId && changedUserId === user.id) {
+            void fetchNotifications();
+          }
+        } catch (e) {
+          // fallback: if parsing fails, still attempt a refetch (safe)
+          void fetchNotifications();
+        }
       };
-      notificationsProvider.onOrderChange(listener);
+      notificationsProvider.onOrderChange(listener, user.id);
       return () => {
-        notificationsProvider.offOrderChange(listener);
+        notificationsProvider.offOrderChange(listener, user.id);
       };
     }
 

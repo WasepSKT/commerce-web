@@ -9,21 +9,18 @@ export const ProductPrice = ({ price, discountPercent, formatPrice }: ProductPri
   const discountedPrice = hasDiscount ? Math.round(price * (1 - discountPercent / 100)) : price;
 
   return (
-    <div className="mb-4">
+    <div className="mb-2">
       {hasDiscount ? (
-        <div>
-          <div className="text-lg text-muted-foreground line-through font-medium">
-            {formatPrice(price)}
-          </div>
-          <div className="text-4xl font-bold text-primary">
+        <div className="flex items-center gap-2">
+          <div className="text-2xl md:text-3xl lg:text-4xl font-bold text-primary">
             {formatPrice(discountedPrice)}
           </div>
-          <div className="text-sm text-red-600 font-semibold">
-            Diskon {discountPercent}%
+          <div className="text-base md:text-lg text-muted-foreground line-through">
+            {formatPrice(price)}
           </div>
         </div>
       ) : (
-        <div className="text-4xl font-bold text-primary">
+        <div className="text-2xl md:text-3xl lg:text-4xl font-bold text-primary">
           {formatPrice(price)}
         </div>
       )}

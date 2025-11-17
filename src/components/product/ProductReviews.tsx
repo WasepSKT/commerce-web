@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { MessageCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { StarRating, RatingDistribution } from '@/components/ui/StarRating';
 import { maskName } from '@/lib/maskName';
 import type { ProductRatingData, Review } from '@/types/review';
@@ -8,8 +10,11 @@ interface ProductReviewsProps {
   ratingData: ProductRatingData;
 }
 
+const REVIEWS_PER_PAGE = 10;
+
 export const ProductReviews = ({ ratingData }: ProductReviewsProps) => {
   const { averageRating, totalReviews, ratingDistribution, reviews } = ratingData;
+  const [showAll, setShowAll] = useState(false);
 
   // Convert Record to array for RatingDistribution component
   const distributionArray = [
@@ -19,6 +24,9 @@ export const ProductReviews = ({ ratingData }: ProductReviewsProps) => {
     ratingDistribution[2] || 0,
     ratingDistribution[1] || 0,
   ];
+
+  const displayedReviews = showAll ? reviews : reviews.slice(0, REVIEWS_PER_PAGE);
+  const hasMoreReviews = reviews.length > REVIEWS_PER_PAGE;
 
   return (
     <>
@@ -50,11 +58,34 @@ export const ProductReviews = ({ ratingData }: ProductReviewsProps) => {
           {/* Individual Reviews */}
           <div className="border-t pt-6">
             <h4 className="font-medium mb-4">Ulasan Pelanggan</h4>
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {reviews.map((review) => (
+            <div className="space-y-4">
+              {displayedReviews.map((review) => (
                 <ReviewItem key={review.id} review={review} />
               ))}
             </div>
+
+            {/* Show More/Less Button */}
+            {hasMoreReviews && (
+              <div className="mt-4 text-center">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAll(!showAll)}
+                  className="w-full md:w-auto"
+                >
+                  {showAll ? (
+                    <>
+                      <ChevronUp className="mr-2 h-4 w-4" />
+                      Tampilkan Lebih Sedikit
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="mr-2 h-4 w-4" />
+                      Lihat {reviews.length - REVIEWS_PER_PAGE} Ulasan Lainnya
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       ) : (

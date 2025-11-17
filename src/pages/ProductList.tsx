@@ -71,7 +71,7 @@ export default function ProductList() {
   const addToCart = async (product: Product) => {
     const currentQuantity = cart[product.id] || 0;
     const requestedQuantity = currentQuantity + 1;
-    
+
     if (requestedQuantity > product.stock_quantity) {
       toast({
         variant: "destructive",
@@ -234,7 +234,7 @@ export default function ProductList() {
             <p className="text-muted-foreground">Tidak ada produk yang ditemukan.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
             {filteredProducts.map(product => (
               <ProductCard
                 key={product.id}

@@ -30,31 +30,37 @@ export const ProductActions = ({
 }: ProductActionsProps) => {
   return (
     <div className="space-y-4">
-      <QuantitySelector value={quantity} stock={stockQuantity} onChange={onQuantityChange} />
-
-      <div className="flex flex-col gap-3">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Button
-            variant="outline"
-            size="lg"
-            className="w-full border-primary text-primary hover:bg-transparent hover:text-primary"
-            onClick={onAddToCart}
-          >
-            <ShoppingCart className="mr-2 h-5 w-5" />
-            Masukkan Keranjang
-          </Button>
-
-          <Button
-            size="lg"
-            className="w-full"
-            onClick={onCheckout}
-          >
-            Checkout - {formatPrice(effectivePrice * quantity)}
-          </Button>
-        </div>
+      {/* Quantity Selector dengan layout yang lebih baik */}
+      <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+        <span className="text-sm font-medium">Jumlah</span>
+        <QuantitySelector value={quantity} stock={stockQuantity} onChange={onQuantityChange} />
       </div>
 
-      <ShareButtons productId={productId} name={productName} description={description} />
+      {/* Action Buttons dengan layout modern */}
+      <div className="space-y-2">
+        <Button
+          size="lg"
+          className="w-full h-12 text-base font-semibold bg-primary hover:bg-primary/90 shadow-md"
+          onClick={onCheckout}
+        >
+          Beli Sekarang - {formatPrice(effectivePrice * quantity)}
+        </Button>
+
+        <Button
+          variant="outline"
+          size="lg"
+          className="w-full h-12 text-base font-semibold border-2 border-primary text-primary hover:bg-primary hover:text-white transition-all"
+          onClick={onAddToCart}
+        >
+          <ShoppingCart className="mr-2 h-5 w-5" />
+          Tambah ke Keranjang
+        </Button>
+      </div>
+
+      {/* Share Buttons */}
+      <div className="pt-2 border-t">
+        <ShareButtons productId={productId} name={productName} description={description} />
+      </div>
     </div>
   );
 };

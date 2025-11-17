@@ -1,48 +1,16 @@
-import { useMemo, useSyncExternalStore } from 'react';
-import { safeJsonParse } from '@/utils/storage';
+import { useMemo, useSyncExternalStore, useEffect, useCallback } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 export type CartItem = {
   id: string;
   quantity: number;
 };
 
-const STORAGE_KEY = 'rp_cart_v1';
-
 type CartMap = Record<string, number>;
 
-function readStorage(): CartMap {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return safeJsonParse(raw, {} as CartMap);
-  } catch (e) {
-    console.error('Failed to read cart from localStorage', e);
-    return {};
-  }
-}
-
-function writeStorage(data: CartMap) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch (e) {
-    console.error('Failed to write cart to localStorage', e);
-  }
-}
-
 // Module-level singleton store so all hook instances share state and can subscribe
-type Store = {
-  map: CartMap;
-  listeners: Set<() => void>;
-  getSnapshot(): CartMap;
-  subscribe(listener: () => void): () => void;
-  emit(): void;
-  setMap(next: CartMap): void;
-  add(id: string, amount?: number): void;
-  update(id: string, quantity: number): void;
-  removeItem(id: string): void;
-  clear(): void;
-};
-
-let mapState: CartMap = readStorage();
+let mapState: CartMap = {};
 const listeners = new Set<() => void>();
 
 function getSnapshot(): CartMap {
@@ -56,13 +24,12 @@ function subscribe(listener: () => void) {
 
 function emit() {
   for (const l of Array.from(listeners)) {
-    try { l(); } catch (e) { console.error('cart listener error', e); }
+    try { l(); } catch (e) { /* ignore listener errors */ }
   }
 }
 
 function setMap(next: CartMap) {
   mapState = next;
-  try { writeStorage(next); } catch (e) { /* already logged in writeStorage */ }
   emit();
 }
 
@@ -92,36 +59,144 @@ function clearMap() {
   setMap({});
 }
 
-// Keep store in sync with other tabs/windows
-if (typeof window !== 'undefined') {
-  window.addEventListener('storage', (e) => {
-    if (e.key === STORAGE_KEY) {
-      mapState = safeJsonParse(e.newValue, {} as CartMap);
-      emit();
-    }
-  });
-}
+// Converters between array shape stored in DB and internal CartMap
+const itemsArrayToMap = (items: unknown[] = []) => {
+  const out: CartMap = {};
+  for (const it of items) {
+    if (!it || typeof it !== 'object') continue;
+    const obj = it as Record<string, unknown>;
+    const pid = obj['product_id'];
+    const qty = obj['quantity'];
+    if (!pid) continue;
+    const qtyNum = typeof qty === 'number' ? qty : (typeof qty === 'string' ? Number(qty) : 0);
+    out[String(pid)] = (out[String(pid)] || 0) + (Number(qtyNum) || 0);
+  }
+  return out;
+};
+
+const mapToItemsArray = (m: CartMap) => Object.entries(m).map(([product_id, quantity]) => ({ product_id, quantity }));
+
+// Cache to avoid repeating server SELECT for same logged-in user
+let serverSyncedForUserId: string | null = null;
 
 export default function useCart() {
-  const snapshot = useSyncExternalStore(
-    (listener) => subscribe(listener),
-    () => getSnapshot(),
-    () => getSnapshot(),
-  );
-
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const map = snapshot as CartMap;
 
   const items: CartItem[] = useMemo(() => Object.entries(map).map(([id, quantity]) => ({ id, quantity })), [map]);
-
   const totalItems = useMemo(() => Object.values(map).reduce((s, q) => s + q, 0), [map]);
+
+  const { isAuthenticated, session } = useAuth();
+
+  // Debounced background sync: when authenticated, schedule an upsert to server
+  let syncTimer: number | null = null;
+  const SYNC_DEBOUNCE_MS = 800;
+
+  const scheduleSync = () => {
+    if (!isAuthenticated) return;
+    if (typeof window === 'undefined') return;
+    if (syncTimer) clearTimeout(syncTimer);
+    // schedule background upsert
+    syncTimer = window.setTimeout(async () => {
+      try {
+        const userId = session?.user?.id;
+        if (!userId) return;
+        const current = getSnapshot();
+        const payload = { user_id: userId, items: mapToItemsArray(current), updated_at: new Date().toISOString() };
+        const { error } = await supabase.from('carts').upsert(payload, { onConflict: 'user_id' });
+        if (error) console.debug('[useCart] background sync error', error);
+        else console.debug('[useCart] background sync ok');
+      } catch (e) {
+        console.debug('[useCart] background sync failed', e);
+      } finally {
+        syncTimer = null;
+      }
+    }, SYNC_DEBOUNCE_MS);
+  };
+
+  // One-time sync on login: prefer server as source-of-truth to avoid duplicate increments on refresh.
+  const syncLocalToServer = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const userId = session?.user?.id;
+      if (!userId) return;
+
+      if (serverSyncedForUserId === userId) return; // already synced for this session/user
+
+      const { data: serverCart, error: fetchError } = await supabase
+        .from('carts')
+        .select('items')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (fetchError) {
+        console.debug('[useCart] fetch server cart error', fetchError);
+        serverSyncedForUserId = userId; // avoid tight retry loops
+        return;
+      }
+
+      let serverItems: unknown[] = [];
+      if (serverCart && typeof serverCart === 'object' && 'items' in (serverCart as Record<string, unknown>)) {
+        const val = (serverCart as Record<string, unknown>)['items'];
+        if (Array.isArray(val)) serverItems = val as unknown[];
+      }
+      const local = getSnapshot();
+      const localHasItems = Object.keys(local).length > 0;
+      const serverHasItems = Array.isArray(serverItems) && serverItems.length > 0;
+
+      if (serverHasItems) {
+        const serverMap = itemsArrayToMap(serverItems);
+        setMap(serverMap);
+        serverSyncedForUserId = userId;
+        console.debug('[useCart] loaded cart from server');
+      } else if (localHasItems) {
+        const payload = { user_id: userId, items: mapToItemsArray(local), updated_at: new Date().toISOString() };
+        const { error: upsertError } = await supabase.from('carts').upsert(payload, { onConflict: 'user_id' });
+        if (upsertError) {
+          console.debug('[useCart] upsert cart error', upsertError);
+          serverSyncedForUserId = userId;
+          return;
+        }
+        serverSyncedForUserId = userId;
+        console.debug('[useCart] uploaded local cart to server');
+      } else {
+        serverSyncedForUserId = userId; // nothing to sync but mark as done
+      }
+    } catch (e) {
+      console.debug('[useCart] syncLocalToServer failed', e);
+      serverSyncedForUserId = session?.user?.id ?? null;
+    }
+  }, [isAuthenticated, session?.user?.id]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      void syncLocalToServer();
+    } else {
+      // reset sync cache when user logs out
+      serverSyncedForUserId = null;
+      setMap({});
+    }
+  }, [isAuthenticated, session?.user?.id, syncLocalToServer]);
 
   return {
     items,
     map,
     totalItems,
-    add: (id: string, amount = 1) => addToMap(id, amount),
-    update: (id: string, quantity: number) => updateMap(id, quantity),
-    removeItem: (id: string) => removeFromMap(id),
-    clear: () => clearMap(),
+    add: (id: string, amount = 1) => {
+      addToMap(id, amount);
+      if (isAuthenticated) scheduleSync();
+    },
+    update: (id: string, quantity: number) => {
+      updateMap(id, quantity);
+      if (isAuthenticated) scheduleSync();
+    },
+    removeItem: (id: string) => {
+      removeFromMap(id);
+      if (isAuthenticated) scheduleSync();
+    },
+    clear: () => {
+      clearMap();
+      if (isAuthenticated) scheduleSync();
+    },
   } as const;
 }
+

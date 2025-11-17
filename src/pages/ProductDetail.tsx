@@ -195,22 +195,17 @@ export default function ProductDetail() {
 
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Breadcrumb */}
-        <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-8">
-          <Link to="/" className="hover:text-primary">Beranda</Link>
-          <span>/</span>
-          <Link to="/products" className="hover:text-primary">Produk</Link>
-          <span>/</span>
-          <span className="text-foreground">{product.name}</span>
+        <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground mb-6 md:mb-8 overflow-hidden">
+          <Link to="/" className="hover:text-primary whitespace-nowrap">Beranda</Link>
+          <span className="text-muted-foreground/50">/</span>
+          <Link to="/products" className="hover:text-primary whitespace-nowrap">Produk</Link>
+          <span className="text-muted-foreground/50">/</span>
+          <span className="text-foreground truncate" title={product.name}>
+            {product.name}
+          </span>
         </div>
 
-        <Button variant="ghost" className="mb-6" asChild>
-          <Link to="/products">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Kembali ke Produk
-          </Link>
-        </Button>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12">
           <ProductImageGallery
             imageUrl={product.image_url}
             imageGallery={product.image_gallery}
@@ -219,18 +214,18 @@ export default function ProductDetail() {
             isOutOfStock={isOutOfStock}
           />
 
-          <div className="space-y-6">
+          <div className="space-y-3 lg:space-y-4">
             <div>
               <Badge variant="secondary" className="mb-2">{product.category}</Badge>
-              <h1 className="text-3xl font-bold mb-4 text-primary">{product.name}</h1>
+              <h1 className="text-xl md:text-2xl lg:text-3xl font-bold mb-2 lg:mb-3 text-primary">{product.name}</h1>
 
-              <div className="flex items-center space-x-2 mb-4">
+              <div className="flex items-center gap-2 mb-3">
                 <StarRating
                   rating={ratingData.averageRating}
-                  size="md"
+                  size="sm"
                   showValue={ratingData.totalReviews > 0}
                 />
-                <span className="text-sm text-muted-foreground">
+                <span className="text-xs md:text-sm text-muted-foreground">
                   {ratingData.totalReviews > 0
                     ? `(${ratingData.averageRating.toFixed(1)}/5 dari ${ratingData.totalReviews} review)`
                     : '(Belum ada review)'}
@@ -243,10 +238,15 @@ export default function ProductDetail() {
                 formatPrice={formatPriceIDR}
               />
 
-              <div className="flex items-center space-x-2 mb-6">
-                <span className="text-sm">Stok tersedia:</span>
-                <Badge variant={isOutOfStock ? 'destructive' : 'secondary'}>
-                  {product.stock_quantity} Kaleng
+              {/* Badge Diskon dan Stok dalam satu baris */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {product.discount_percent && product.discount_percent > 0 && (
+                  <Badge variant="destructive" className="text-xs px-2 py-0.5">
+                    Hemat {product.discount_percent}%
+                  </Badge>
+                )}
+                <Badge variant={isOutOfStock ? 'destructive' : 'default'} className="text-xs px-2 py-0.5 bg-green-600">
+                  Stok: {product.stock_quantity}
                 </Badge>
               </div>
             </div>
@@ -269,20 +269,20 @@ export default function ProductDetail() {
         </div>
 
         {/* Specifications */}
-        <div className="mt-10">
+        <div className="mt-6 lg:mt-10">
           <Card>
-            <CardContent className="p-6">
-              <h2 className="text-lg font-semibold mb-3 text-primary">Spesifikasi Produk</h2>
+            <CardContent className="p-4 lg:p-6">
+              <h2 className="text-base lg:text-lg font-semibold mb-3 text-primary">Spesifikasi Produk</h2>
               <ProductSpecs {...product} />
             </CardContent>
           </Card>
         </div>
 
         {/* Description */}
-        <div className="mt-10">
+        <div className="mt-6 lg:mt-10">
           <Card>
-            <CardContent className="p-6">
-              <h2 className="text-lg font-semibold mb-3 text-primary">Deskripsi Produk</h2>
+            <CardContent className="p-4 lg:p-6">
+              <h2 className="text-base lg:text-lg font-semibold mb-3 text-primary">Deskripsi Produk</h2>
               <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
                 {product.description}
               </p>
@@ -291,10 +291,10 @@ export default function ProductDetail() {
         </div>
 
         {/* Reviews */}
-        <div className="mt-12">
+        <div className="mt-6 lg:mt-12">
           <Card>
-            <CardContent className="p-6">
-              <h3 className="font-semibold mb-4 text-primary flex items-center gap-2">
+            <CardContent className="p-4 lg:p-6">
+              <h3 className="text-base lg:text-lg font-semibold mb-4 text-primary flex items-center gap-2">
                 <MessageCircle className="h-5 w-5" />
                 Ulasan & Rating
               </h3>
@@ -304,8 +304,8 @@ export default function ProductDetail() {
         </div>
 
         {/* Related Products */}
-        <div className="mt-8">
-          <h3 className="text-xl font-semibold mb-4 text-primary">Produk Lainnya</h3>
+        <div className="mt-6 lg:mt-8">
+          <h3 className="text-lg lg:text-xl font-semibold mb-4 text-primary">Produk Lainnya</h3>
           <div className="max-w-5xl mx-auto">
             {relatedLoading ? (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
