@@ -108,38 +108,69 @@ export default function AdminOrders() {
 
   const fetchOrderWithProductNames = async (orderId: string): Promise<OrderRow | null> => {
     try {
+      console.log('=== FETCHING ORDER WITH PRODUCT NAMES ===');
+      console.log('Order ID:', orderId);
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const q = (supabase.from as unknown as any)('orders').select('*, order_items(*)').eq('id', orderId).single();
       const res = (await q) as unknown;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const row = (res && (res as any).data ? (res as any).data : (res as any)) as OrderRow;
 
+      console.log('Fetched order:', row);
+
       // Fetch product names for order items if they have product_id
       const items = (row.order_items ?? []) as Array<Record<string, unknown>>;
+      console.log('Raw order items:', items);
+
       const productIds = items.map(it => it['product_id']).filter(Boolean).map(String);
+      console.log('Product IDs to fetch:', productIds);
+
       if (productIds.length) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const pQ = (supabase.from as unknown as any)('products').select('id,name').in('id', productIds as string[]);
         const pRes = (await pQ) as unknown;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const pRows = (pRes && (pRes as any).data ? (pRes as any).data : (pRes as any)) as Array<Record<string, unknown>>;
+        console.log('Fetched products:', pRows);
+
+        // Create product map: product_id -> product_name
         const prodMap: Record<string, string> = {};
         pRows.forEach((p) => {
           if (!p || typeof p !== 'object') return;
           const pid = String(p['id'] ?? '');
           const pname = String(p['name'] ?? '');
-          if (pid && pname) prodMap[pid] = pname;
+          if (pid && pname) {
+            prodMap[pid] = pname;
+            console.log(`Mapped product: ${pid} -> ${pname}`);
+          }
         });
 
-        // Enrich items with product names
+        // Enrich items with product names from the map
         const enriched = items.map((it) => {
           const pid = String(it['product_id'] ?? '');
-          const name = String(it['name'] ?? prodMap[pid] ?? it['title'] ?? '-');
-          return { ...it, name } as Record<string, unknown>;
+          const productName = prodMap[pid] || 'Produk Tidak Ditemukan';
+          const qty = Number(it['quantity'] ?? 1);
+          const unitPrice = Number(it['price'] ?? 0);
+
+          console.log(`Enriching item: product_id=${pid}, name=${productName}, qty=${qty}, price=${unitPrice}`);
+
+          return {
+            ...it,
+            name: productName,
+            product_name: productName,
+            quantity: qty,
+            unit_price: unitPrice
+          } as Record<string, unknown>;
         });
+
+        console.log('Enriched order items:', enriched);
         row.order_items = enriched as OrderRow['order_items'];
+      } else {
+        console.log('No product IDs found in order items');
       }
 
+      console.log('Final enriched order:', row);
       return row;
     } catch (e) {
       console.error('Failed to fetch order with product names', e);

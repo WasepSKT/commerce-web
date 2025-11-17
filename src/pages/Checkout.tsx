@@ -134,16 +134,23 @@ export default function CheckoutPage() {
 
         oid = created.id;
 
-        // Create order items
+        // Create order items - hanya field yang ada di schema database
         const itemsPayload = items.map(i => ({
           order_id: oid,
           product_id: i.product_id,
           quantity: i.quantity ?? 1,
-          price: i.price ?? i.unit_price ?? 0,
-          unit_price: i.unit_price ?? i.price ?? 0,
+          price: i.unit_price ?? i.price ?? 0
         }));
 
-        await supabase.from('order_items').insert(itemsPayload);
+        console.log('Inserting order items from checkout:', itemsPayload);
+        const itemsInsert = await supabase.from('order_items').insert(itemsPayload);
+
+        if (itemsInsert.error) {
+          console.error('Failed to insert order items:', itemsInsert.error);
+          throw new Error('Gagal membuat detail pesanan');
+        }
+
+        console.log('Order items inserted successfully');
         setOrder({ id: oid, total_amount: subtotal, user_id: profile?.user_id });
       }
 

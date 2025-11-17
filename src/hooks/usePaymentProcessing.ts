@@ -172,14 +172,16 @@ export function usePaymentProcessing() {
       order_id: orderId, 
       product_id: i.product_id, 
       quantity: i.quantity ?? 1, 
-      price: i.price ?? i.unit_price ?? 0, 
-      unit_price: i.unit_price ?? i.price ?? 0 
+      price: i.price ?? i.unit_price ?? 0
     }));
+    
+    console.log('Inserting order items:', itemsPayload);
     
     const sb = (supabase as unknown) as { 
       from: (table: string) => { insert: (v: unknown) => Promise<unknown> } 
     };
-    await sb.from('order_items').insert(itemsPayload);
+    const result = await sb.from('order_items').insert(itemsPayload);
+    console.log('Order items insert result:', result);
   };
 
   const updateOrderWithShipping = async (orderId: string, selectedRate: any, total: number) => {

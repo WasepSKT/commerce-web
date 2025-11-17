@@ -35,7 +35,12 @@ interface Order {
 }
 
 export const generateInvoiceHTML = (order: Order): string => {
+  console.log('=== INVOICE GENERATOR ===');
+  console.log('Full Order Object:', JSON.stringify(order, null, 2));
+  
   const items = order.order_items ?? [];
+  console.log('Order Items Array:', items);
+  console.log('Items Count:', items.length);
   
   // Use customer_address directly without adding other fields
   const fullAddress = order.customer_address || '-';
@@ -43,18 +48,21 @@ export const generateInvoiceHTML = (order: Order): string => {
   // Payment method
   const paymentMethod = order.payment_method || order.payment_channel || 'Xendit Invoice';
   
-  const rowsHtml = items.length > 0 ? items.map((it) => {
+  const rowsHtml = items.length > 0 ? items.map((it, index) => {
+    
     // Get product name from multiple possible sources
     const name = String(
-      it.products?.name ?? 
+      it.product_name ??
       it.name ?? 
-      it.product_name ?? 
+      it.products?.name ?? 
       it.title ?? 
-      '-'
+      'Produk Tidak Diketahui'
     );
-    const quantity = Number(it.quantity ?? it.qty ?? 1);
+    const quantity = Number(it.quantity ?? it.qty ?? 0);
     const unitPrice = Number(it.unit_price ?? it.price ?? 0);
     const total = unitPrice * quantity;
+    
+    console.log('Final values:', { name, quantity, unitPrice, total });
     
     return `
       <tr>
@@ -194,7 +202,7 @@ export const generateInvoiceHTML = (order: Order): string => {
           </tr>
           <tr style="border:none;">
             <td style="border:none;padding:4px 8px;font-weight:bold;vertical-align:top;">Alamat Lengkap:</td>
-            <td style="border:none;padding:4px 8px;white-space:pre-line;">
+            <td style="border:none;padding:4px 8px;">
               ${fullAddress}
             </td>
           </tr>

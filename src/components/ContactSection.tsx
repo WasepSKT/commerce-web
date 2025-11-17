@@ -53,16 +53,16 @@ export default function ContactSection() {
                 <p className="text-sm md:text-base text-white/80 mt-4">Jika Anda memiliki pertanyaan lebih lanjut, silakan hubungi melalui email atau telepon. Kami akan merespon secepatnya.</p>
 
                 <div className="mt-2 md:mt-6 space-y-2 md:space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-5 w-5 text-white/90" />
+                  <div className="flex items-start gap-3">
+                    <Mail className="h-5 w-5 text-white/90 flex-shrink-0 mt-0.5" />
                     <span className="text-sm md:text-base">contact@regalpaw.id</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Phone className="h-5 w-5 text-white/90" />
+                  <div className="flex items-start gap-3">
+                    <Phone className="h-5 w-5 text-white/90 flex-shrink-0 mt-0.5" />
                     <span className="text-sm md:text-base">+62 859 3215 3777</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <MapPin className="h-5 w-5 text-white/90" />
+                  <div className="flex items-start gap-3">
+                    <MapPin className="h-5 w-5 text-white/90 flex-shrink-0 mt-0.5" />
                     <span className="text-sm md:text-base">Ruko Citra Raya Square I Blok B2A NO 17 & 18, Kec. Cikupa, Kab. Tangerang - Banten 15710</span>
                   </div>
                 </div>
