@@ -61,7 +61,7 @@ export function MarketplaceModal({
               <ShoppingBag className="h-12 w-12 text-purple-500" />
             </div>
           </div>
-          <DialogTitle className="text-center text-2xl">
+          <DialogTitle className="text-center text-2xl text-primary">
             Belanja di Marketplace
           </DialogTitle>
           <DialogDescription className="text-center text-base pt-2">
@@ -80,9 +80,7 @@ export function MarketplaceModal({
             className="w-full h-14 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold text-lg"
             size="lg"
           >
-            <svg className="w-6 h-6 mr-3" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z" />
-            </svg>
+            <ShoppingBag className="h-6 w-6 text-white mr-3" />
             Belanja di Shopee
             <ExternalLink className="ml-auto h-5 w-5" />
           </Button>
