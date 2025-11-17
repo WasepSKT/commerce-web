@@ -121,7 +121,7 @@ export const generateBlogPostStructuredData = (post: BlogPostSEO) => {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
     "headline": post.title,
-    "description": post.excerpt || post.description,
+    "description": post.excerpt || post.content.substring(0, 160),
     "image": post.cover_url ? (post.cover_url.startsWith('http') ? post.cover_url : `${baseUrl}${post.cover_url}`) : undefined,
     "author": {
       "@type": "Person",
