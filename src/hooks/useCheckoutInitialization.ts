@@ -114,7 +114,10 @@ export function useCheckoutInitialization() {
           } catch (err) {
             console.error('Failed to initialize from cart', err);
             toast({ variant: 'destructive', title: CHECKOUT_MESSAGES.CART_LOAD_FAIL, description: String(err) });
-            throw err;
+            // Don't re-throw to avoid an uncaught error stack in the console on deployed bundles.
+            // Navigate back to cart view instead and stop initialization.
+            navigate('/cart');
+            return;
           }
         } else {
           navigate('/cart');
