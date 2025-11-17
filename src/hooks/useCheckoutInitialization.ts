@@ -21,12 +21,14 @@ export function useCheckoutInitialization() {
   const productId = query.get('product_id');
   const fromCartParam = query.get('from_cart');
   const quantityParam = Number(query.get('quantity') ?? '1');
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     const init = async () => {
       setInitializing(true);
       try {
+        // Wait for auth to be initialized before attempting to read server-side cart
+        if (authLoading) return; // effect will re-run when authLoading changes
         if (orderIdParam) {
           const res = await supabase.from('orders').select('*').eq('id', orderIdParam).single();
           const ord = (res as { data?: Order | null }).data;
@@ -130,8 +132,9 @@ export function useCheckoutInitialization() {
         setInitializing(false);
       }
     };
-    void init();
-  }, [orderIdParam, productId, quantityParam, fromCartParam, navigate, toast]);
+    // If auth is still loading we don't call init yet; effect depends on authLoading
+    if (!authLoading) void init();
+  }, [orderIdParam, productId, quantityParam, fromCartParam, navigate, toast, authLoading, user]);
 
   return { order, setOrder, items, setItems, initializing, query } as const;
 }
