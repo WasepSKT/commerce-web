@@ -20,6 +20,8 @@ import ShippingRateList from '@/components/checkout/ShippingRateList';
 import OrderSummaryCard from '@/components/checkout/OrderSummaryCard';
 import CheckoutCaptcha from '@/components/checkout/CheckoutCaptcha';
 import { useCheckoutInitialization } from '@/hooks/useCheckoutInitialization';
+import useCart from '@/hooks/useCart';
+import { StockService } from '@/services/stockService';
 import { useCheckoutShippingRates } from '@/hooks/useCheckoutShippingRates';
 import type { Order, OrderItem } from '@/types/checkout';
 
@@ -30,6 +32,7 @@ export default function CheckoutPage() {
   const { profile, updateProfile } = useAuth();
   const { toast } = useToast();
   const { order, setOrder, items, setItems, initializing, query } = useCheckoutInitialization();
+  const { clear: clearCart } = useCart();
   const { rates, selectedRate, setSelectedRate, loadingRates } = useCheckoutShippingRates(profile, items);
 
   const [creatingSession, setCreatingSession] = useState(false);
@@ -148,6 +151,26 @@ export default function CheckoutPage() {
           throw new Error('Gagal membuat detail pesanan');
         }
         setOrder({ id: oid, total_amount: subtotal, user_id: profile?.user_id });
+
+        // Decrement stock for the created order and clear cart
+        try {
+          const stockResult = await StockService.decrementStockForOrder(oid);
+          if (!stockResult.success) {
+            console.warn('Stock decrement reported failure:', stockResult.error);
+            // Show warning but allow payment to proceed
+            toast({ variant: 'destructive', title: 'Peringatan Stok', description: stockResult.error ?? 'Gagal mengurangi stok, harap cek stok.' });
+          } else {
+            // Clear local cart when stock successfully decremented
+            try {
+              clearCart();
+            } catch (err) {
+              console.debug('Failed to clear cart after checkout:', err);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to decrement stock after order creation:', err);
+          toast({ variant: 'destructive', title: 'Kesalahan Stok', description: 'Gagal memproses stok. Silakan hubungi customer service.' });
+        }
       }
 
       // Update order with shipping info
@@ -217,7 +240,7 @@ export default function CheckoutPage() {
     } finally {
       setCreatingSession(false);
     }
-  }, [items, order, profile, selectedRate, subtotal, total, toast, TURNSTILE_SITEKEY, executeTurnstile, setOrder, captchaVerified]);
+  }, [items, order, profile, selectedRate, subtotal, total, toast, TURNSTILE_SITEKEY, executeTurnstile, setOrder, captchaVerified, clearCart]);
 
   if (initializing) return null;
 
