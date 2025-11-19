@@ -21,7 +21,6 @@ import OrderSummaryCard from '@/components/checkout/OrderSummaryCard';
 import CheckoutCaptcha from '@/components/checkout/CheckoutCaptcha';
 import { useCheckoutInitialization } from '@/hooks/useCheckoutInitialization';
 import useCart from '@/hooks/useCart';
-import { StockService } from '@/services/stockService';
 import { useCheckoutShippingRates } from '@/hooks/useCheckoutShippingRates';
 import type { Order, OrderItem } from '@/types/checkout';
 
@@ -152,15 +151,24 @@ export default function CheckoutPage() {
         }
         setOrder({ id: oid, total_amount: subtotal, user_id: profile?.user_id });
 
-        // Decrement stock for the created order and clear cart
+        // Decrement stock for the created order via server endpoint and clear cart on success
         try {
-          const stockResult = await StockService.decrementStockForOrder(oid);
-          if (!stockResult.success) {
-            console.warn('Stock decrement reported failure:', stockResult.error);
-            // Show warning but allow payment to proceed
-            toast({ variant: 'destructive', title: 'Peringatan Stok', description: stockResult.error ?? 'Gagal mengurangi stok, harap cek stok.' });
+          const token = (await supabase.auth.getSession()).data.session?.access_token;
+          const resp = await fetch('/api/orders/decrement-stock', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ order_id: oid }),
+          });
+
+          if (!resp.ok) {
+            const text = await resp.text().catch(() => 'decrement failed');
+            console.warn('Server decrement stock failed:', resp.status, text);
+            toast({ variant: 'destructive', title: 'Peringatan Stok', description: 'Gagal mengurangi stok pada server. Silakan hubungi CS.' });
           } else {
-            // Clear local cart when stock successfully decremented
+            // Clear local cart when server-side decrement succeeds
             try {
               clearCart();
             } catch (err) {
@@ -168,7 +176,7 @@ export default function CheckoutPage() {
             }
           }
         } catch (err) {
-          console.error('Failed to decrement stock after order creation:', err);
+          console.error('Failed to call server decrement endpoint:', err);
           toast({ variant: 'destructive', title: 'Kesalahan Stok', description: 'Gagal memproses stok. Silakan hubungi customer service.' });
         }
       }
