@@ -1,11 +1,14 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { PostgrestError } from '@supabase/supabase-js';
 
-const supabaseRpc = supabase as unknown as {
-  rpc: (
-    fn: string,
-    params?: Record<string, unknown>
-  ) => Promise<{ data: unknown; error: PostgrestError | null }>;
+// Helper untuk memanggil RPC dengan type safety
+// Menggunakan supabase client langsung agar JWT dari session otomatis terkirim
+const callRpc = async (
+  fn: string,
+  params?: Record<string, unknown>
+): Promise<{ data: unknown; error: PostgrestError | null }> => {
+  // @ts-expect-error: RPC function names belum terdaftar di types, tapi kita tahu function-nya ada
+  return await supabase.rpc(fn, params);
 };
 
 // Types for stock management
@@ -66,7 +69,7 @@ export class StockService {
         };
       }
 
-      const { data, error } = await supabaseRpc.rpc('validate_cart_stock', {
+      const { data, error } = await callRpc('validate_cart_stock', {
         cart_items: JSON.stringify(cartItems)
       });
 
@@ -103,7 +106,7 @@ export class StockService {
         };
       }
 
-      const { data, error } = await supabaseRpc.rpc('check_stock_availability', {
+      const { data, error } = await callRpc('check_stock_availability', {
         product_id: productId,
         required_quantity: requiredQuantity
       });
@@ -174,7 +177,7 @@ export class StockService {
         };
       }
 
-      const { data, error } = await supabaseRpc.rpc('restore_stock_for_order', {
+      const { data, error } = await callRpc('restore_stock_for_order', {
         order_id: orderId
       });
 
@@ -356,7 +359,7 @@ export class StockService {
       }
 
       // Panggil RPC - Supabase client akan otomatis mengirim JWT dari session
-      const { data, error } = await supabaseRpc.rpc('decrement_stock_for_order_secure', {
+      const { data, error } = await callRpc('decrement_stock_for_order_secure', {
         order_id: orderId
       });
 
@@ -367,7 +370,7 @@ export class StockService {
           const { data: retrySession } = await supabase.auth.refreshSession();
           if (retrySession?.session) {
             // Retry sekali dengan session yang baru di-refresh
-            const { data: retryData, error: retryError } = await supabaseRpc.rpc('decrement_stock_for_order_secure', {
+            const { data: retryData, error: retryError } = await callRpc('decrement_stock_for_order_secure', {
               order_id: orderId
             });
             if (retryError) {
