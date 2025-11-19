@@ -2,41 +2,14 @@ import { supabase } from '@/integrations/supabase/client';
 import type { PostgrestError } from '@supabase/supabase-js';
 
 // Helper untuk memanggil RPC dengan type safety
-// Memastikan JWT terkirim dengan benar
-const callRpc = async (fn: string, params?: Record<string, unknown>, accessToken?: string) => {
-  // Jika accessToken diberikan, gunakan fetch langsung untuk memastikan JWT terkirim
-  if (accessToken) {
-    const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string) ?? '';
-    const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string) ?? '';
-    
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
-      method: 'POST',
-      headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(params || {})
-    });
-
-    const data = await response.json().catch(() => null);
-    
-    if (!response.ok) {
-      return {
-        data: null,
-        error: {
-          message: data?.message || data?.error || `HTTP ${response.status}`,
-          details: data,
-          hint: null,
-          code: String(response.status)
-        } as PostgrestError
-      };
-    }
-
-    return { data, error: null };
-  }
-
-  // Fallback ke Supabase client (akan otomatis mengirim JWT dari session)
+// Menggunakan Supabase client untuk memastikan JWT terkirim dengan benar
+// Supabase client otomatis menambahkan header yang diperlukan dan JWT dari session
+const callRpc = async (fn: string, params?: Record<string, unknown>) => {
+  // Gunakan Supabase client langsung - client akan otomatis:
+  // 1. Mengambil session dari localStorage
+  // 2. Mengirim JWT dalam header Authorization
+  // 3. Menambahkan header apikey
+  // 4. Menangani refresh token otomatis
   // @ts-expect-error: RPC name mungkin belum terdaftar di tipe supabase d.ts
   return await supabase.rpc(fn as never, params);
 };
@@ -454,22 +427,41 @@ export class StockService {
       console.debug('[StockService] Token expires at:', new Date(currentSession.expires_at! * 1000).toISOString());
       
       // Pastikan Supabase client menggunakan session yang benar
+      // Supabase client sudah otomatis membaca session dari localStorage
+      // Tapi kita perlu memastikan session ter-set dengan benar
       // Verifikasi sekali lagi bahwa session masih valid sebelum memanggil RPC
       const verifySession = await supabase.auth.getSession();
-      if (!verifySession.data.session || verifySession.data.session.user.id !== currentSession.user.id) {
-        console.error('[StockService] Session mismatch or invalid');
+      if (!verifySession.data.session) {
+        console.error('[StockService] Session not found in Supabase client');
         return {
           success: false,
-          error: 'Session validation failed'
+          error: 'Session not found in Supabase client'
         };
+      }
+      
+      if (verifySession.data.session.user.id !== currentSession.user.id) {
+        console.error('[StockService] Session mismatch:', {
+          expected: currentSession.user.id,
+          actual: verifySession.data.session.user.id
+        });
+        // Continue anyway, Supabase client akan menggunakan session yang terbaru
+      }
+      
+      // Pastikan Supabase client menggunakan session yang valid
+      // Jika session tidak sama, refresh Supabase client session
+      if (verifySession.data.session.access_token !== currentSession.access_token) {
+        console.warn('[StockService] Session token mismatch, Supabase client will use its own session');
+        // Supabase client akan menggunakan session dari localStorage-nya sendiri
       }
       
       // Test JWT bisa dibaca sebelum memanggil RPC yang sebenarnya (optional, skip if function doesn't exist)
       try {
         console.debug('[StockService] Testing JWT readability...');
-        const jwtTest = await callRpc('test_jwt_read', {}, currentSession.access_token);
-        if (jwtTest.data && typeof jwtTest.data === 'object' && 'can_read_jwt' in jwtTest.data) {
-          const jwtTestResult = jwtTest.data as { can_read_jwt: boolean; user_id?: string; error?: string };
+        // Supabase client akan otomatis mengirim JWT dari session
+        const jwtTest = await callRpc('test_jwt_read', {});
+        const jwtTestData = jwtTest.data as unknown;
+        if (jwtTestData && typeof jwtTestData === 'object' && 'can_read_jwt' in jwtTestData) {
+          const jwtTestResult = jwtTestData as { can_read_jwt: boolean; user_id?: string; error?: string };
           if (!jwtTestResult.can_read_jwt) {
             console.error('[StockService] JWT cannot be read by RPC!', jwtTestResult);
             return {
@@ -484,15 +476,20 @@ export class StockService {
         console.debug('[StockService] JWT test function not available, skipping test');
       }
 
-      // Gunakan fetch langsung dengan accessToken untuk memastikan JWT terkirim dengan benar
-      // Ini lebih reliable daripada mengandalkan Supabase client yang mungkin tidak sync session
-      console.debug('[StockService] Session verified, calling RPC with explicit access token...');
-      console.debug('[StockService] Access token (first 20 chars):', currentSession.access_token.substring(0, 20) + '...');
+      // Gunakan Supabase client langsung - client akan otomatis mengirim JWT dari session
+      // Pastikan session sudah ter-set dengan benar sebelum memanggil RPC
+      console.debug('[StockService] Session verified, calling RPC via Supabase client...');
+      console.debug('[StockService] Session user ID:', currentSession.user.id);
+      console.debug('[StockService] Access token exists:', !!currentSession.access_token);
       console.debug('[StockService] Order ID:', orderId);
       
+      // Supabase client akan otomatis:
+      // 1. Mengirim JWT dari session dalam header Authorization
+      // 2. Menambahkan header apikey
+      // 3. Menangani refresh token jika diperlukan
       const { data, error } = await callRpc('decrement_stock_for_order_secure', {
         order_id: orderId
-      }, currentSession.access_token);
+      });
       
       console.debug('[StockService] RPC response:', { data, error });
 
@@ -531,7 +528,8 @@ export class StockService {
           
           // Coba test JWT readability
           try {
-            const jwtTest = await callRpc('test_jwt_read', {}, currentSession.access_token);
+            // Supabase client akan otomatis mengirim JWT dari session
+            const jwtTest = await callRpc('test_jwt_read', {});
             console.error('[StockService] JWT test result:', jwtTest);
           } catch (e) {
             console.error('[StockService] JWT test failed:', e);
