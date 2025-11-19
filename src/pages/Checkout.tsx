@@ -178,16 +178,19 @@ export default function CheckoutPage() {
             console.warn('decrement_stock_for_order_secure returned:', rpcRes);
             const msg = rpcRes?.error ?? 'Gagal mengurangi stok pada server.';
             toast({ variant: 'destructive', title: 'Peringatan Stok', description: String(msg) });
-          } else {
-            try {
-              clearCart();
-            } catch (err) {
-              console.debug('Failed to clear cart after checkout:', err);
-            }
+            throw new Error(msg);
+          }
+
+          try {
+            clearCart();
+          } catch (err) {
+            console.debug('Failed to clear cart after checkout:', err);
           }
         } catch (err) {
           console.error('Failed to call secure decrement RPC:', err);
-          toast({ variant: 'destructive', title: 'Kesalahan Stok', description: 'Gagal memproses stok. Silakan hubungi customer service.' });
+          const msg = err instanceof Error ? err.message : 'Gagal memproses stok. Silakan hubungi customer service.';
+          toast({ variant: 'destructive', title: 'Kesalahan Stok', description: String(msg) });
+          throw err instanceof Error ? err : new Error(String(msg));
         }
       }
 
