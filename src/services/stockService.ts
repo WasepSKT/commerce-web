@@ -127,6 +127,8 @@ export class StockService {
 
   /**
    * Decrement stock for an order (called after successful checkout)
+   * @param orderId - Order ID untuk decrement stock
+   * @param accessToken - Optional: access token dari session (jika sudah diambil sebelumnya)
    */
   static async decrementStockForOrder(orderId: string, accessToken?: string): Promise<StockDecrementResult> {
     try {
@@ -137,33 +139,41 @@ export class StockService {
         };
       }
 
-      // Pastikan session valid dan ter-refresh sebelum memanggil RPC
-      let sessionInfo = await supabase.auth.getSession();
-      let session = sessionInfo.data.session;
+      // Pastikan Supabase client memiliki session yang valid
+      // Supabase client akan otomatis mengirim JWT dari session ke RPC
+      // Tidak perlu mengirim accessToken secara manual karena Supabase client sudah handle itu
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
-      // Jika session tidak ada atau token expired, coba refresh
-      if (!session || !session.access_token) {
-        console.debug('[StockService] Session missing or expired, attempting refresh...');
-        const refreshed = await supabase.auth.refreshSession();
-        sessionInfo = refreshed;
-        session = refreshed.data.session;
-      }
-      
-      if (!session || !session.access_token) {
-        console.error('[StockService] No valid session after refresh attempt');
+      if (sessionError) {
+        console.error('[StockService] Session error:', sessionError);
         return {
           success: false,
-          error: 'Unauthenticated: No active session. Please login.'
+          error: 'Session error: ' + sessionError.message
         };
       }
-      
-      console.debug('[StockService] Session valid, user ID:', session.user.id);
+
+      if (!sessionData.session) {
+        console.error('[StockService] No session found');
+        // Coba refresh session
+        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError || !refreshed.session) {
+          return {
+            success: false,
+            error: 'Unauthenticated: No active session. Please login.'
+          };
+        }
+        console.debug('[StockService] Session refreshed, User:', refreshed.session.user.id);
+      } else {
+        console.debug('[StockService] Session found, User:', sessionData.session.user.id);
+        console.debug('[StockService] Access token exists:', !!sessionData.session.access_token);
+      }
 
       // Backend hanya menangani payment & webhook, stock decrement langsung via Supabase RPC
-      // Supabase client akan otomatis mengirim JWT dari session yang valid
+      // Supabase client akan otomatis mengirim JWT dari session yang valid ke RPC
+      // RPC function akan membaca JWT dari request.jwt.claims.sub
       return await this.decrementViaSecureRpc(orderId);
     } catch (error) {
-      console.error('Stock decrement error:', error);
+      console.error('[StockService] Stock decrement error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'System error during stock decrement'
@@ -409,8 +419,21 @@ export class StockService {
       console.debug('[StockService] Access token exists:', !!currentSession.access_token);
       console.debug('[StockService] Token expires at:', new Date(currentSession.expires_at! * 1000).toISOString());
       
+      // Pastikan Supabase client menggunakan session yang benar
+      // Verifikasi sekali lagi bahwa session masih valid sebelum memanggil RPC
+      const verifySession = await supabase.auth.getSession();
+      if (!verifySession.data.session || verifySession.data.session.user.id !== currentSession.user.id) {
+        console.error('[StockService] Session mismatch or invalid');
+        return {
+          success: false,
+          error: 'Session validation failed'
+        };
+      }
+      
       // Gunakan supabase client langsung - client akan otomatis mengirim JWT dari session
-      // Pastikan tidak ada konflik dengan token manual di localStorage
+      // Supabase client akan mengirim JWT dalam header Authorization: Bearer <token>
+      // RPC function akan membaca JWT dari request.jwt.claims.sub
+      console.debug('[StockService] Session verified, calling RPC...');
       const { data, error } = await callRpc('decrement_stock_for_order_secure', {
         order_id: orderId
       });

@@ -167,11 +167,39 @@ export default function CheckoutPage() {
         }
         setOrder({ id: oid, total_amount: subtotal, user_id: profile?.user_id });
 
+        // Verifikasi order benar-benar tersimpan di database sebelum memanggil RPC
+        console.debug('[Checkout] Verifying order exists in database...', oid);
+        const verifyOrder = await supabase
+          .from('orders')
+          .select('id, user_id, status')
+          .eq('id', oid)
+          .single();
+
+        if (verifyOrder.error || !verifyOrder.data) {
+          console.error('[Checkout] Order verification failed:', verifyOrder.error);
+          throw new Error('Order tidak ditemukan di database setelah dibuat');
+        }
+
+        if (verifyOrder.data.user_id !== profile?.user_id) {
+          console.error('[Checkout] Order ownership mismatch:', {
+            orderUserId: verifyOrder.data.user_id,
+            currentUserId: profile?.user_id
+          });
+          throw new Error('Order ownership tidak sesuai');
+        }
+
+        console.debug('[Checkout] Order verified:', {
+          orderId: verifyOrder.data.id,
+          userId: verifyOrder.data.user_id,
+          status: verifyOrder.data.status
+        });
+
         // Decrement stock for the created order via server endpoint and clear cart on success
         try {
           // No separate server: call the secure RPC wrapper directly from the client.
           // The Supabase client will send the user's JWT automatically, and the
           // secure wrapper will verify order ownership before decrementing stock.
+          console.debug('[Checkout] Calling stock decrement RPC for order:', oid);
           const rpcRes = await import('@/services/stockService').then(m => m.StockService.decrementStockForOrder(oid as string, accessToken));
 
           if (!rpcRes || rpcRes.success !== true) {
