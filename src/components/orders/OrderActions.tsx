@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { initiatePayment } from '@/services/paymentService';
 import { Download, FileText, Star, CheckCheck, XCircle } from 'lucide-react';
 import { RatingModal } from '@/components/ui/RatingModal';
 import { CancelOrderDialog } from './CancelOrderDialog';
@@ -27,6 +29,8 @@ export const OrderActions = ({
   onConfirmDelivery
 }: OrderActionsProps) => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [creatingSession, setCreatingSession] = useState(false);
+  const { toast } = useToast();
   const expired = isOrderExpired(order);
 
   return (
@@ -93,6 +97,35 @@ export const OrderActions = ({
             isConfirming={confirmingDelivery === order.id}
             onConfirm={() => onConfirmDelivery(order.id)}
           />
+        )}
+
+        {/* Pay Now - untuk status pending (tampilkan jika belum expired) */}
+        {order.status === 'pending' && !expired && (
+          <Button
+            variant="default"
+            size="sm"
+            disabled={creatingSession}
+            onClick={async () => {
+              try {
+                setCreatingSession(true);
+                const session = await initiatePayment(order.id);
+                const redirect = session?.url ?? session?.checkout_url;
+                if (redirect) {
+                  window.location.href = redirect;
+                  return;
+                }
+                toast({ title: 'Sesi pembayaran dibuat', description: 'Lanjutkan ke penyedia pembayaran.' });
+              } catch (err) {
+                console.error('Gagal memulai sesi pembayaran', err);
+                toast({ variant: 'destructive', title: 'Gagal', description: 'Tidak dapat memulai pembayaran.' });
+              } finally {
+                setCreatingSession(false);
+              }
+            }}
+            className="bg-primary text-white hover:brightness-95"
+          >
+            Bayar Sekarang
+          </Button>
         )}
 
         {/* Cancel Order - untuk status pending */}
