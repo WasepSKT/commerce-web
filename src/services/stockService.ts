@@ -334,12 +334,57 @@ export class StockService {
 
   private static async decrementViaSecureRpc(orderId: string): Promise<StockDecrementResult> {
     try {
+      // Pastikan session masih valid sebelum memanggil RPC
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData?.session) {
+        console.error('Stock decrement: No valid session', sessionError);
+        return {
+          success: false,
+          error: 'Unauthenticated - Please login again'
+        };
+      }
+
+      // Refresh session jika perlu (Supabase client akan otomatis refresh, tapi kita pastikan dulu)
+      const { data: refreshedSession } = await supabase.auth.refreshSession();
+      const activeSession = refreshedSession?.session ?? sessionData.session;
+
+      if (!activeSession?.access_token) {
+        return {
+          success: false,
+          error: 'Unauthenticated - Session expired'
+        };
+      }
+
+      // Panggil RPC - Supabase client akan otomatis mengirim JWT dari session
       const { data, error } = await supabaseRpc.rpc('decrement_stock_for_order_secure', {
         order_id: orderId
       });
 
       if (error) {
         console.error('Stock decrement RPC error:', error);
+        // Jika error adalah unauthenticated, coba refresh sekali lagi
+        if (error.message?.includes('Unauthenticated') || error.message?.includes('JWT')) {
+          const { data: retrySession } = await supabase.auth.refreshSession();
+          if (retrySession?.session) {
+            // Retry sekali dengan session yang baru di-refresh
+            const { data: retryData, error: retryError } = await supabaseRpc.rpc('decrement_stock_for_order_secure', {
+              order_id: orderId
+            });
+            if (retryError) {
+              return {
+                success: false,
+                error: retryError.message || 'Failed to decrement stock after session refresh'
+              };
+            }
+            if (!retryData) {
+              return {
+                success: false,
+                error: 'Invalid response from stock service'
+              };
+            }
+            return retryData as StockDecrementResult;
+          }
+        }
         return {
           success: false,
           error: error.message || 'Failed to decrement stock'
