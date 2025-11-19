@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { PostgrestError } from '@supabase/supabase-js';
-import { PUBLIC_API_BASE_URL, SUPABASE_ANON_KEY, SUPABASE_URL } from '@/utils/env';
+import { PUBLIC_API_BASE_URL } from '@/utils/env';
 
 const supabaseRpc = supabase as unknown as {
   rpc: (
@@ -158,7 +158,7 @@ export class StockService {
         return apiResult;
       }
 
-      return await this.decrementViaSecureRpc(orderId, token);
+      return await this.decrementViaSecureRpc(orderId);
     } catch (error) {
       console.error('Stock decrement error:', error);
       return {
@@ -379,43 +379,34 @@ export class StockService {
     }
   }
 
-  private static async decrementViaSecureRpc(orderId: string, token: string): Promise<StockDecrementResult> {
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      console.error('Supabase URL or anon key missing for stock decrement');
+  private static async decrementViaSecureRpc(orderId: string): Promise<StockDecrementResult> {
+    try {
+      const { data, error } = await supabaseRpc.rpc('decrement_stock_for_order_secure', {
+        order_id: orderId
+      });
+
+      if (error) {
+        console.error('Stock decrement RPC error:', error);
+        return {
+          success: false,
+          error: error.message || 'Failed to decrement stock'
+        };
+      }
+
+      if (!data) {
+        return {
+          success: false,
+          error: 'Invalid response from stock service'
+        };
+      }
+
+      return data as StockDecrementResult;
+    } catch (err) {
+      console.error('Stock decrement RPC exception:', err);
       return {
         success: false,
-        error: 'Konfigurasi Supabase tidak lengkap'
+        error: err instanceof Error ? err.message : 'Failed to decrement stock'
       };
     }
-
-    const endpoint = `${SUPABASE_URL}/rest/v1/rpc/decrement_stock_for_order_secure`;
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ order_id: orderId })
-    });
-
-    if (!response.ok) {
-      const text = await response.text().catch(() => '');
-      console.error('Stock decrement HTTP error:', response.status, text);
-      return {
-        success: false,
-        error: text || 'Failed to decrement stock'
-      };
-    }
-
-    const payload = (await response.json().catch(() => null)) as StockDecrementResult | null;
-    if (!payload) {
-      return {
-        success: false,
-        error: 'Invalid response from stock service'
-      };
-    }
-
-    return payload;
   }
 }
