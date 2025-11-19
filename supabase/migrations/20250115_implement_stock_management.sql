@@ -337,7 +337,9 @@ END;
 $$;
 
 -- 5. Grant permissions
-GRANT EXECUTE ON FUNCTION decrement_stock_for_order(UUID) TO authenticated;
+-- NOTE: core `decrement_stock_for_order` should NOT be granted to `authenticated` or `anon`.
+-- It is intended to be called only by server-side code using the Supabase service role
+-- or by an internal wrapper that validates JWT ownership. Keep other grants as needed.
 GRANT EXECUTE ON FUNCTION check_stock_availability(UUID, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION check_stock_availability(UUID, INTEGER) TO anon;
 GRANT EXECUTE ON FUNCTION restore_stock_for_order(UUID) TO authenticated;

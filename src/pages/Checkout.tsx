@@ -113,6 +113,22 @@ export default function CheckoutPage() {
       }
       let oid = order?.id;
 
+      // Require authenticated user before creating order / decrementing stock
+      // The secure RPC wrapper requires a JWT (request.jwt.claims.sub). If the
+      // user is not authenticated, stop here and ask them to login.
+      const sessionInfo = await supabase.auth.getSession();
+      const accessToken = sessionInfo.data.session?.access_token;
+      if (!accessToken || !profile?.user_id) {
+        toast({
+          variant: 'destructive',
+          title: '🔒 Harap Login Terlebih Dahulu',
+          description: 'Anda perlu masuk/daftar untuk menyelesaikan pembelian dan mengamankan stok.',
+        });
+        setCreatingSession(false);
+        navigate('/login');
+        return;
+      }
+
       if (!oid) {
         // Create order in database
         type OrderInsert = Database['public']['Tables']['orders']['Insert'];
@@ -242,7 +258,7 @@ export default function CheckoutPage() {
     } finally {
       setCreatingSession(false);
     }
-  }, [items, order, profile, selectedRate, subtotal, total, toast, TURNSTILE_SITEKEY, executeTurnstile, setOrder, captchaVerified, clearCart]);
+  }, [items, order, profile, selectedRate, subtotal, total, toast, TURNSTILE_SITEKEY, executeTurnstile, setOrder, captchaVerified, clearCart, navigate]);
 
   if (initializing) return null;
 
