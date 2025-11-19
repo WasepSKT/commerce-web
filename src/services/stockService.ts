@@ -1,4 +1,15 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { PostgrestError } from '@supabase/supabase-js';
+
+const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? '';
+const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ?? '';
+
+const supabaseRpc = supabase as unknown as {
+  rpc: (
+    fn: string,
+    params?: Record<string, unknown>
+  ) => Promise<{ data: unknown; error: PostgrestError | null }>;
+};
 
 // Types for stock management
 export interface StockValidationResult {
@@ -58,7 +69,7 @@ export class StockService {
         };
       }
 
-      const { data, error } = await supabase.rpc('validate_cart_stock', {
+      const { data, error } = await supabaseRpc.rpc('validate_cart_stock', {
         cart_items: JSON.stringify(cartItems)
       });
 
@@ -70,7 +81,7 @@ export class StockService {
         };
       }
 
-      return data as StockValidationResult;
+      return data as unknown as StockValidationResult;
     } catch (error) {
       console.error('Stock validation error:', error);
       return {
@@ -95,7 +106,7 @@ export class StockService {
         };
       }
 
-      const { data, error } = await supabase.rpc('check_stock_availability', {
+      const { data, error } = await supabaseRpc.rpc('check_stock_availability', {
         product_id: productId,
         required_quantity: requiredQuantity
       });
@@ -108,7 +119,7 @@ export class StockService {
         };
       }
 
-      return data as StockAvailabilityResult;
+      return data as unknown as StockAvailabilityResult;
     } catch (error) {
       console.error('Stock availability check error:', error);
       return {
@@ -121,7 +132,7 @@ export class StockService {
   /**
    * Decrement stock for an order (called after successful checkout)
    */
-  static async decrementStockForOrder(orderId: string): Promise<StockDecrementResult> {
+  static async decrementStockForOrder(orderId: string, accessToken?: string): Promise<StockDecrementResult> {
     try {
       if (!orderId) {
         return {
@@ -130,22 +141,56 @@ export class StockService {
         };
       }
 
-      // Call the secure wrapper RPC that validates JWT and order ownership.
-      // This lets the frontend (authenticated user) trigger stock decrement
-      // without exposing the core RPC directly.
-      const { data, error } = await supabase.rpc('decrement_stock_for_order_secure', {
-        order_id: orderId
-      });
+      let token = accessToken;
+      if (!token) {
+        const sessionInfo = await supabase.auth.getSession();
+        token = sessionInfo.data.session?.access_token ?? undefined;
+      }
 
-      if (error) {
-        console.error('Stock decrement error:', error);
+      if (!token) {
         return {
           success: false,
-          error: error.message || 'Failed to decrement stock'
+          error: 'Unauthenticated'
         };
       }
 
-      return data as StockDecrementResult;
+      if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+        console.error('Supabase URL or anon key missing for stock decrement');
+        return {
+          success: false,
+          error: 'Konfigurasi Supabase tidak lengkap'
+        };
+      }
+
+      const endpoint = `${SUPABASE_URL}/rest/v1/rpc/decrement_stock_for_order_secure`;
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ order_id: orderId })
+      });
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        console.error('Stock decrement HTTP error:', response.status, text);
+        return {
+          success: false,
+          error: text || 'Failed to decrement stock'
+        };
+      }
+
+      const payload = (await response.json().catch(() => null)) as StockDecrementResult | null;
+      if (!payload) {
+        return {
+          success: false,
+          error: 'Invalid response from stock service'
+        };
+      }
+
+      return payload;
     } catch (error) {
       console.error('Stock decrement error:', error);
       return {
@@ -167,7 +212,7 @@ export class StockService {
         };
       }
 
-      const { data, error } = await supabase.rpc('restore_stock_for_order', {
+      const { data, error } = await supabaseRpc.rpc('restore_stock_for_order', {
         order_id: orderId
       });
 
@@ -179,7 +224,7 @@ export class StockService {
         };
       }
 
-      return data as StockDecrementResult;
+      return data as unknown as StockDecrementResult;
     } catch (error) {
       console.error('Stock restoration error:', error);
       return {
