@@ -464,51 +464,49 @@ export class StockService {
         };
       }
       
+      // Test JWT bisa dibaca sebelum memanggil RPC yang sebenarnya (optional, skip if function doesn't exist)
+      try {
+        console.debug('[StockService] Testing JWT readability...');
+        const jwtTest = await callRpc('test_jwt_read', {}, currentSession.access_token);
+        if (jwtTest.data && typeof jwtTest.data === 'object' && 'can_read_jwt' in jwtTest.data) {
+          const jwtTestResult = jwtTest.data as { can_read_jwt: boolean; user_id?: string; error?: string };
+          if (!jwtTestResult.can_read_jwt) {
+            console.error('[StockService] JWT cannot be read by RPC!', jwtTestResult);
+            return {
+              success: false,
+              error: 'JWT authentication failed: ' + (jwtTestResult.error || 'Cannot read JWT claims')
+            };
+          }
+          console.debug('[StockService] JWT test passed, user_id:', jwtTestResult.user_id);
+        }
+      } catch (e) {
+        // Skip JWT test if function doesn't exist, continue with main RPC call
+        console.debug('[StockService] JWT test function not available, skipping test');
+      }
+
       // Gunakan fetch langsung dengan accessToken untuk memastikan JWT terkirim dengan benar
       // Ini lebih reliable daripada mengandalkan Supabase client yang mungkin tidak sync session
       console.debug('[StockService] Session verified, calling RPC with explicit access token...');
+      console.debug('[StockService] Access token (first 20 chars):', currentSession.access_token.substring(0, 20) + '...');
+      console.debug('[StockService] Order ID:', orderId);
+      
       const { data, error } = await callRpc('decrement_stock_for_order_secure', {
         order_id: orderId
       }, currentSession.access_token);
+      
+      console.debug('[StockService] RPC response:', { data, error });
 
+      // Handle HTTP errors
       if (error) {
-        console.error('[StockService] RPC error:', error);
+        console.error('[StockService] RPC HTTP error:', error);
         console.error('[StockService] Error details:', JSON.stringify(error, null, 2));
-        // RPC bisa mengembalikan error dengan detail lebih spesifik
-        const errorMessage = error.message || 'Failed to decrement stock';
-        
-        // Jika error adalah "Unauthenticated", coba refresh session sekali lagi
-        if (errorMessage.includes('Unauthenticated') || errorMessage.includes('unauthenticated')) {
-          console.warn('[StockService] Unauthenticated error, attempting to refresh session...');
-          const { data: refreshedSession, error: refreshError } = await supabase.auth.refreshSession();
-          if (refreshError || !refreshedSession.session) {
-            return {
-              success: false,
-              error: 'Unauthenticated: Please login again'
-            };
-          }
-          // Coba sekali lagi dengan session yang fresh
-          console.debug('[StockService] Retrying with refreshed session...');
-          const retry = await callRpc('decrement_stock_for_order_secure', {
-            order_id: orderId
-          });
-          if (retry.error) {
-            return {
-              success: false,
-              error: retry.error.message || 'Failed to decrement stock after session refresh'
-            };
-          }
-          const retryData = retry.data as unknown;
-          const retryResult = typeof retryData === 'string' ? JSON.parse(retryData) : retryData;
-          return retryResult as StockDecrementResult;
-        }
-        
         return {
           success: false,
-          error: errorMessage
+          error: error.message || 'Failed to decrement stock'
         };
       }
 
+      // Handle response data
       if (!data) {
         console.warn('[StockService] RPC returned null/undefined data');
         return {
@@ -520,9 +518,32 @@ export class StockService {
       // Parse response dari RPC (bisa berupa JSON string atau object)
       const result = typeof data === 'string' ? JSON.parse(data) : data;
       
-      // Jika response adalah object dengan success: false, return langsung
+      // Jika response adalah object dengan success: false, check error message
       if (typeof result === 'object' && result !== null && 'success' in result) {
-        return result as StockDecrementResult;
+        const rpcResult = result as StockDecrementResult;
+        
+        // Jika RPC mengembalikan success: false dengan error "Unauthenticated"
+        if (!rpcResult.success && rpcResult.error && rpcResult.error.includes('Unauthenticated')) {
+          console.error('[StockService] RPC returned Unauthenticated error:', rpcResult);
+          console.error('[StockService] This means JWT is not readable by RPC function');
+          console.error('[StockService] Session user ID:', currentSession.user.id);
+          console.error('[StockService] Access token exists:', !!currentSession.access_token);
+          
+          // Coba test JWT readability
+          try {
+            const jwtTest = await callRpc('test_jwt_read', {}, currentSession.access_token);
+            console.error('[StockService] JWT test result:', jwtTest);
+          } catch (e) {
+            console.error('[StockService] JWT test failed:', e);
+          }
+          
+          return {
+            success: false,
+            error: 'Unauthenticated: RPC function cannot read JWT. Please check RPC function configuration or try logging in again.'
+          };
+        }
+        
+        return rpcResult;
       }
       
       return result as StockDecrementResult;
