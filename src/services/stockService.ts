@@ -1,6 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { PostgrestError } from '@supabase/supabase-js';
-import { PUBLIC_API_BASE_URL } from '@/utils/env';
 
 const supabaseRpc = supabase as unknown as {
   rpc: (
@@ -152,12 +151,7 @@ export class StockService {
         };
       }
 
-      // Try hitting our serverless API first (service role, RLS-aware). Fallback to direct Supabase RPC if unavailable.
-      const apiResult = await this.decrementViaApi(orderId, token);
-      if (apiResult) {
-        return apiResult;
-      }
-
+      // Backend hanya menangani payment & webhook, stock decrement langsung via Supabase RPC
       return await this.decrementViaSecureRpc(orderId);
     } catch (error) {
       console.error('Stock decrement error:', error);
@@ -335,47 +329,6 @@ export class StockService {
     } catch (error) {
       console.error('Error fetching low stock products:', error);
       return [];
-    }
-  }
-
-  private static async decrementViaApi(orderId: string, token: string): Promise<StockDecrementResult | null> {
-    try {
-      if (!token) return null;
-
-      const path = '/api/orders/decrement-stock';
-      const url = PUBLIC_API_BASE_URL ? `${PUBLIC_API_BASE_URL}${path}` : path;
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ order_id: orderId })
-      });
-
-      const body = await response.json().catch(() => null);
-
-      if (response.status === 404) {
-        // Local dev (Vite) doesn't expose /api; let caller fallback to direct RPC.
-        return null;
-      }
-
-      if (!response.ok) {
-        const message = (body as { message?: string; error?: string } | null)?.message || (body as { error?: string } | null)?.error;
-        return {
-          success: false,
-          error: message || `Failed to decrement stock (API ${response.status})`
-        };
-      }
-
-      return (body as StockDecrementResult) ?? {
-        success: false,
-        error: 'Invalid API response'
-      };
-    } catch (err) {
-      console.warn('[StockService] decrementViaApi failed, fallback to Supabase RPC', err);
-      return null;
     }
   }
 

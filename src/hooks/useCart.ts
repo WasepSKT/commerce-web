@@ -197,6 +197,30 @@ export default function useCart() {
       clearMap();
       if (isAuthenticated) scheduleSync();
     },
+    clearImmediate: async () => {
+      clearMap();
+      if (!isAuthenticated) return;
+      try {
+        const userId = session?.user?.id;
+        if (!userId) return;
+        // Langsung sync ke server tanpa debounce untuk memastikan cart kosong di database
+        const payload = { user_id: userId, items: [], updated_at: new Date().toISOString() };
+        const { error } = await supabase.from('carts').upsert(payload, { onConflict: 'user_id' });
+        if (error) {
+          console.error('[useCart] clearImmediate sync error', error);
+          // Fallback ke debounced sync jika immediate sync gagal
+          scheduleSync();
+        } else {
+          console.debug('[useCart] cart cleared immediately on server');
+          // Reset sync cache agar tidak reload dari server yang sudah kosong
+          serverSyncedForUserId = userId;
+        }
+      } catch (e) {
+        console.error('[useCart] clearImmediate failed', e);
+        // Fallback ke debounced sync
+        scheduleSync();
+      }
+    },
   } as const;
 }
 

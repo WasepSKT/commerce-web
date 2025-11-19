@@ -31,7 +31,7 @@ export default function CheckoutPage() {
   const { profile, updateProfile } = useAuth();
   const { toast } = useToast();
   const { order, setOrder, items, setItems, initializing, query } = useCheckoutInitialization();
-  const { clear: clearCart } = useCart();
+  const { clearImmediate: clearCart } = useCart();
   const { rates, selectedRate, setSelectedRate, loadingRates } = useCheckoutShippingRates(profile, items);
 
   const [creatingSession, setCreatingSession] = useState(false);
@@ -182,7 +182,7 @@ export default function CheckoutPage() {
           }
 
           try {
-            clearCart();
+            await clearCart();
           } catch (err) {
             console.debug('Failed to clear cart after checkout:', err);
           }
