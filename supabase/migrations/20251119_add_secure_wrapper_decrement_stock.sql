@@ -11,9 +11,57 @@ DECLARE
   uid UUID;
   res JSON;
 BEGIN
-  -- Try to read the authenticated user's sub from the request JWT claims
+  -- Prefer using Supabase helper `auth.uid()` to obtain the authenticated user's id.
+  -- `auth.uid()` is safer in SECURITY DEFINER functions. Fall back to request.jwt.claims.sub
+  -- only if `auth.uid()` is not available for some reason.
   BEGIN
-    uid := current_setting('request.jwt.claims.sub', true)::uuid;
+    BEGIN
+      -- Prefer auth.uid() which is the most reliable helper
+      uid := auth.uid()::uuid;
+    EXCEPTION WHEN OTHERS THEN
+      -- Fallback: try reading the full JWT claims and parse the 'sub' field
+      BEGIN
+        DECLARE
+          claims_text TEXT;
+          claims_json JSON;
+          sub_text TEXT;
+        BEGIN
+          claims_text := current_setting('request.jwt.claims', true);
+          IF claims_text IS NOT NULL THEN
+            claims_json := claims_text::json;
+            -- Prefer top-level 'sub', fall back to user_metadata.sub (provider id)
+            sub_text := claims_json->>'sub';
+            IF sub_text IS NULL THEN
+              sub_text := claims_json->'user_metadata'->>'sub';
+            END IF;
+
+            IF sub_text IS NOT NULL THEN
+              -- Try cast to uuid (normal Supabase user id). If that fails,
+              -- attempt to resolve a provider id to a Supabase user id by
+              -- looking into the auth.users raw_user_meta_data.
+              BEGIN
+                uid := sub_text::uuid;
+              EXCEPTION WHEN OTHERS THEN
+                BEGIN
+                  SELECT id INTO uid
+                  FROM auth.users
+                  WHERE COALESCE((raw_user_meta_data::json->>'provider_id'), (raw_user_meta_data::json->>'sub')) = sub_text
+                  LIMIT 1;
+                EXCEPTION WHEN OTHERS THEN
+                  uid := NULL;
+                END;
+              END;
+            ELSE
+              uid := NULL;
+            END IF;
+          ELSE
+            uid := NULL;
+          END IF;
+        EXCEPTION WHEN OTHERS THEN
+          uid := NULL;
+        END;
+      END;
+    END;
   EXCEPTION WHEN OTHERS THEN
     uid := NULL;
   END;
@@ -29,6 +77,19 @@ BEGIN
 
   -- Delegate to core function (assumes core function exists)
   res := decrement_stock_for_order(p_order_id);
+
+  -- If decrement succeeded, remove the user's cart (user completed checkout)
+  BEGIN
+    IF (res->>'success')::boolean THEN
+      -- delete cart for this user; cart policies enforced, but SECURITY DEFINER owner can perform
+      DELETE FROM carts WHERE user_id = uid;
+      RAISE LOG 'Cart cleared for user % after successful decrement', uid;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    -- Log but do not fail the whole transaction because stock decrement already happened
+    RAISE LOG 'Failed to clear cart for user %: %', uid, SQLERRM;
+  END;
+
   RETURN res;
 END;
 $$;
