@@ -172,7 +172,7 @@ export default function CheckoutPage() {
           // No separate server: call the secure RPC wrapper directly from the client.
           // The Supabase client will send the user's JWT automatically, and the
           // secure wrapper will verify order ownership before decrementing stock.
-          const rpcRes = await import('@/services/stockService').then(m => m.StockService.decrementStockForOrder(oid as string));
+          const rpcRes = await import('@/services/stockService').then(m => m.StockService.decrementStockForOrder(oid as string, accessToken));
 
           if (!rpcRes || rpcRes.success !== true) {
             console.warn('decrement_stock_for_order_secure returned:', rpcRes);

@@ -50,6 +50,11 @@ export const currentEnv = import.meta.env.MODE; // 'development' atau 'productio
 export const PAYMENT_API_URL = import.meta.env.VITE_PAYMENT_API_URL || 'https://api-payment.regalpaw.id';
 export const SERVICE_API_KEY = import.meta.env.VITE_SERVICE_API_KEY || '';
 
+// Supabase + API config (shared antara client-side services)
+export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+export const PUBLIC_API_BASE_URL = (import.meta.env.VITE_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+
 // Validate required env vars
 if (!SERVICE_API_KEY && import.meta.env.PROD) {
   console.warn('⚠️ VITE_SERVICE_API_KEY is not set in production');
