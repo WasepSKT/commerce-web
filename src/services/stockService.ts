@@ -2,7 +2,41 @@ import { supabase } from '@/integrations/supabase/client';
 import type { PostgrestError } from '@supabase/supabase-js';
 
 // Helper untuk memanggil RPC dengan type safety
-const callRpc = async (fn: string, params?: Record<string, unknown>) => {
+// Memastikan JWT terkirim dengan benar
+const callRpc = async (fn: string, params?: Record<string, unknown>, accessToken?: string) => {
+  // Jika accessToken diberikan, gunakan fetch langsung untuk memastikan JWT terkirim
+  if (accessToken) {
+    const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string) ?? '';
+    const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string) ?? '';
+    
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(params || {})
+    });
+
+    const data = await response.json().catch(() => null);
+    
+    if (!response.ok) {
+      return {
+        data: null,
+        error: {
+          message: data?.message || data?.error || `HTTP ${response.status}`,
+          details: data,
+          hint: null,
+          code: String(response.status)
+        } as PostgrestError
+      };
+    }
+
+    return { data, error: null };
+  }
+
+  // Fallback ke Supabase client (akan otomatis mengirim JWT dari session)
   // @ts-expect-error: RPC name mungkin belum terdaftar di tipe supabase d.ts
   return await supabase.rpc(fn as never, params);
 };
@@ -430,13 +464,12 @@ export class StockService {
         };
       }
       
-      // Gunakan supabase client langsung - client akan otomatis mengirim JWT dari session
-      // Supabase client akan mengirim JWT dalam header Authorization: Bearer <token>
-      // RPC function akan membaca JWT dari request.jwt.claims.sub
-      console.debug('[StockService] Session verified, calling RPC...');
+      // Gunakan fetch langsung dengan accessToken untuk memastikan JWT terkirim dengan benar
+      // Ini lebih reliable daripada mengandalkan Supabase client yang mungkin tidak sync session
+      console.debug('[StockService] Session verified, calling RPC with explicit access token...');
       const { data, error } = await callRpc('decrement_stock_for_order_secure', {
         order_id: orderId
-      });
+      }, currentSession.access_token);
 
       if (error) {
         console.error('[StockService] RPC error:', error);
