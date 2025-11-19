@@ -130,7 +130,10 @@ export class StockService {
         };
       }
 
-      const { data, error } = await supabase.rpc('decrement_stock_for_order', {
+      // Call the secure wrapper RPC that validates JWT and order ownership.
+      // This lets the frontend (authenticated user) trigger stock decrement
+      // without exposing the core RPC directly.
+      const { data, error } = await supabase.rpc('decrement_stock_for_order_secure', {
         order_id: orderId
       });
 

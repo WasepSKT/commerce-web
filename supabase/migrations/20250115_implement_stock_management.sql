@@ -11,6 +11,11 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
+  -- Create a local alias to avoid ambiguity between the parameter name
+  -- and any column named "order_id" in queries. We keep the external
+  -- parameter name `order_id` so RPC callers don't need to change, but
+  -- use `p_order_id` internally.
+  p_order_id ALIAS FOR $1;
   order_item RECORD;
   product_record RECORD;
   updated_count INTEGER := 0;
@@ -18,10 +23,10 @@ DECLARE
   result JSON;
 BEGIN
   -- Log function call
-  RAISE LOG 'decrement_stock_for_order called for order_id: %', order_id;
+  RAISE LOG 'decrement_stock_for_order called for order_id: %', p_order_id;
   
   -- Validate input
-  IF order_id IS NULL THEN
+  IF p_order_id IS NULL THEN
     RETURN json_build_object(
       'success', false,
       'error', 'Order ID is required'
@@ -29,7 +34,7 @@ BEGIN
   END IF;
   
   -- Check if order exists
-  IF NOT EXISTS (SELECT 1 FROM orders WHERE id = order_id) THEN
+  IF NOT EXISTS (SELECT 1 FROM orders WHERE id = p_order_id) THEN
     RETURN json_build_object(
       'success', false,
       'error', 'Order not found'
@@ -41,7 +46,7 @@ BEGIN
     SELECT oi.product_id, oi.quantity, p.name as product_name, p.stock_quantity
     FROM order_items oi
     JOIN products p ON oi.product_id = p.id
-    WHERE oi.order_id = order_id
+    WHERE oi.order_id = p_order_id
   LOOP
     -- Check if sufficient stock is available
     IF order_item.stock_quantity < order_item.quantity THEN
@@ -78,7 +83,7 @@ BEGIN
     'success', error_count = 0,
     'updated_products', updated_count,
     'errors', error_count,
-    'order_id', order_id
+    'order_id', p_order_id
   );
   
   RAISE LOG 'Stock decrement completed. Result: %', result;
@@ -333,7 +338,6 @@ $$;
 
 -- 5. Grant permissions
 GRANT EXECUTE ON FUNCTION decrement_stock_for_order(UUID) TO authenticated;
-GRANT EXECUTE ON FUNCTION decrement_stock_for_order(UUID) TO anon;
 GRANT EXECUTE ON FUNCTION check_stock_availability(UUID, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION check_stock_availability(UUID, INTEGER) TO anon;
 GRANT EXECUTE ON FUNCTION restore_stock_for_order(UUID) TO authenticated;
