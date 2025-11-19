@@ -1,11 +1,10 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { PostgrestError } from '@supabase/supabase-js';
 
-const supabaseRpc = supabase as unknown as {
-  rpc: (
-    fn: string,
-    params?: Record<string, unknown>
-  ) => Promise<{ data: unknown; error: PostgrestError | null }>;
+// Helper untuk memanggil RPC dengan type safety
+const callRpc = async (fn: string, params?: Record<string, unknown>) => {
+  // @ts-expect-error: RPC name mungkin belum terdaftar di tipe supabase d.ts
+  return await supabase.rpc(fn as never, params);
 };
 
 // Types for stock management
@@ -66,7 +65,7 @@ export class StockService {
         };
       }
 
-      const { data, error } = await supabaseRpc.rpc('validate_cart_stock', {
+      const { data, error } = await callRpc('validate_cart_stock', {
         cart_items: JSON.stringify(cartItems)
       });
 
@@ -103,7 +102,7 @@ export class StockService {
         };
       }
 
-      const { data, error } = await supabaseRpc.rpc('check_stock_availability', {
+      const { data, error } = await callRpc('check_stock_availability', {
         product_id: productId,
         required_quantity: requiredQuantity
       });
@@ -184,7 +183,7 @@ export class StockService {
         };
       }
 
-      const { data, error } = await supabaseRpc.rpc('restore_stock_for_order', {
+      const { data, error } = await callRpc('restore_stock_for_order', {
         order_id: orderId
       });
 
@@ -344,24 +343,110 @@ export class StockService {
 
   private static async decrementViaSecureRpc(orderId: string): Promise<StockDecrementResult> {
     try {
-      // Pastikan session masih valid sebelum memanggil RPC
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
+      // Pastikan session masih valid dan ter-refresh sebelum memanggil RPC
+      // Supabase client akan otomatis membaca session dari localStorage
+      let sessionData = await supabase.auth.getSession();
+      
+      if (sessionData.error) {
+        console.error('[StockService] Session error:', sessionData.error);
+        return {
+          success: false,
+          error: 'Session error: ' + sessionData.error.message
+        };
+      }
+      
+      // Jika session tidak ada, coba refresh
+      if (!sessionData.data.session) {
+        console.warn('[StockService] No session found, attempting refresh...');
+        const refreshed = await supabase.auth.refreshSession();
+        if (refreshed.error || !refreshed.data.session) {
+          console.error('[StockService] Failed to refresh session');
+          return {
+            success: false,
+            error: 'Unauthenticated: No active session. Please login again.'
+          };
+        }
+        sessionData = refreshed;
+        console.debug('[StockService] Session refreshed successfully');
+      }
+
+      const currentSession = sessionData.data.session;
+      if (!currentSession) {
+        console.error('[StockService] No session available after refresh');
         return {
           success: false,
           error: 'Unauthenticated: No active session'
         };
       }
 
+      // Pastikan access token ada
+      if (!currentSession.access_token) {
+        console.error('[StockService] No access token in session');
+        return {
+          success: false,
+          error: 'Unauthenticated: No access token'
+        };
+      }
+
+      // Decode JWT untuk verifikasi (opsional, untuk debugging)
+      try {
+        const tokenParts = currentSession.access_token.split('.');
+        if (tokenParts.length === 3) {
+          const payload = JSON.parse(atob(tokenParts[1]));
+          console.debug('[StockService] JWT payload:', {
+            sub: payload.sub,
+            role: payload.role,
+            exp: payload.exp,
+            expDate: new Date(payload.exp * 1000).toISOString()
+          });
+        }
+      } catch (e) {
+        console.warn('[StockService] Failed to decode JWT for debugging:', e);
+      }
+
       console.debug('[StockService] Calling decrement_stock_for_order_secure for order:', orderId);
-      const { data, error } = await supabaseRpc.rpc('decrement_stock_for_order_secure', {
+      console.debug('[StockService] Session user ID:', currentSession.user.id);
+      console.debug('[StockService] Access token exists:', !!currentSession.access_token);
+      console.debug('[StockService] Token expires at:', new Date(currentSession.expires_at! * 1000).toISOString());
+      
+      // Gunakan supabase client langsung - client akan otomatis mengirim JWT dari session
+      // Pastikan tidak ada konflik dengan token manual di localStorage
+      const { data, error } = await callRpc('decrement_stock_for_order_secure', {
         order_id: orderId
       });
 
       if (error) {
         console.error('[StockService] RPC error:', error);
+        console.error('[StockService] Error details:', JSON.stringify(error, null, 2));
         // RPC bisa mengembalikan error dengan detail lebih spesifik
         const errorMessage = error.message || 'Failed to decrement stock';
+        
+        // Jika error adalah "Unauthenticated", coba refresh session sekali lagi
+        if (errorMessage.includes('Unauthenticated') || errorMessage.includes('unauthenticated')) {
+          console.warn('[StockService] Unauthenticated error, attempting to refresh session...');
+          const { data: refreshedSession, error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError || !refreshedSession.session) {
+            return {
+              success: false,
+              error: 'Unauthenticated: Please login again'
+            };
+          }
+          // Coba sekali lagi dengan session yang fresh
+          console.debug('[StockService] Retrying with refreshed session...');
+          const retry = await callRpc('decrement_stock_for_order_secure', {
+            order_id: orderId
+          });
+          if (retry.error) {
+            return {
+              success: false,
+              error: retry.error.message || 'Failed to decrement stock after session refresh'
+            };
+          }
+          const retryData = retry.data as unknown;
+          const retryResult = typeof retryData === 'string' ? JSON.parse(retryData) : retryData;
+          return retryResult as StockDecrementResult;
+        }
+        
         return {
           success: false,
           error: errorMessage
@@ -378,6 +463,12 @@ export class StockService {
 
       // Parse response dari RPC (bisa berupa JSON string atau object)
       const result = typeof data === 'string' ? JSON.parse(data) : data;
+      
+      // Jika response adalah object dengan success: false, return langsung
+      if (typeof result === 'object' && result !== null && 'success' in result) {
+        return result as StockDecrementResult;
+      }
+      
       return result as StockDecrementResult;
     } catch (err) {
       console.error('[StockService] RPC exception:', err);

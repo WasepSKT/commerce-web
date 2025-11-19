@@ -15,6 +15,8 @@ const SUPABASE_PUBLISHABLE_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     // Persist sessions client-side (localStorage) for client-only auth flow.
+    // Supabase akan otomatis menggunakan localStorage dengan key: sb-<project-ref>-auth-token
+    // JANGAN menyimpan access token manual di localStorage karena akan konflik dengan Supabase session
     persistSession: true,
     // Let the client automatically refresh access tokens.
     autoRefreshToken: true,
