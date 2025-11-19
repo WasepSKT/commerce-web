@@ -404,19 +404,26 @@ export class StockService {
           error: 'Unauthenticated: No access token'
         };
       }
+      // Verifikasi cepat format access token: harus berupa JWT Supabase
+      // (format: header.payload.signature -> 3 bagian dipisah titik)
+      const tokenParts = currentSession.access_token.split('.');
+      if (tokenParts.length !== 3) {
+        console.error('[StockService] Access token is not a Supabase JWT (unexpected format)', { token: currentSession.access_token });
+        return {
+          success: false,
+          error: 'Unauthenticated: Access token is not a Supabase JWT. Please login via Supabase auth flow (do not pass provider OAuth token directly).'
+        };
+      }
 
       // Decode JWT untuk verifikasi (opsional, untuk debugging)
       try {
-        const tokenParts = currentSession.access_token.split('.');
-        if (tokenParts.length === 3) {
-          const payload = JSON.parse(atob(tokenParts[1]));
-          console.debug('[StockService] JWT payload:', {
-            sub: payload.sub,
-            role: payload.role,
-            exp: payload.exp,
-            expDate: new Date(payload.exp * 1000).toISOString()
-          });
-        }
+        const payload = JSON.parse(atob(tokenParts[1]));
+        console.debug('[StockService] JWT payload:', {
+          sub: payload.sub,
+          role: payload.role,
+          exp: payload.exp,
+          expDate: new Date(payload.exp * 1000).toISOString()
+        });
       } catch (e) {
         console.warn('[StockService] Failed to decode JWT for debugging:', e);
       }
