@@ -30,8 +30,14 @@ export function useCheckoutInitialization() {
       try {
         // Wait for auth to be initialized before attempting to read server-side cart
         if (authLoading) return; // effect will re-run when authLoading changes
-        // Best-effort: rehydrate supabase-js session from localStorage so RPCs/sendings have correct token
-        try { await rehydrateSupabaseSession(); } catch (e) { /* swallow - best-effort */ }
+        // Best-effort: only rehydrate if client has no session to avoid auth-state thrashing
+        try {
+          const gs = await supabase.auth.getSession();
+          const hasSession = Boolean(gs && gs.data && gs.data.session);
+          if (!hasSession) await rehydrateSupabaseSession();
+        } catch (e) {
+          /* swallow - best-effort */
+        }
         if (orderIdParam) {
           const res = await supabase.from('orders').select('*').eq('id', orderIdParam).single();
           const ord = (res as { data?: Order | null }).data;

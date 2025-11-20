@@ -100,8 +100,12 @@ export default function useCart() {
     // schedule background upsert
     syncTimer = window.setTimeout(async () => {
       try {
-        // ensure client session present (best-effort)
-        try { await rehydrateSupabaseSession(); } catch (e) { /* best-effort */ }
+        // ensure client session present (best-effort) only when there's no session
+        try {
+          const gs = await supabase.auth.getSession();
+          const hasSession = Boolean(gs && gs.data && gs.data.session);
+          if (!hasSession) await rehydrateSupabaseSession();
+        } catch (e) { /* best-effort */ }
         const userId = session?.user?.id;
         if (!userId) return;
         const current = getSnapshot();
@@ -121,8 +125,12 @@ export default function useCart() {
   const syncLocalToServer = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
-      // ensure client session present (best-effort)
-      try { await rehydrateSupabaseSession(); } catch (e) { /* best-effort */ }
+      // ensure client session present (best-effort) only when there's no session
+      try {
+        const gs = await supabase.auth.getSession();
+        const hasSession = Boolean(gs && gs.data && gs.data.session);
+        if (!hasSession) await rehydrateSupabaseSession();
+      } catch (e) { /* best-effort */ }
       const userId = session?.user?.id;
       if (!userId) return;
 
@@ -209,8 +217,12 @@ export default function useCart() {
         const userId = session?.user?.id;
         if (!userId) return;
         // Langsung sync ke server tanpa debounce untuk memastikan cart kosong di database
-        // ensure client session present (best-effort)
-        try { await rehydrateSupabaseSession(); } catch (e) { /* best-effort */ }
+        // ensure client session present (best-effort) only when there's no session
+        try {
+          const gs = await supabase.auth.getSession();
+          const hasSession = Boolean(gs && gs.data && gs.data.session);
+          if (!hasSession) await rehydrateSupabaseSession();
+        } catch (e) { /* best-effort */ }
         const payload = { user_id: userId, items: [], updated_at: new Date().toISOString() };
         const { error } = await supabase.from('carts').upsert(payload, { onConflict: 'user_id' });
         if (error) {
