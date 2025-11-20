@@ -36,7 +36,10 @@ interface LayoutProps {
 import { NotificationsProvider } from '@/contexts/NotificationsProvider';
 
 export function Layout({ children }: LayoutProps) {
-  const { profile, signOut, isAuthenticated } = useAuth();
+  const { profile, user, signOut, isAuthenticated } = useAuth();
+  // Try to read avatar from Supabase auth user metadata (google oauth provides `picture` or `avatar_url`).
+  const _meta = (user as unknown as Record<string, unknown>)?.user_metadata as Record<string, unknown> | undefined;
+  const avatarUrl = typeof _meta?.avatar_url === 'string' ? (_meta.avatar_url as string) : typeof _meta?.picture === 'string' ? (_meta.picture as string) : undefined;
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
   const { totalItems } = useCart();
@@ -100,7 +103,7 @@ export function Layout({ children }: LayoutProps) {
                     {/* notifications */}
                     <CustomerNotificationDropdown />
                     {/* cart indicator */}
-                    <Link to="/cart" className="mr-2">
+                    <Link to="/cart" className="hidden md:inline-block mr-2">
                       <div className="relative inline-flex">
                         <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
                           <ShoppingCart className="h-4 w-4" />
@@ -110,8 +113,12 @@ export function Layout({ children }: LayoutProps) {
                     </Link>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full cursor-pointer hover:bg-primary/10 hover:text-primary">
-                          <User className="h-4 w-4" />
+                        <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full cursor-pointer hover:bg-primary/10 hover:text-primary overflow-hidden p-0">
+                          {avatarUrl ? (
+                            <img src={avatarUrl} alt="avatar" className="h-8 w-8 rounded-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                          ) : (
+                            <User className="h-4 w-4" />
+                          )}
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-56">

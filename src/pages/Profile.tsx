@@ -53,7 +53,9 @@ type LeafletStatic = {
 const getWin = () => window as unknown as (Window & { _profile_map_ref?: ProfileMapRef; L?: LeafletStatic });
 
 export default function ProfilePage() {
-  const { profile, updateProfile } = useAuth();
+  const { profile, updateProfile, user } = useAuth();
+  const _meta = (user as unknown as Record<string, unknown>)?.user_metadata as Record<string, unknown> | undefined;
+  const avatarUrl = typeof _meta?.avatar_url === 'string' ? (_meta.avatar_url as string) : typeof _meta?.picture === 'string' ? (_meta.picture as string) : undefined;
   const { referralLevel } = useReferral();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -202,19 +204,46 @@ export default function ProfilePage() {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-4 text-primary text-center md:text-left">Profil Saya</h1>
+        <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-4 mb-4 text-center md:text-left">
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt="avatar"
+              className="h-24 w-24 md:h-16 md:w-16 rounded-full object-cover shadow"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+            />
+          ) : (
+            <div className="h-24 w-24 md:h-16 md:w-16 rounded-full bg-muted-foreground/10 flex items-center justify-center text-muted-foreground">
+              {/* empty placeholder when no avatar */}
+            </div>
+          )}
+
+          <div className="flex flex-col items-center md:items-start">
+            <h1 className="text-2xl font-bold text-primary">Profil Saya</h1>
+            {referralLevel ? (
+              <div className="mt-2">
+                <Badge variant="secondary">{referralLevel.levelName}</Badge>
+              </div>
+            ) : null}
+          </div>
+        </div>
         <Card>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {referralLevel ? (
                 <div className="md:col-span-2">
-                  <label className="text-sm font-medium">Referral Level</label>
-                  <div className="mt-1 flex items-center gap-2">
-                    <Badge>{referralLevel.levelName}</Badge>
-                    <span className="text-sm text-muted-foreground">
-                      Komisi {(referralLevel.commissionPct * 100).toFixed(0)}% • Referral Rp {referralLevel.totalAmount.toLocaleString('id-ID')}
-                    </span>
+                  <label className="text-sm font-medium">Referral</label>
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                    <div className="rounded-lg border p-3 bg-card">
+                      <p className="text-xs text-muted-foreground">Komisi</p>
+                      <p className="text-lg font-semibold">{(referralLevel.commissionPct * 100).toFixed(0)}%</p>
+                    </div>
+                    <div className="rounded-lg border p-3 bg-card">
+                      <p className="text-xs text-muted-foreground">Pendapatan Referral</p>
+                      <p className="text-lg font-semibold">Rp {referralLevel.totalAmount.toLocaleString('id-ID')}</p>
+                    </div>
                   </div>
+                  <p className="mt-2 text-sm text-muted-foreground">Level: <span className="font-medium">{referralLevel.levelName}</span></p>
                 </div>
               ) : null}
               <div>
