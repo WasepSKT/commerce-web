@@ -387,7 +387,7 @@ export class StockService {
         console.debug('[StockService] Session refreshed successfully');
       }
 
-      const currentSession = sessionData.data.session;
+      let currentSession = sessionData.data.session;
       if (!currentSession) {
         console.error('[StockService] No session available after refresh');
         return {
@@ -477,6 +477,59 @@ export class StockService {
         // use recheck as the active session
         sessionData = recheck as any;
       }
+
+      // Proactively compare localStorage auth token with the Supabase client session token.
+      try {
+        const authKey = Object.keys(localStorage).find(k => /sb-.*-auth-token/.test(k));
+        let localToken: string | null = null;
+        if (authKey) {
+          try {
+            const raw = localStorage.getItem(authKey);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              // search for first JWT-looking string inside parsed object
+              const findToken = (o: any): string | null => {
+                if (!o) return null;
+                if (typeof o === 'string' && o.split('.').length === 3) return o;
+                if (Array.isArray(o)) {
+                  for (const v of o) {
+                    const r = findToken(v); if (r) return r;
+                  }
+                }
+                if (typeof o === 'object') {
+                  for (const k in o) {
+                    try { const r = findToken(o[k]); if (r) return r; } catch (_) { /* ignore */ }
+                  }
+                }
+                return null;
+              };
+              localToken = findToken(parsed);
+            }
+          } catch (e) {
+            /* ignore parse errors */
+          }
+        }
+
+        console.debug('[StockService] Token preview - client:', String(currentSession?.access_token ?? '').slice(0,8) + '...', 'localStorage:', localToken ? String(localToken).slice(0,8) + '...' : null);
+
+        if (localToken && currentSession && currentSession.access_token !== localToken) {
+          try {
+            console.debug('[StockService] Local token differs from client session; applying one-time setSession');
+            // @ts-ignore setSession exists
+            await supabase.auth.setSession({ access_token: localToken, refresh_token: null });
+            // re-fetch session
+            const after = await supabase.auth.getSession();
+            if (after.data && after.data.session) {
+              currentSession = after.data.session;
+              console.debug('[StockService] Session updated from local token (preview):', String(currentSession.access_token).slice(0,8) + '...');
+            }
+          } catch (e) {
+            console.warn('[StockService] Failed to setSession from local token', e);
+          }
+        }
+      } catch (e) {
+        console.warn('[StockService] Error while comparing local token and client session', e);
+      }
       
       if (verifySession.data.session.user.id !== currentSession.user.id) {
         console.error('[StockService] Session mismatch:', {
@@ -499,20 +552,64 @@ export class StockService {
         // Supabase client akan otomatis mengirim JWT dari session
         const jwtTest = await callRpc('test_jwt_read', {});
         const jwtTestData = jwtTest.data as unknown;
-        if (jwtTestData && typeof jwtTestData === 'object' && 'can_read_jwt' in jwtTestData) {
-          const jwtTestResult = jwtTestData as { can_read_jwt: boolean; user_id?: string; error?: string };
-          if (!jwtTestResult.can_read_jwt) {
-            console.error('[StockService] JWT cannot be read by RPC!', jwtTestResult);
+
+        const checkJwtResult = async (forceRehydrate = false) => {
+          if (jwtTestData && typeof jwtTestData === 'object' && 'can_read_jwt' in jwtTestData) {
+            const jwtTestResult = jwtTestData as { can_read_jwt: boolean; user_id?: string; error?: string };
+            if (!jwtTestResult.can_read_jwt) {
+              console.error('[StockService] JWT cannot be read by RPC!', jwtTestResult);
+              if (!forceRehydrate) {
+                // Try a one-time client rehydrate from localStorage and retry the test/RPC
+                try {
+                  console.debug('[StockService] Attempting one-time rehydrate from localStorage and retry');
+                  const authKey = Object.keys(localStorage).find(k => /sb-.*-auth-token/.test(k));
+                  if (authKey) {
+                    const raw = localStorage.getItem(authKey);
+                    if (raw) {
+                      const parsed = JSON.parse(raw);
+                      const cs = parsed.currentSession || parsed.current_session || parsed;
+                      const access = cs?.access_token ?? cs?.accessToken ?? null;
+                      const refresh = cs?.refresh_token ?? cs?.refreshToken ?? null;
+                      if (access) {
+                        // Only attempt to set session if token differs to avoid thrash
+                        if (access !== currentSession.access_token) {
+                          // @ts-ignore setSession exists
+                          await supabase.auth.setSession({ access_token: access, refresh_token: refresh });
+                          console.debug('[StockService] One-time rehydrate setSession applied (token preview):', String(access).slice(0, 8) + '...');
+                        } else {
+                          console.debug('[StockService] LocalStorage access token matches current session token; skipping setSession');
+                        }
+                        // Retry jwtTest after rehydrate
+                        const jwtTest2 = await callRpc('test_jwt_read', {});
+                        return jwtTest2.data as unknown;
+                      }
+                    }
+                  }
+                } catch (rehErr) {
+                  console.warn('[StockService] One-time rehydrate attempt failed', rehErr);
+                }
+              }
+              return jwtTestData;
+            }
+            return jwtTestResult;
+          }
+          return null;
+        };
+
+        const firstCheck = await checkJwtResult(false);
+        if (firstCheck && typeof firstCheck === 'object' && 'can_read_jwt' in (firstCheck as any)) {
+          const r = firstCheck as { can_read_jwt: boolean; user_id?: string; error?: string };
+          if (!r.can_read_jwt) {
             return {
               success: false,
-              error: 'JWT authentication failed: ' + (jwtTestResult.error || 'Cannot read JWT claims')
+              error: 'JWT authentication failed: ' + (r.error || 'Cannot read JWT claims')
             };
           }
-          console.debug('[StockService] JWT test passed, user_id:', jwtTestResult.user_id);
+          console.debug('[StockService] JWT test passed, user_id:', r.user_id);
         }
       } catch (e) {
         // Skip JWT test if function doesn't exist, continue with main RPC call
-        console.debug('[StockService] JWT test function not available, skipping test');
+        console.debug('[StockService] JWT test function not available, skipping test', e);
       }
 
       // Gunakan Supabase client langsung - client akan otomatis mengirim JWT dari session
