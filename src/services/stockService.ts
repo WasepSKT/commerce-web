@@ -14,6 +14,19 @@ const callRpc = async (fn: string, params?: Record<string, unknown>) => {
   return await supabase.rpc(fn as never, params);
 };
 
+// Try to call supabase.auth.setSession if available. Kept minimal to avoid
+// relying on supabase-js typings in this utility file.
+const trySetSession = async (access: string | null, refresh?: string | null) => {
+  try {
+    const s = (supabase.auth as unknown as { setSession?: (opts: { access_token: string | null; refresh_token?: string | null }) => Promise<unknown> }).setSession;
+    if (typeof s === 'function') {
+      await s({ access_token: access, refresh_token: refresh });
+    }
+  } catch (e) {
+    console.warn('[StockService] trySetSession failed', e);
+  }
+};
+
 // Types for stock management
 export interface StockValidationResult {
   valid: boolean;
@@ -455,9 +468,7 @@ export class StockService {
               const refresh = cs?.refresh_token ?? cs?.refreshToken ?? null;
               if (access) {
                 // setSession will hydrate the client to use this JWT for subsequent RPCs
-                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-ignore
-                await supabase.auth.setSession({ access_token: access, refresh_token: refresh });
+                await trySetSession(access, refresh);
                 console.debug('[StockService] Supabase client session rehydrated from localStorage');
               }
             }
@@ -475,7 +486,7 @@ export class StockService {
           };
         }
         // use recheck as the active session
-        sessionData = recheck as any;
+        sessionData = recheck;
       }
 
       // Proactively compare localStorage auth token with the Supabase client session token.
@@ -485,26 +496,27 @@ export class StockService {
         if (authKey) {
           try {
             const raw = localStorage.getItem(authKey);
-            if (raw) {
-              const parsed = JSON.parse(raw);
-              // search for first JWT-looking string inside parsed object
-              const findToken = (o: any): string | null => {
-                if (!o) return null;
-                if (typeof o === 'string' && o.split('.').length === 3) return o;
-                if (Array.isArray(o)) {
-                  for (const v of o) {
-                    const r = findToken(v); if (r) return r;
+              if (raw) {
+                const parsed = JSON.parse(raw);
+                // search for first JWT-looking string inside parsed object
+                const findToken = (o: unknown): string | null => {
+                  if (!o) return null;
+                  if (typeof o === 'string' && o.split('.').length === 3) return o;
+                  if (Array.isArray(o)) {
+                    for (const v of o) {
+                      const r = findToken(v); if (r) return r;
+                    }
                   }
-                }
-                if (typeof o === 'object') {
-                  for (const k in o) {
-                    try { const r = findToken(o[k]); if (r) return r; } catch (_) { /* ignore */ }
+                  if (typeof o === 'object' && o !== null) {
+                    const obj = o as Record<string, unknown>;
+                    for (const k in obj) {
+                      try { const r = findToken(obj[k]); if (r) return r; } catch (_) { /* ignore */ }
+                    }
                   }
-                }
-                return null;
-              };
-              localToken = findToken(parsed);
-            }
+                  return null;
+                };
+                localToken = findToken(parsed);
+              }
           } catch (e) {
             /* ignore parse errors */
           }
@@ -513,10 +525,9 @@ export class StockService {
         console.debug('[StockService] Token preview - client:', String(currentSession?.access_token ?? '').slice(0,8) + '...', 'localStorage:', localToken ? String(localToken).slice(0,8) + '...' : null);
 
         if (localToken && currentSession && currentSession.access_token !== localToken) {
-          try {
+            try {
             console.debug('[StockService] Local token differs from client session; applying one-time setSession');
-            // @ts-ignore setSession exists
-            await supabase.auth.setSession({ access_token: localToken, refresh_token: null });
+            await trySetSession(localToken, null);
             // re-fetch session
             const after = await supabase.auth.getSession();
             if (after.data && after.data.session) {
@@ -546,117 +557,11 @@ export class StockService {
         // Supabase client akan menggunakan session dari localStorage-nya sendiri
       }
       
-      // Test JWT bisa dibaca sebelum memanggil RPC yang sebenarnya (optional, skip if function doesn't exist)
-      try {
-        console.debug('[StockService] Testing JWT readability...');
-        // Supabase client akan otomatis mengirim JWT dari session
-        const jwtTest = await callRpc('test_jwt_read', {});
-        const jwtTestData = jwtTest.data as unknown;
-
-        const checkJwtResult = async (forceRehydrate = false) => {
-          if (jwtTestData && typeof jwtTestData === 'object' && 'can_read_jwt' in jwtTestData) {
-            const jwtTestResult = jwtTestData as { can_read_jwt: boolean; user_id?: string; error?: string };
-            if (!jwtTestResult.can_read_jwt) {
-              console.error('[StockService] JWT cannot be read by RPC!', jwtTestResult);
-              if (!forceRehydrate) {
-                // Try a one-time client rehydrate from localStorage and retry the test/RPC
-                try {
-                  console.debug('[StockService] Attempting one-time rehydrate from localStorage and retry');
-                  const authKey = Object.keys(localStorage).find(k => /sb-.*-auth-token/.test(k));
-                  if (authKey) {
-                    const raw = localStorage.getItem(authKey);
-                    if (raw) {
-                      const parsed = JSON.parse(raw);
-                      const cs = parsed.currentSession || parsed.current_session || parsed;
-                      const access = cs?.access_token ?? cs?.accessToken ?? null;
-                      const refresh = cs?.refresh_token ?? cs?.refreshToken ?? null;
-                      if (access) {
-                        // Only attempt to set session if token differs to avoid thrash
-                        if (access !== currentSession.access_token) {
-                          // @ts-ignore setSession exists
-                          await supabase.auth.setSession({ access_token: access, refresh_token: refresh });
-                          console.debug('[StockService] One-time rehydrate setSession applied (token preview):', String(access).slice(0, 8) + '...');
-                        } else {
-                          console.debug('[StockService] LocalStorage access token matches current session token; skipping setSession');
-                        }
-                        // Retry jwtTest after rehydrate
-                        const jwtTest2 = await callRpc('test_jwt_read', {});
-                        return jwtTest2.data as unknown;
-                      }
-                    }
-                  }
-                } catch (rehErr) {
-                  console.warn('[StockService] One-time rehydrate attempt failed', rehErr);
-                }
-              }
-              return jwtTestData;
-            }
-            return jwtTestResult;
-          }
-          return null;
-        };
-
-        const firstCheck = await checkJwtResult(false);
-        if (firstCheck && typeof firstCheck === 'object' && 'can_read_jwt' in (firstCheck as any)) {
-          const r = firstCheck as { can_read_jwt: boolean; user_id?: string; error?: string };
-          if (!r.can_read_jwt) {
-            // Final attempt: perform a one-time direct REST RPC call using the access_token
-            // stored in localStorage (this mirrors the manual console test). This is a
-            // conservative fallback and only used when the normal client-RPC flow fails
-            // to present a readable JWT to the DB function.
-            try {
-              // try to extract access token from localStorage
-              const authKey = Object.keys(localStorage).find(k => /sb-.*-auth-token/.test(k));
-              let localToken: string | null = null;
-              if (authKey) {
-                try {
-                  const raw = localStorage.getItem(authKey);
-                  if (raw) {
-                    const parsed = JSON.parse(raw);
-                    const findToken = (o: any): string | null => {
-                      if (!o) return null;
-                      if (typeof o === 'string' && o.split('.').length === 3) return o;
-                      if (Array.isArray(o)) for (const v of o) { const r = findToken(v); if (r) return r; }
-                      if (typeof o === 'object') for (const k in o) { try { const r = findToken(o[k]); if (r) return r; } catch (_) { /* ignore */ } }
-                      return null;
-                    };
-                    localToken = findToken(parsed);
-                  }
-                } catch (_) { /* ignore */ }
-              }
-
-              if (localToken) {
-                console.debug('[StockService] Attempting direct REST RPC fallback with local access_token (preview):', String(localToken).slice(0,8) + '...');
-                const url = `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/rpc/decrement_stock_for_order_secure`;
-                const resp = await fetch(url, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': SUPABASE_PUBLISHABLE_KEY,
-                    'Authorization': `Bearer ${localToken}`
-                  },
-                  body: JSON.stringify({ order_id: orderId })
-                });
-                const json = await resp.json();
-                console.debug('[StockService] Direct REST RPC fallback response:', json);
-                // If the fallback succeeded, return its result shape
-                if (json && typeof json === 'object' && 'success' in json) return json as StockDecrementResult;
-              }
-            } catch (fallbackErr) {
-              console.warn('[StockService] Direct REST RPC fallback failed', fallbackErr);
-            }
-
-            return {
-              success: false,
-              error: 'JWT authentication failed: ' + (r.error || 'Cannot read JWT claims')
-            };
-          }
-          console.debug('[StockService] JWT test passed, user_id:', r.user_id);
-        }
-      } catch (e) {
-        // Skip JWT test if function doesn't exist, continue with main RPC call
-        console.debug('[StockService] JWT test function not available, skipping test', e);
-      }
+      // Legacy JWT readability test and direct REST fallback removed.
+      // Rationale: in practice the Supabase client session / localStorage token
+      // path has proven sufficient and the extra test/fallback produced noisy
+      // logs and race conditions. Proceed directly to call the secure RPC via
+      // the Supabase client which will send the active session JWT.
 
       // Gunakan Supabase client langsung - client akan otomatis mengirim JWT dari session
       // Pastikan session sudah ter-set dengan benar sebelum memanggil RPC
