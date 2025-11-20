@@ -18,6 +18,9 @@ export function useCheckoutShippingRates(profile: ProfileLike | null, items: Ord
   const [selectedRate, setSelectedRate] = useState<ShippingRate | null>(null);
   const [loadingRates, setLoadingRates] = useState(false);
 
+  // derive a stable key from item product ids to avoid effect re-running on array identity changes
+  const itemIdsKey = Array.from(new Set(items.map(it => it.product_id).filter(Boolean) as string[])).join(',');
+
   useEffect(() => {
     let postal: string | undefined = (profile?.postal_code ?? undefined) as string | undefined;
     if (!postal) {
@@ -114,7 +117,7 @@ export function useCheckoutShippingRates(profile: ProfileLike | null, items: Ord
       }
     };
     void loadRates();
-  }, [profile?.postal_code, items, toast]);
+  }, [profile?.postal_code, itemIdsKey, toast]);
 
   return { rates, selectedRate, setSelectedRate, loadingRates } as const;
 }
