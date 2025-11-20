@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '@/integrations/supabase/client';
 import type { PostgrestError } from '@supabase/supabase-js';
 
 // Helper untuk memanggil RPC dengan type safety
@@ -600,6 +600,52 @@ export class StockService {
         if (firstCheck && typeof firstCheck === 'object' && 'can_read_jwt' in (firstCheck as any)) {
           const r = firstCheck as { can_read_jwt: boolean; user_id?: string; error?: string };
           if (!r.can_read_jwt) {
+            // Final attempt: perform a one-time direct REST RPC call using the access_token
+            // stored in localStorage (this mirrors the manual console test). This is a
+            // conservative fallback and only used when the normal client-RPC flow fails
+            // to present a readable JWT to the DB function.
+            try {
+              // try to extract access token from localStorage
+              const authKey = Object.keys(localStorage).find(k => /sb-.*-auth-token/.test(k));
+              let localToken: string | null = null;
+              if (authKey) {
+                try {
+                  const raw = localStorage.getItem(authKey);
+                  if (raw) {
+                    const parsed = JSON.parse(raw);
+                    const findToken = (o: any): string | null => {
+                      if (!o) return null;
+                      if (typeof o === 'string' && o.split('.').length === 3) return o;
+                      if (Array.isArray(o)) for (const v of o) { const r = findToken(v); if (r) return r; }
+                      if (typeof o === 'object') for (const k in o) { try { const r = findToken(o[k]); if (r) return r; } catch (_) { /* ignore */ } }
+                      return null;
+                    };
+                    localToken = findToken(parsed);
+                  }
+                } catch (_) { /* ignore */ }
+              }
+
+              if (localToken) {
+                console.debug('[StockService] Attempting direct REST RPC fallback with local access_token (preview):', String(localToken).slice(0,8) + '...');
+                const url = `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/rpc/decrement_stock_for_order_secure`;
+                const resp = await fetch(url, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_PUBLISHABLE_KEY,
+                    'Authorization': `Bearer ${localToken}`
+                  },
+                  body: JSON.stringify({ order_id: orderId })
+                });
+                const json = await resp.json();
+                console.debug('[StockService] Direct REST RPC fallback response:', json);
+                // If the fallback succeeded, return its result shape
+                if (json && typeof json === 'object' && 'success' in json) return json as StockDecrementResult;
+              }
+            } catch (fallbackErr) {
+              console.warn('[StockService] Direct REST RPC fallback failed', fallbackErr);
+            }
+
             return {
               success: false,
               error: 'JWT authentication failed: ' + (r.error || 'Cannot read JWT claims')

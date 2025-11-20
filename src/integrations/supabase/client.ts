@@ -6,8 +6,8 @@ import type { Database } from '@/types/supabase';
 // Ensure these are set on Vercel (or your hosting) and NOT committed to source.
 // Do NOT include secret keys in source. We intentionally do not provide a
 // secret fallback here to avoid leaking credentials.
-const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string) ?? '';
-const SUPABASE_PUBLISHABLE_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string) ?? '';
+export const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string) ?? '';
+export const SUPABASE_PUBLISHABLE_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string) ?? '';
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
