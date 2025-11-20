@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { rehydrateSupabaseSession } from '@/integrations/supabase/rehydrateSession';
 import computePriceAfterDiscount from '@/utils/price';
 import { safeJsonParse } from '@/utils/storage';
 import { useToast } from '@/hooks/use-toast';
@@ -29,6 +30,8 @@ export function useCheckoutInitialization() {
       try {
         // Wait for auth to be initialized before attempting to read server-side cart
         if (authLoading) return; // effect will re-run when authLoading changes
+        // Best-effort: rehydrate supabase-js session from localStorage so RPCs/sendings have correct token
+        try { await rehydrateSupabaseSession(); } catch (e) { /* swallow - best-effort */ }
         if (orderIdParam) {
           const res = await supabase.from('orders').select('*').eq('id', orderIdParam).single();
           const ord = (res as { data?: Order | null }).data;
@@ -77,7 +80,7 @@ export function useCheckoutInitialization() {
                 const raw = localStorage.getItem('rp_cart_v1');
                 if (!raw) throw new Error('Keranjang kosong');
 
-                let parsedRaw: unknown = safeJsonParse(raw, null);
+                const parsedRaw: unknown = safeJsonParse(raw, null);
                 if (!parsedRaw) throw new Error('Data keranjang tidak valid');
 
                 if (Array.isArray(parsedRaw)) {

@@ -1,6 +1,7 @@
 import { useMemo, useSyncExternalStore, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { rehydrateSupabaseSession } from '@/integrations/supabase/rehydrateSession';
 
 export type CartItem = {
   id: string;
@@ -99,6 +100,8 @@ export default function useCart() {
     // schedule background upsert
     syncTimer = window.setTimeout(async () => {
       try {
+        // ensure client session present (best-effort)
+        try { await rehydrateSupabaseSession(); } catch (e) { /* best-effort */ }
         const userId = session?.user?.id;
         if (!userId) return;
         const current = getSnapshot();
@@ -118,6 +121,8 @@ export default function useCart() {
   const syncLocalToServer = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
+      // ensure client session present (best-effort)
+      try { await rehydrateSupabaseSession(); } catch (e) { /* best-effort */ }
       const userId = session?.user?.id;
       if (!userId) return;
 
@@ -204,6 +209,8 @@ export default function useCart() {
         const userId = session?.user?.id;
         if (!userId) return;
         // Langsung sync ke server tanpa debounce untuk memastikan cart kosong di database
+        // ensure client session present (best-effort)
+        try { await rehydrateSupabaseSession(); } catch (e) { /* best-effort */ }
         const payload = { user_id: userId, items: [], updated_at: new Date().toISOString() };
         const { error } = await supabase.from('carts').upsert(payload, { onConflict: 'user_id' });
         if (error) {

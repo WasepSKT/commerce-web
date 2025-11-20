@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
+import { rehydrateSupabaseSession } from './integrations/supabase/rehydrateSession';
 import "./index.css";
 import { initLiteAnimations } from './lib/animations';
 import { startOrderExpiryChecker } from './lib/orderExpiry';
@@ -58,7 +59,16 @@ if (!ENABLE_PWA && 'serviceWorker' in navigator) {
   }).catch(() => { });
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+// Attempt to rehydrate supabase session from localStorage before mounting the app.
+(async () => {
+  try {
+    const hydrated = await rehydrateSupabaseSession();
+    if (hydrated) console.debug('[main] Supabase session rehydrated from localStorage');
+  } catch (e) {
+    console.warn('[main] Supabase session rehydration failed', e);
+  }
+  createRoot(document.getElementById("root")!).render(<App />);
+})();
 
 // Export controller so other modules can re-run after route changes if needed
 export { animController };
