@@ -439,11 +439,43 @@ export class StockService {
       // Verifikasi sekali lagi bahwa session masih valid sebelum memanggil RPC
       const verifySession = await supabase.auth.getSession();
       if (!verifySession.data.session) {
-        console.error('[StockService] Session not found in Supabase client');
-        return {
-          success: false,
-          error: 'Session not found in Supabase client'
-        };
+        console.warn('[StockService] Session not found in Supabase client — attempting to rehydrate from localStorage');
+        try {
+          // Some environments may not have supabase client session hydrated
+          // but the browser localStorage contains the sb-<ref>-auth-token entry.
+          // Attempt to read and set the session so supabase client sends the same JWT.
+          const authKey = Object.keys(localStorage).find(k => /sb-.*-auth-token/.test(k));
+          if (authKey) {
+            const raw = localStorage.getItem(authKey);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              // `parsed` shape: { currentSession: { access_token, refresh_token, ... }, ... }
+              const cs = parsed.currentSession || parsed.current_session || parsed;
+              const access = cs?.access_token ?? cs?.accessToken ?? null;
+              const refresh = cs?.refresh_token ?? cs?.refreshToken ?? null;
+              if (access) {
+                // setSession will hydrate the client to use this JWT for subsequent RPCs
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
+                await supabase.auth.setSession({ access_token: access, refresh_token: refresh });
+                console.debug('[StockService] Supabase client session rehydrated from localStorage');
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[StockService] Failed to rehydrate session from localStorage', e);
+        }
+        // Re-check session after attempt
+        const recheck = await supabase.auth.getSession();
+        if (!recheck.data.session) {
+          console.error('[StockService] Session not available after rehydration');
+          return {
+            success: false,
+            error: 'Session not found in Supabase client'
+          };
+        }
+        // use recheck as the active session
+        sessionData = recheck as any;
       }
       
       if (verifySession.data.session.user.id !== currentSession.user.id) {
