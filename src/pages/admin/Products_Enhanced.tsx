@@ -115,7 +115,10 @@ export default function AdminProductsPage() {
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
-    const previews = product.image_url ? [product.image_url] : [];
+    // Initialize previews and gallery from existing product gallery if available.
+    const previews = Array.isArray((product as any).image_gallery) && (product as any).image_gallery.length > 0
+      ? (product as any).image_gallery.slice()
+      : (product.image_url ? [product.image_url] : []);
     setProductForm({
       name: product.name,
       description: product.description,
@@ -123,6 +126,9 @@ export default function AdminProductsPage() {
       image_url: product.image_url,
       imageFiles: [],
       imagePreviews: previews,
+      // also set imageGallery so the modal edits/removals are tracked
+      imageGallery: previews.slice(),
+      imageGalleryPaths: Array.isArray((product as any).image_gallery_paths) ? (product as any).image_gallery_paths.slice() : [],
       category: product.category,
       stock_quantity: product.stock_quantity.toString()
     });

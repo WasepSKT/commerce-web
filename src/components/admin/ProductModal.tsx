@@ -110,7 +110,17 @@ export default function ProductModal({
       const previews = [...(prev.imagePreviews || [])];
       files.splice(idx, 1);
       previews.splice(idx, 1);
-      return { ...prev, imageFiles: files, imagePreviews: previews } as ProductForm;
+      // Also remove from any explicit imageGallery the form may be tracking
+      const gallery = Array.isArray(prev.imageGallery) ? [...prev.imageGallery] : undefined;
+      if (gallery) {
+        gallery.splice(idx, 1);
+      }
+      const galleryPaths = Array.isArray(prev.imageGalleryPaths) ? [...prev.imageGalleryPaths] : undefined;
+      if (galleryPaths) {
+        // best-effort: remove the path at same index if present
+        galleryPaths.splice(idx, 1);
+      }
+      return { ...prev, imageFiles: files, imagePreviews: previews, imageGallery: gallery, imageGalleryPaths: galleryPaths } as ProductForm;
     });
   };
   // Derived placeholder for product type based on category/petType

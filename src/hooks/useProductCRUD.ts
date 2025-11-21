@@ -19,6 +19,11 @@ export interface ProductForm {
   image_url: string;
   imageFiles: File[];
   imagePreviews: string[];
+  // Optional: existing gallery URLs (used by the admin edit UI to represent
+  // the desired gallery state). When provided, updateProduct will treat
+  // this as the desired gallery and detect removals accordingly.
+  imageGallery?: string[];
+  imageGalleryPaths?: string[];
   category: string;
   stock_quantity: string;
   meta?: Record<string, unknown>;
@@ -323,9 +328,13 @@ export const useProductCRUD = () => {
       const currentProduct = (currentProductRaw as unknown as { image_url?: string; image_gallery?: string[] }) || {};
       const currentProductAny = (currentProductRaw as ProductImageFields) || {};
       let imageUrl = currentProduct.image_url || '';
-      // handle existing gallery from DB if present
+      // handle existing gallery from DB if present. If the UI provided
+      // `form.imageGallery` (editing case), prefer that as the desired
+      // gallery state so removals performed in the modal are respected.
       const existingGallery = currentProduct.image_gallery;
-      let imageGallery: string[] = Array.isArray(existingGallery) ? existingGallery : [];
+      let imageGallery: string[] = Array.isArray(form.imageGallery)
+        ? form.imageGallery.slice()
+        : (Array.isArray(existingGallery) ? existingGallery.slice() : []);
 
       // Prepare holders for upload results and gallery paths
       let successfulResultsVar: ({ success: true; url: string; index: number; path?: string })[] = [];
@@ -406,6 +415,17 @@ export const useProductCRUD = () => {
           toast({ variant: 'destructive', title: 'Gagal mengunggah gambar', description: String(errMsg) });
         }
 
+        imageUrl = imageGallery[0] || imageUrl;
+      } else {
+        // No new uploads in this update. Respect any gallery state the UI sent
+        // (this enables removing existing gallery URLs without uploading
+        // replacements). Also use any provided gallery path list from the form.
+        if (Array.isArray(form.imageGallery)) {
+          imageGallery = form.imageGallery.filter(Boolean) as string[];
+        }
+        if (Array.isArray(form.imageGalleryPaths)) {
+          imageGalleryPaths = form.imageGalleryPaths.filter(Boolean) as string[];
+        }
         imageUrl = imageGallery[0] || imageUrl;
       }
 
