@@ -721,7 +721,25 @@ export const useProductCRUD = () => {
         .delete()
         .eq('id', productId);
 
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        // If delete fails due to foreign key constraint, try soft delete as fallback
+        if (deleteError.code === '23503') {
+          console.warn('Product deletion blocked by foreign key, using soft delete instead');
+          const { error: updateError } = await supabase
+            .from('products')
+            .update({ is_active: false })
+            .eq('id', productId);
+
+          if (updateError) throw updateError;
+
+          toast({ 
+            title: 'Produk dinonaktifkan', 
+            description: 'Produk tidak dapat dihapus karena masih direferensikan di order. Produk dinonaktifkan sebagai gantinya.' 
+          });
+          return;
+        }
+        throw deleteError;
+      }
 
       toast({ title: 'Produk berhasil dihapus' });
     } catch (error) {
