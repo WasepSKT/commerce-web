@@ -430,7 +430,7 @@ export const useProductCRUD = () => {
         };
         // Always send the latest gallery paths and image_path, even if empty
         payload.image_gallery_paths = imageGalleryPaths;
-        payload.image_path = (successfulResultsVar.length > 0 && successfulResultsVar[0].path) ? successfulResultsVar[0].path : '';
+        payload.image_path = (successfulResultsVar.length > 0 && successfulResultsVar[0].path) ? successfulResultsVar[0].path : null;
 
         // Attempt to call the RPC `rpc_update_product_gallery` to atomically update
         // the product row and enqueue any removed storage paths for background deletion.
@@ -440,7 +440,7 @@ export const useProductCRUD = () => {
         const removedPaths: string[] = [];
         // compute removed paths by comparing previous stored paths with new ones
         if (prevImagePath && prevImagePath !== imagePathForPayload) removedPaths.push(prevImagePath);
-        for (const p of prevGalleryPaths) if (!imageGalleryPaths.includes(p)) removedPaths.push(p);
+        for (const p of prevGalleryPaths) if (!imageGalleryPaths.includes(p) && p && p.trim() !== '') removedPaths.push(p);
 
         try {
           // Use the lightweight RPC caller wrapper to avoid strict union RPC name types
