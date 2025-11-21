@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { formatPrice } from '@/utils/format';
 import type { LineItem } from '@/hooks/useCartLineItems';
 import { Link } from 'react-router-dom';
+import { imageUrlWithCacheBust } from '@/utils/imageHelpers';
 
 interface CartItemCardProps {
   item: LineItem;
@@ -19,7 +20,7 @@ export default function CartItemCard({ item, onUpdate, onRemove }: CartItemCardP
     <Card className="flex flex-col sm:flex-row items-start sm:items-center p-4">
       <Link to={`/product/${item.id}`} className="shrink-0">
         <img
-          src={item.image_url || '/placeholder.svg'}
+          src={item.image_url ? imageUrlWithCacheBust(item.image_url, item.updated_at ?? item.updated_at_timestamp) : '/placeholder.svg'}
           alt={item.name}
           className="w-28 h-28 object-cover rounded mb-3 sm:mb-0 sm:mr-4 cursor-pointer"
         />

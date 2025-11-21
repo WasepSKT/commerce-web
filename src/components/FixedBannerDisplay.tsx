@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/types/supabase';
+import { imageUrlWithCacheBust } from '@/utils/imageHelpers';
 
 type FixedBanner = Database['public']['Tables']['fixed_banners']['Row'];
 
@@ -58,7 +59,7 @@ export function FixedBannerDisplay({ position, className = '' }: FixedBannerDisp
   const BannerContent = () => (
     <div className="relative mx-auto" style={{ width: '300px', height: '600px', maxWidth: '100%' }}>
       <img
-        src={banner.image_url}
+        src={imageUrlWithCacheBust(banner.image_url, banner.updated_at ?? (banner as unknown as { updated_at_timestamp?: string | number })?.updated_at_timestamp)}
         alt={banner.name}
         className="w-full h-full object-cover rounded-lg border border-gray-200 transition-transform group-hover:scale-105"
         style={{ aspectRatio: '300/600' }}

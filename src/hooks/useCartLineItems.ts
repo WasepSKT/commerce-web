@@ -20,6 +20,8 @@ export interface LineItem {
   quantity: number;
   image_url?: string;
   stock_quantity: number;
+  updated_at?: string | number | null;
+  updated_at_timestamp?: string | number | null;
 }
 
 export function useCartLineItems(items: CartItem[], products: CartProduct[]) {

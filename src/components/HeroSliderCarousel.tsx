@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { imageUrlWithCacheBust } from '@/utils/imageHelpers';
 import type { Database } from '@/types/supabase';
 
 type HeroSliderItem = Database['public']['Tables']['hero_slider_items']['Row'];
@@ -82,7 +83,7 @@ export function HeroSliderCarousel() {
       {/* Background Image */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-700"
-        style={{ backgroundImage: `url(${currentItem.image_url})` }}
+        style={{ backgroundImage: `url(${imageUrlWithCacheBust(currentItem.image_url, currentItem.updated_at)})` }}
       >
         <div className="absolute inset-0 bg-black/40" />
       </div>

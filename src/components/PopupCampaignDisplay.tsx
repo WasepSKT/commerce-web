@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
+import { imageUrlWithCacheBust } from '@/utils/imageHelpers';
 import type { Database } from '@/types/supabase';
 
 type PopupCampaign = Database['public']['Tables']['popup_campaigns']['Row'];
@@ -126,7 +127,7 @@ export function PopupCampaignDisplay({ onDashboardLogin = false }: PopupCampaign
           {popup.image_url && (
             <div className="w-full">
               <img
-                src={popup.image_url}
+                src={imageUrlWithCacheBust(popup.image_url, popup.updated_at ?? popup.created_at)}
                 alt={popup.title}
                 className="w-full h-48 object-cover rounded-lg"
               />
