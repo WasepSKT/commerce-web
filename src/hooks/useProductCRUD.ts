@@ -462,8 +462,35 @@ export const useProductCRUD = () => {
       if (form.imageFiles && form.imageFiles.some(Boolean)) {
         setUploading(true);
 
+        // Create array with fixed 4 slots to preserve slot positions
+        // Map files to their correct slots based on imageGallery positions
+        // imageGallery maintains slot positions (even if filtered), so we use it as reference
+        const filesWithSlots: (File | undefined)[] = [undefined, undefined, undefined, undefined];
+        
+        // If imageGallery is provided, use it to determine slot positions
+        // Files are mapped to slots where gallery items exist or where new files are added
+        if (Array.isArray(form.imageGallery) && form.imageGallery.length > 0) {
+          // Map files to slots: for existing gallery items, preserve their positions
+          // For new files, add them to the first available slot or next slot after existing items
+          let fileIdx = 0;
+          for (let slotIdx = 0; slotIdx < 4 && fileIdx < form.imageFiles.length; slotIdx++) {
+            // If this slot has a gallery item or is empty, we can place a file here
+            if (slotIdx < form.imageGallery.length || form.imageFiles[fileIdx]) {
+              filesWithSlots[slotIdx] = form.imageFiles[fileIdx];
+              fileIdx++;
+            }
+          }
+        } else {
+          // No existing gallery: map files sequentially to slots
+          form.imageFiles.forEach((file, idx) => {
+            if (idx < 4) {
+              filesWithSlots[idx] = file;
+            }
+          });
+        }
+
         // Upload new/updated images to their respective slots (preserve indices)
-        const uploadResults = await ProductImageManager.uploadProductImages(productId, form.imageFiles.slice(0,4));
+        const uploadResults = await ProductImageManager.uploadProductImages(productId, filesWithSlots);
 
         // Map successful uploads into the existing gallery by index
         successfulResultsVar = uploadResults.filter(

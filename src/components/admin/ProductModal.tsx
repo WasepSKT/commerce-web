@@ -83,8 +83,86 @@ export default function ProductModal({
   const toggleShipping = (opt: string) => {
     setShippingOptions(prev => prev.includes(opt) ? prev.filter(p => p !== opt) : [...prev, opt]);
   };
-  // helper to select a file for a specific slot
+  // Local state to track fixed 4 slots (0-3) for images
+  // This ensures each slot maintains its position and doesn't shift
+  const [imageSlots, setImageSlots] = React.useState<{
+    files: (File | undefined)[];
+    previews: (string | undefined)[];
+    gallery: (string | undefined)[];
+    galleryPaths: (string | undefined)[];
+  }>({
+    files: [undefined, undefined, undefined, undefined],
+    previews: [undefined, undefined, undefined, undefined],
+    gallery: [undefined, undefined, undefined, undefined],
+    galleryPaths: [undefined, undefined, undefined, undefined]
+  });
+
+  // Sync imageSlots with productForm when editing product or form changes
+  React.useEffect(() => {
+    if (editingProduct && productForm.imageGallery) {
+      const gallery = Array.isArray(productForm.imageGallery) ? productForm.imageGallery : [];
+      const galleryPaths = Array.isArray(productForm.imageGalleryPaths) ? productForm.imageGalleryPaths : [];
+      const previews = Array.isArray(productForm.imagePreviews) ? productForm.imagePreviews : [];
+
+      // Map existing gallery to fixed slots (max 4)
+      // Important: gallery array may be filtered (no undefined), so we map sequentially
+      const newSlots = {
+        files: [undefined, undefined, undefined, undefined] as (File | undefined)[],
+        previews: [undefined, undefined, undefined, undefined] as (string | undefined)[],
+        gallery: [undefined, undefined, undefined, undefined] as (string | undefined)[],
+        galleryPaths: [undefined, undefined, undefined, undefined] as (string | undefined)[]
+      };
+
+      // Map gallery to slots sequentially (preserves order)
+      gallery.forEach((url, idx) => {
+        if (idx < 4) {
+          newSlots.gallery[idx] = url;
+          newSlots.previews[idx] = previews[idx] || url;
+          if (galleryPaths[idx]) {
+            newSlots.galleryPaths[idx] = galleryPaths[idx];
+          }
+        }
+      });
+
+      // Also map any new files that were added
+      if (productForm.imageFiles) {
+        productForm.imageFiles.forEach((file, idx) => {
+          if (idx < 4) {
+            newSlots.files[idx] = file;
+          }
+        });
+      }
+
+      setImageSlots(newSlots);
+    } else if (!editingProduct) {
+      // Reset slots when creating new product
+      const resetSlots = {
+        files: [undefined, undefined, undefined, undefined] as (File | undefined)[],
+        previews: [undefined, undefined, undefined, undefined] as (string | undefined)[],
+        gallery: [undefined, undefined, undefined, undefined] as (string | undefined)[],
+        galleryPaths: [undefined, undefined, undefined, undefined] as (string | undefined)[]
+      };
+
+      // Map any new files that were added
+      if (productForm.imageFiles) {
+        productForm.imageFiles.forEach((file, idx) => {
+          if (idx < 4) {
+            resetSlots.files[idx] = file;
+            if (productForm.imagePreviews && productForm.imagePreviews[idx]) {
+              resetSlots.previews[idx] = productForm.imagePreviews[idx];
+            }
+          }
+        });
+      }
+
+      setImageSlots(resetSlots);
+    }
+  }, [editingProduct, productForm.imageGallery, productForm.imageGalleryPaths, productForm.imagePreviews, productForm.imageFiles]);
+
+  // Helper to select a file for a specific slot (slot position is fixed 0-3)
   const selectFileForSlot = (idx: number) => {
+    if (idx < 0 || idx >= 4) return; // Ensure valid slot index
+
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -93,37 +171,70 @@ export default function ProductModal({
       if (!file) return;
       const v = ProductImageManager.validateImageFile(file);
       if (!v.valid) return alert(v.error);
-      setProductForm(prev => {
-        const files = [...(prev.imageFiles || [])];
-        const previews = [...(prev.imagePreviews || [])];
-        files[idx] = file;
-        previews[idx] = URL.createObjectURL(file);
-        return { ...prev, imageFiles: files.slice(0, 4), imagePreviews: previews.slice(0, 4) } as ProductForm;
+
+      const previewUrl = URL.createObjectURL(file);
+
+      // Update local slot state and productForm simultaneously
+      setImageSlots(prev => {
+        const newSlots = {
+          files: [...prev.files],
+          previews: [...prev.previews],
+          gallery: [...prev.gallery],
+          galleryPaths: [...prev.galleryPaths]
+        };
+        newSlots.files[idx] = file;
+        newSlots.previews[idx] = previewUrl;
+
+        // Update productForm with filtered arrays (for backward compatibility)
+        setProductForm(prevForm => ({
+          ...prevForm,
+          imageFiles: newSlots.files.filter((f): f is File => f !== undefined),
+          imagePreviews: newSlots.previews.filter((p): p is string => p !== undefined),
+          imageGallery: newSlots.gallery.filter((g): g is string => g !== undefined && g !== null),
+          imageGalleryPaths: newSlots.galleryPaths.filter((p): p is string => p !== undefined && p !== null && p.trim() !== '')
+        }));
+
+        return newSlots;
       });
     };
     input.click();
   };
 
+  // Remove slot at specific index (only clears that slot, doesn't shift others)
   const removeSlot = (idx: number) => {
-    setProductForm(prev => {
-      const files = [...(prev.imageFiles || [])];
-      const previews = [...(prev.imagePreviews || [])];
-      const gallery = Array.isArray(prev.imageGallery) ? [...prev.imageGallery] : [];
-      const galleryPaths = Array.isArray(prev.imageGalleryPaths) ? [...prev.imageGalleryPaths] : [];
+    if (idx < 0 || idx >= 4) return; // Ensure valid slot index
 
-      // Remove element at index by filtering it out
-      // This ensures imageGallery and imageGalleryPaths stay synchronized
-      const newFiles = files.filter((_, i) => i !== idx);
-      const newPreviews = previews.filter((_, i) => i !== idx);
-      const newGallery = gallery.filter((g, i) => i !== idx && g !== undefined && g !== null);
-      const newGalleryPaths = galleryPaths.filter((p, i) => i !== idx && p !== undefined && p !== null && p.trim() !== '');
+    // Update local slot state
+    setImageSlots(prev => {
+      const newSlots = { ...prev };
+      newSlots.files = [...prev.files];
+      newSlots.previews = [...prev.previews];
+      newSlots.gallery = [...prev.gallery];
+      newSlots.galleryPaths = [...prev.galleryPaths];
+
+      // Clear only this specific slot
+      newSlots.files[idx] = undefined;
+      newSlots.previews[idx] = undefined;
+      newSlots.gallery[idx] = undefined;
+      newSlots.galleryPaths[idx] = undefined;
+
+      return newSlots;
+    });
+
+    // Update productForm with filtered arrays
+    setProductForm(prev => {
+      const newSlots = { ...imageSlots };
+      newSlots.files[idx] = undefined;
+      newSlots.previews[idx] = undefined;
+      newSlots.gallery[idx] = undefined;
+      newSlots.galleryPaths[idx] = undefined;
 
       return {
         ...prev,
-        imageFiles: newFiles,
-        imagePreviews: newPreviews,
-        imageGallery: newGallery,
-        imageGalleryPaths: newGalleryPaths
+        imageFiles: newSlots.files.filter((f): f is File => f !== undefined),
+        imagePreviews: newSlots.previews.filter((p): p is string => p !== undefined),
+        imageGallery: newSlots.gallery.filter((g): g is string => g !== undefined && g !== null),
+        imageGalleryPaths: newSlots.galleryPaths.filter((p): p is string => p !== undefined && p !== null && p.trim() !== '')
       } as ProductForm;
     });
   };
@@ -177,38 +288,44 @@ export default function ProductModal({
                 </Label>
 
                 <div className="mt-2 grid grid-cols-4 gap-3">
-                  {Array.from({ length: 4 }).map((_, idx) => (
-                    <div key={idx} className="flex flex-col items-stretch">
-                      <div className="relative w-full aspect-square rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden bg-white">
-                        {productForm.imagePreviews && productForm.imagePreviews[idx] ? (
-                          <>
-                            <img src={productForm.imagePreviews[idx]} className="w-full h-full object-cover" alt={`preview-${idx}`} />
-                            <div className="absolute top-2 right-2 flex space-x-2">
-                              <Button size="sm" variant="outline" onClick={() => removeSlot(idx)}>
-                                <X className="w-4 h-4" />
-                              </Button>
+                  {Array.from({ length: 4 }).map((_, idx) => {
+                    // Use imageSlots for display to maintain fixed slot positions
+                    const slotPreview = imageSlots.previews[idx] || imageSlots.gallery[idx];
+                    const hasImage = slotPreview !== undefined && slotPreview !== null;
+
+                    return (
+                      <div key={idx} className="flex flex-col items-stretch">
+                        <div className="relative w-full aspect-square rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden bg-white">
+                          {hasImage ? (
+                            <>
+                              <img src={slotPreview} className="w-full h-full object-cover" alt={`preview-${idx}`} />
+                              <div className="absolute top-2 right-2 flex space-x-2">
+                                <Button size="sm" variant="outline" onClick={() => removeSlot(idx)}>
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="flex flex-col items-center justify-center text-center p-2 text-sm text-muted-foreground">
+                              <div>Tambah Foto</div>
+                              <div className="mt-2">
+                                <Button size="sm" variant="outline" onClick={() => selectFileForSlot(idx)}>
+                                  <Upload className="w-4 h-4 mr-2" /> Pilih
+                                </Button>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">Max 2MB • JPG/PNG/WEBP/GIF</div>
                             </div>
-                          </>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center text-center p-2 text-sm text-muted-foreground">
-                            <div>Tambah Foto</div>
-                            <div className="mt-2">
-                              <Button size="sm" variant="outline" onClick={() => selectFileForSlot(idx)}>
-                                <Upload className="w-4 h-4 mr-2" /> Pilih
-                              </Button>
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1">Max 2MB • JPG/PNG/WEBP/GIF</div>
-                          </div>
-                        )}
+                          )}
+                        </div>
+                        <div className="text-center text-xs text-muted-foreground mt-2">
+                          {idx === 0 && 'Tambah Foto Produk (Cover)'}
+                          {idx === 1 && 'Tambah Foto Produk (Varian)'}
+                          {idx === 2 && 'Tambah Foto Produk (Ukuran)'}
+                          {idx === 3 && 'Tambah Foto Produk (Detail)'}
+                        </div>
                       </div>
-                      <div className="text-center text-xs text-muted-foreground mt-2">
-                        {idx === 0 && 'Tambah Foto Produk (Cover)'}
-                        {idx === 1 && 'Tambah Foto Produk (Varian)'}
-                        {idx === 2 && 'Tambah Foto Produk (Ukuran)'}
-                        {idx === 3 && 'Tambah Foto Produk (Detail)'}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <p className="text-xs text-gray-500">Gambar akan dioptimalkan, disimpan terstruktur, dan ditampilkan dengan rasio 1:1.</p>
               </div>
@@ -509,8 +626,22 @@ export default function ProductModal({
             <Button
               type="submit"
               onClick={async () => {
+                // Prepare arrays from imageSlots (fixed 4 slots)
+                // This ensures each file/gallery item is in the correct slot position
+                const imageFilesWithSlots: (File | undefined)[] = imageSlots.files;
+                const imagePreviewsWithSlots: (string | undefined)[] = imageSlots.previews;
+                const imageGalleryWithSlots: (string | undefined)[] = imageSlots.gallery;
+                const imageGalleryPathsWithSlots: (string | undefined)[] = imageSlots.galleryPaths;
+
                 const merged: ProductForm = {
                   ...productForm,
+                  // Filter undefined for imageFiles (ProductForm expects File[])
+                  // But we preserve slot info through imageGallery
+                  imageFiles: imageFilesWithSlots.filter((f): f is File => f !== undefined),
+                  imagePreviews: imagePreviewsWithSlots.filter((p): p is string => p !== undefined),
+                  // Filter undefined but preserve order (slots are already in correct positions)
+                  imageGallery: imageGalleryWithSlots.filter((g): g is string => g !== undefined && g !== null),
+                  imageGalleryPaths: imageGalleryPathsWithSlots.filter((p): p is string => p !== undefined && p !== null && p.trim() !== ''),
                   brand,
                   product_type: productType || productForm.product_type,
                   pet_type: petType || productForm.pet_type,
