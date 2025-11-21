@@ -140,6 +140,33 @@ function normalizeGalleryArray<T>(arr: T[] | null | undefined): T[] {
   return Array.isArray(arr) ? arr.filter(Boolean) : [];
 }
 
+// Helper function to extract storage path from public URL
+function extractStoragePathFromUrl(url: string): string | null {
+  if (!url || typeof url !== 'string') return null;
+  
+  // Try multiple URL patterns
+  const patterns = [
+    /\/storage\/v1\/object\/public\/product-images\/(.+)$/,
+    /\/storage\/v1\/object\/public\/[^/]+\/(.+)$/,
+    /product-images\/(.+)$/,
+    /^product-images\/(.+)$/
+  ];
+  
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+  
+  // If URL already looks like a path, return as-is
+  if (url.includes('products/') && !url.includes('http')) {
+    return url;
+  }
+  
+  return null;
+}
+
 // Helper function to merge uploaded images into existing gallery
 function mergeGalleryWithUploads(
   existingGallery: string[],
@@ -483,6 +510,19 @@ export const useProductCRUD = () => {
         }
         if (Array.isArray(form.imageGalleryPaths)) {
           imageGalleryPaths = form.imageGalleryPaths.filter(Boolean) as string[];
+        } else {
+          // If no paths provided, try to derive from current gallery paths
+          // by matching URLs to paths
+          const currentPaths = normalizeGalleryArray(currentProductAny?.image_gallery_paths);
+          const currentUrls = normalizeGalleryArray(currentProductAny?.image_gallery);
+          
+          // Match URLs to paths by index
+          imageGalleryPaths = imageGallery
+            .map((url) => {
+              const urlIndex = currentUrls.indexOf(url);
+              return urlIndex >= 0 && currentPaths[urlIndex] ? currentPaths[urlIndex] : null;
+            })
+            .filter((p): p is string => p !== null && p.trim() !== '');
         }
         imageUrl = imageGallery[0] || imageUrl;
       }
@@ -536,32 +576,52 @@ export const useProductCRUD = () => {
         const prevGalleryUrls: string[] = Array.isArray(currentProductAny?.image_gallery) ? currentProductAny.image_gallery.filter(Boolean) as string[] : [];
         const prevImagePath: string | null = typeof currentProductAny?.image_path === 'string' ? currentProductAny.image_path : null;
         const removedPaths: string[] = [];
-        // compute removed paths by comparing previous stored paths with new ones (stored-paths)
-        if (prevImagePath && prevImagePath !== imagePathForPayload) removedPaths.push(prevImagePath);
-        for (const p of prevGalleryPaths) if (!imageGalleryPaths.includes(p) && p && p.trim() !== '') removedPaths.push(p);
-        // Also handle case where frontend only removed URLs (no new uploads) - derive storage paths from previous URLs
-        const removedUrls = prevGalleryUrls.filter(u => !imageGallery.includes(u));
-        for (const url of removedUrls) {
-          if (!url) continue;
-          const m = url.match(/\/storage\/v1\/object\/public\/product-images\/(.*)$/);
-          if (m && m[1]) {
-            const derived = m[1];
-            if (!removedPaths.includes(derived)) removedPaths.push(derived);
-          } else if (url.startsWith('product-images/')) {
-            if (!removedPaths.includes(url)) removedPaths.push(url);
+        // Compute removed paths by comparing previous stored paths with new ones
+        if (prevImagePath && prevImagePath !== imagePathForPayload) {
+          removedPaths.push(prevImagePath);
+        }
+        
+        // Compare stored gallery paths
+        for (const p of prevGalleryPaths) {
+          if (p && p.trim() !== '' && !imageGalleryPaths.includes(p)) {
+            removedPaths.push(p);
           }
+        }
+        
+        // Also handle case where frontend only removed URLs (no new uploads)
+        // Derive storage paths from previous URLs that are no longer in the gallery
+        const removedUrls = prevGalleryUrls.filter(u => u && !imageGallery.includes(u));
+        for (const url of removedUrls) {
+          const derivedPath = extractStoragePathFromUrl(url);
+          if (derivedPath && !removedPaths.includes(derivedPath)) {
+            removedPaths.push(derivedPath);
+          }
+        }
+        
+        // Log for debugging
+        if (removedPaths.length > 0) {
+          console.log('Removed paths to enqueue:', removedPaths);
         }
 
         try {
           // Use the lightweight RPC caller wrapper to avoid strict union RPC name types
-          const { data: rpcRes, error: rpcErr } = await supabaseRpc.rpc('rpc_update_product_gallery', {
+          const rpcParams = {
             product_id: productId,
             new_image_url: imageUrl,
             new_image_gallery: imageGallery,
             new_image_path: imagePathForPayload,
             new_image_gallery_paths: imageGalleryPaths,
-            removed_paths: removedPaths
+            removed_paths: removedPaths.length > 0 ? removedPaths : [] // Ensure array is never null
+          };
+          
+          console.log('Calling rpc_update_product_gallery with params:', {
+            product_id: productId,
+            gallery_count: imageGallery.length,
+            paths_count: imageGalleryPaths.length,
+            removed_paths_count: removedPaths.length
           });
+          
+          const { data: rpcRes, error: rpcErr } = await supabaseRpc.rpc('rpc_update_product_gallery', rpcParams);
 
           // rpcErr is unknown; treat truthy as failure and fallback to direct update
           if (rpcErr) {
@@ -573,6 +633,8 @@ export const useProductCRUD = () => {
               .select()
               .single();
             if (updateError) throw updateError;
+          } else {
+            console.log('rpc_update_product_gallery succeeded');
           }
         } catch (rpcCallErr) {
           console.warn('Error calling rpc_update_product_gallery, falling back to direct update:', rpcCallErr);

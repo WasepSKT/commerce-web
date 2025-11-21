@@ -108,19 +108,23 @@ export default function ProductModal({
     setProductForm(prev => {
       const files = [...(prev.imageFiles || [])];
       const previews = [...(prev.imagePreviews || [])];
-      files.splice(idx, 1);
-      previews.splice(idx, 1);
-      // Also remove from any explicit imageGallery the form may be tracking
-      const gallery = Array.isArray(prev.imageGallery) ? [...prev.imageGallery] : undefined;
-      if (gallery) {
-        gallery.splice(idx, 1);
-      }
-      const galleryPaths = Array.isArray(prev.imageGalleryPaths) ? [...prev.imageGalleryPaths] : undefined;
-      if (galleryPaths) {
-        // best-effort: remove the path at same index if present
-        galleryPaths.splice(idx, 1);
-      }
-      return { ...prev, imageFiles: files, imagePreviews: previews, imageGallery: gallery, imageGalleryPaths: galleryPaths } as ProductForm;
+      const gallery = Array.isArray(prev.imageGallery) ? [...prev.imageGallery] : [];
+      const galleryPaths = Array.isArray(prev.imageGalleryPaths) ? [...prev.imageGalleryPaths] : [];
+
+      // Remove element at index by filtering it out
+      // This ensures imageGallery and imageGalleryPaths stay synchronized
+      const newFiles = files.filter((_, i) => i !== idx);
+      const newPreviews = previews.filter((_, i) => i !== idx);
+      const newGallery = gallery.filter((g, i) => i !== idx && g !== undefined && g !== null);
+      const newGalleryPaths = galleryPaths.filter((p, i) => i !== idx && p !== undefined && p !== null && p.trim() !== '');
+
+      return {
+        ...prev,
+        imageFiles: newFiles,
+        imagePreviews: newPreviews,
+        imageGallery: newGallery,
+        imageGalleryPaths: newGalleryPaths
+      } as ProductForm;
     });
   };
   // Derived placeholder for product type based on category/petType

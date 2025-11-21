@@ -25,9 +25,10 @@ BEGIN
   -- Enqueue any removed storage paths for background deletion using FOREACH
   IF removed_paths IS NOT NULL THEN
     FOREACH p IN ARRAY removed_paths LOOP
-      IF p IS NOT NULL THEN
+      IF p IS NOT NULL AND trim(p) <> '' THEN
         INSERT INTO public.storage_delete_queue (bucket, path)
-        VALUES ('product-images', p);
+        VALUES ('product-images', p)
+        ON CONFLICT (path) DO NOTHING; -- Prevent duplicate entries
       END IF;
     END LOOP;
   END IF;
@@ -47,9 +48,10 @@ BEGIN
   -- Enqueue removed paths first
   IF removed_paths IS NOT NULL THEN
     FOREACH p IN ARRAY removed_paths LOOP
-      IF p IS NOT NULL THEN
+      IF p IS NOT NULL AND trim(p) <> '' THEN
         INSERT INTO public.storage_delete_queue (bucket, path)
-        VALUES ('product-images', p);
+        VALUES ('product-images', p)
+        ON CONFLICT (path) DO NOTHING; -- Prevent duplicate entries
       END IF;
     END LOOP;
   END IF;
