@@ -1,5 +1,5 @@
 // Enhanced Product CRUD Hook with Structured Image Management
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ProductImageManager, ImageUploadResult } from '@/utils/imageManagement';
@@ -88,6 +88,7 @@ export const useProductCRUD = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const updateInFlight = useRef(false);
 
   // helpers to safely extract values from meta
   const metaString = (m: Record<string, unknown> | undefined, key: string): string | undefined => {
@@ -302,6 +303,11 @@ export const useProductCRUD = () => {
     productId: string, 
     form: ProductForm
   ): Promise<Product> => {
+    // Prevent concurrent updates (debounce double-clicks / multiple submits)
+    if (updateInFlight.current) {
+      throw new Error('Update already in progress');
+    }
+    updateInFlight.current = true;
     setLoading(true);
     setUploading(false);
 
@@ -436,11 +442,24 @@ export const useProductCRUD = () => {
         // the product row and enqueue any removed storage paths for background deletion.
         const imagePathForPayload = (payload.image_path as string | undefined) || null;
         const prevGalleryPaths: string[] = Array.isArray(currentProductAny?.image_gallery_paths) ? currentProductAny.image_gallery_paths.filter(Boolean) as string[] : [];
+        const prevGalleryUrls: string[] = Array.isArray(currentProductAny?.image_gallery) ? currentProductAny.image_gallery.filter(Boolean) as string[] : [];
         const prevImagePath: string | null = typeof currentProductAny?.image_path === 'string' ? currentProductAny.image_path : null;
         const removedPaths: string[] = [];
-        // compute removed paths by comparing previous stored paths with new ones
+        // compute removed paths by comparing previous stored paths with new ones (stored-paths)
         if (prevImagePath && prevImagePath !== imagePathForPayload) removedPaths.push(prevImagePath);
         for (const p of prevGalleryPaths) if (!imageGalleryPaths.includes(p) && p && p.trim() !== '') removedPaths.push(p);
+        // Also handle case where frontend only removed URLs (no new uploads) - derive storage paths from previous URLs
+        const removedUrls = prevGalleryUrls.filter(u => !imageGallery.includes(u));
+        for (const url of removedUrls) {
+          if (!url) continue;
+          const m = url.match(/\/storage\/v1\/object\/public\/product-images\/(.*)$/);
+          if (m && m[1]) {
+            const derived = m[1];
+            if (!removedPaths.includes(derived)) removedPaths.push(derived);
+          } else if (url.startsWith('product-images/')) {
+            if (!removedPaths.includes(url)) removedPaths.push(url);
+          }
+        }
 
         try {
           // Use the lightweight RPC caller wrapper to avoid strict union RPC name types
@@ -523,6 +542,7 @@ export const useProductCRUD = () => {
     } finally {
       setLoading(false);
       setUploading(false);
+      updateInFlight.current = false;
     }
   }, [toast]);
 
