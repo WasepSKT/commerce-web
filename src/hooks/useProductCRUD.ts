@@ -4,6 +4,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ProductImageManager, ImageUploadResult } from '@/utils/imageManagement';
 
+// Narrow type for fields we only read from product rows in this hook
+interface ProductImageFields {
+  image_url?: string | null;
+  image_gallery?: string[] | null;
+  image_path?: string | null;
+  image_gallery_paths?: string[] | null;
+}
+
 export interface ProductForm {
   name: string;
   description: string;
@@ -66,6 +74,15 @@ export interface Product {
   canonical_url?: string;
   seo_structured_data?: Record<string, unknown>;
 }
+
+// Lightweight, safe wrapper type to call RPCs by string name without depending
+// on generated supabase RPC union types. Uses `unknown` for response shape so
+// we avoid `any` while still allowing runtime checks and fallbacks.
+type SupabaseRpcCaller = {
+  rpc: (name: string, params?: unknown) => Promise<{ data: unknown; error: unknown }>;
+};
+
+const supabaseRpc = (supabase as unknown) as SupabaseRpcCaller;
 
 export const useProductCRUD = () => {
   const { toast } = useToast();
@@ -289,12 +306,13 @@ export const useProductCRUD = () => {
       // Get current product data
       const { data: currentProductRaw, error: fetchError } = await supabase
         .from('products')
-        .select('image_url, image_gallery')
+        .select('image_url, image_gallery, image_path, image_gallery_paths')
         .eq('id', productId)
         .single();
 
       if (fetchError) throw fetchError;
       const currentProduct = (currentProductRaw as unknown as { image_url?: string; image_gallery?: string[] }) || {};
+      const currentProductAny = (currentProductRaw as ProductImageFields) || {};
       let imageUrl = currentProduct.image_url || '';
       // handle existing gallery from DB if present
       const existingGallery = currentProduct.image_gallery;
@@ -347,6 +365,10 @@ export const useProductCRUD = () => {
             }
           }
 
+          // Instead of performing inline deletes here, compute removed storage paths
+          // and enqueue them via the RPC `rpc_update_product_gallery` below so deletion
+          // happens in the background worker. We still keep a safe fallback to the
+          // previous inline deletion behavior if the RPC is not available.
           // Additionally, if the admin removed images (e.g. decreased gallery length
           // or cleared specific slots), delete any previously-stored gallery images
           // that are no longer referenced in the merged gallery.
@@ -381,6 +403,7 @@ export const useProductCRUD = () => {
         // Update product (attempt to include image path fields if available)
       try {
         const payload: Record<string, unknown> = {
+          // Prepare payload to send to RPC or direct update
           name: form.name,
           description: form.description,
           price: Number(form.price) || 0,
@@ -408,45 +431,47 @@ export const useProductCRUD = () => {
           payload.image_path = successfulResultsVar[0].path;
         }
 
-        const { data: updatedProduct, error: updateError } = await supabase
-          .from('products')
-          .update(payload)
-          .eq('id', productId)
-          .select()
-          .single();
+        // Attempt to call the RPC `rpc_update_product_gallery` to atomically update
+        // the product row and enqueue any removed storage paths for background deletion.
+        const imagePathForPayload = (payload.image_path as string | undefined) || null;
+        const prevGalleryPaths: string[] = Array.isArray(currentProductAny?.image_gallery_paths) ? currentProductAny.image_gallery_paths.filter(Boolean) as string[] : [];
+        const prevImagePath: string | null = typeof currentProductAny?.image_path === 'string' ? currentProductAny.image_path : null;
+        const removedPaths: string[] = [];
+        // compute removed paths by comparing previous stored paths with new ones
+        if (prevImagePath && prevImagePath !== imagePathForPayload) removedPaths.push(prevImagePath);
+        for (const p of prevGalleryPaths) if (!imageGalleryPaths.includes(p)) removedPaths.push(p);
 
-        if (updateError) {
-          console.warn('Failed to update product with image paths, retrying without paths:', updateError.message || updateError);
-          // retry without path fields
-          const { data: updatedProduct2, error: updateError2 } = await supabase
+        try {
+          // Use the lightweight RPC caller wrapper to avoid strict union RPC name types
+          const { data: rpcRes, error: rpcErr } = await supabaseRpc.rpc('rpc_update_product_gallery', {
+            product_id: productId,
+            new_image_url: imageUrl,
+            new_image_gallery: imageGallery,
+            new_image_path: imagePathForPayload,
+            new_image_gallery_paths: imageGalleryPaths,
+            removed_paths: removedPaths
+          });
+
+          // rpcErr is unknown; treat truthy as failure and fallback to direct update
+          if (rpcErr) {
+            console.warn('rpc_update_product_gallery failed, falling back to direct update:', rpcErr as unknown);
+            const { data: updatedProduct, error: updateError } = await supabase
+              .from('products')
+              .update(payload)
+              .eq('id', productId)
+              .select()
+              .single();
+            if (updateError) throw updateError;
+          }
+        } catch (rpcCallErr) {
+          console.warn('Error calling rpc_update_product_gallery, falling back to direct update:', rpcCallErr);
+          const { data: updatedProduct, error: updateError } = await supabase
             .from('products')
-            .update({
-              name: form.name,
-              description: form.description,
-              price: Number(form.price) || 0,
-              category: form.category,
-              stock_quantity: Number(form.stock_quantity) || 0,
-              image_url: imageUrl,
-              image_gallery: imageGallery,
-              brand: form.brand ?? null,
-              product_type: form.product_type ?? null,
-              pet_type: form.pet_type ?? null,
-              origin_country: form.origin_country ?? null,
-              expiry_date: form.expiry_date ?? null,
-              age_category: form.age_category ?? null,
-              weight_grams: form.weight_grams ?? null,
-              length_cm: form.length_cm ?? null,
-              width_cm: form.width_cm ?? null,
-              height_cm: form.height_cm ?? null,
-              discount_percent: form.discount_percent ?? null,
-              sku: form.sku ?? null,
-              shipping_options: form.shipping_options ?? []
-            })
+            .update(payload)
             .eq('id', productId)
             .select()
             .single();
-
-          if (updateError2) throw updateError2;
+          if (updateError) throw updateError;
         }
       } catch (err) {
         console.warn('Error while updating product with image path fields:', err);
@@ -507,21 +532,35 @@ export const useProductCRUD = () => {
     setLoading(true);
 
     try {
-      // Get product data to access image URL
+      // Get product data to access storage paths (if available)
       const { data: product, error: fetchError } = await supabase
         .from('products')
-        .select('image_url')
+        .select('image_url, image_path, image_gallery_paths')
         .eq('id', productId)
         .single();
 
       if (fetchError) throw fetchError;
 
-      // Delete all product images
-      if (product.image_url) {
+      const productAny = (product as ProductImageFields) || {};
+      const prevPaths: string[] = [];
+      if (typeof productAny.image_path === 'string' && productAny.image_path) prevPaths.push(productAny.image_path);
+      if (Array.isArray(productAny.image_gallery_paths)) prevPaths.push(...productAny.image_gallery_paths.filter(Boolean));
+
+      // Try RPC to delete product and enqueue storage deletes (preferred)
+      try {
+        const { data: rpcRes, error: rpcErr } = await supabaseRpc.rpc('rpc_delete_product_enqueue', { product_id: productId, removed_paths: prevPaths });
+        if (rpcErr) throw rpcErr;
+        toast({ title: 'Produk berhasil dihapus' });
+        return;
+      } catch (rpcErr) {
+        console.warn('rpc_delete_product_enqueue not available or failed, falling back to inline delete:', rpcErr);
+      }
+
+      // Fallback: delete images inline and then delete product record
+      if (productAny.image_url) {
         await ProductImageManager.deleteProductImages(productId);
       }
 
-      // Delete product record
       const { error: deleteError } = await supabase
         .from('products')
         .delete()
