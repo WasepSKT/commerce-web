@@ -89,6 +89,97 @@ type SupabaseRpcCaller = {
 
 const supabaseRpc = (supabase as unknown) as SupabaseRpcCaller;
 
+// Constants
+const PRODUCT_IMAGES_BUCKET = 'product-images';
+
+// Helper function to safely delete a product image using path or URL
+async function deleteProductImageSafely(
+  url: string,
+  storedPath?: string | null
+): Promise<void> {
+  // Try to use stored path first (more reliable)
+  if (storedPath && storedPath.trim() !== '') {
+    try {
+      const { error } = await supabase.storage
+        .from(PRODUCT_IMAGES_BUCKET)
+        .remove([storedPath]);
+      
+      if (!error) return; // Success with path-based deletion
+      
+      console.warn('Failed to delete image by path, trying URL:', error);
+    } catch (e) {
+      console.warn('Failed to delete removed product image by path:', e);
+    }
+  }
+  
+  // Fallback to URL-based deletion
+  try {
+    await ProductImageManager.deleteProductImage(url);
+  } catch (e) {
+    console.warn('Failed to delete removed product image by URL:', e);
+  }
+}
+
+// Helper function to delete removed images from storage
+async function deleteRemovedImages(
+  previousGallery: string[],
+  previousGalleryPaths: string[],
+  currentGallery: string[]
+): Promise<void> {
+  for (let i = 0; i < previousGallery.length; i++) {
+    const url = previousGallery[i];
+    if (url && !currentGallery.includes(url)) {
+      const storedPath = previousGalleryPaths[i];
+      await deleteProductImageSafely(url, storedPath);
+    }
+  }
+}
+
+// Helper function to normalize gallery arrays
+function normalizeGalleryArray<T>(arr: T[] | null | undefined): T[] {
+  return Array.isArray(arr) ? arr.filter(Boolean) : [];
+}
+
+// Helper function to merge uploaded images into existing gallery
+function mergeGalleryWithUploads(
+  existingGallery: string[],
+  uploadResults: ({ success: true; url: string; index: number; path?: string })[]
+): { gallery: string[]; paths: string[] } {
+  // Initialize gallery array up to max of existing or uploaded indices
+  const maxLen = Math.max(
+    existingGallery.length,
+    ...uploadResults.map((r) => r.index + 1),
+    0
+  );
+  
+  const mergedGallery = Array.from(
+    { length: maxLen },
+    (_, i) => existingGallery[i] || undefined
+  ) as (string | undefined)[];
+
+  // Update with new uploads
+  for (const res of uploadResults) {
+    mergedGallery[res.index] = res.url;
+  }
+
+  // Filter undefined and keep order
+  const gallery = mergedGallery.filter(Boolean) as string[];
+
+  // Build gallery paths array
+  const galleryPaths: (string | undefined)[] = Array.from(
+    { length: gallery.length },
+    () => undefined
+  );
+  
+  for (const r of uploadResults) {
+    if (r.path) galleryPaths[r.index] = r.path;
+  }
+  
+  const paths = galleryPaths.filter(Boolean) as string[];
+
+  return { gallery, paths };
+}
+
 export const useProductCRUD = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -328,13 +419,13 @@ export const useProductCRUD = () => {
       const currentProduct = (currentProductRaw as unknown as { image_url?: string; image_gallery?: string[] }) || {};
       const currentProductAny = (currentProductRaw as ProductImageFields) || {};
       let imageUrl = currentProduct.image_url || '';
-      // handle existing gallery from DB if present. If the UI provided
+      // Handle existing gallery from DB if present. If the UI provided
       // `form.imageGallery` (editing case), prefer that as the desired
       // gallery state so removals performed in the modal are respected.
-      const existingGallery = currentProduct.image_gallery;
+      const existingGallery = normalizeGalleryArray(currentProduct.image_gallery);
       let imageGallery: string[] = Array.isArray(form.imageGallery)
-        ? form.imageGallery.slice()
-        : (Array.isArray(existingGallery) ? existingGallery.slice() : []);
+        ? form.imageGallery.filter(Boolean)
+        : existingGallery;
 
       // Prepare holders for upload results and gallery paths
       let successfulResultsVar: ({ success: true; url: string; index: number; path?: string })[] = [];
@@ -348,63 +439,30 @@ export const useProductCRUD = () => {
         const uploadResults = await ProductImageManager.uploadProductImages(productId, form.imageFiles.slice(0,4));
 
         // Map successful uploads into the existing gallery by index
-        successfulResultsVar = uploadResults.filter(r => r.success && typeof r.index === 'number') as ({ success: true; url: string; index: number; path?: string })[];
-        const failed = uploadResults.filter(r => !r.success);
+        successfulResultsVar = uploadResults.filter(
+          (r) => r.success && typeof r.index === 'number'
+        ) as ({ success: true; url: string; index: number; path?: string })[];
+        const failed = uploadResults.filter((r) => !r.success);
 
-        // Initialize gallery array up to max of existing or uploaded indices
-        const maxLen = Math.max(imageGallery.length, ...(successfulResultsVar.map(r => r.index + 1)), 0);
-        const mergedGallery = Array.from({ length: maxLen }, (_, i) => imageGallery[i] || undefined) as (string | undefined)[];
-
-        for (const res of successfulResultsVar) {
-          mergedGallery[res.index] = res.url;
-        }
-
-        // Filter undefined and keep order
-        imageGallery = mergedGallery.filter(Boolean) as string[];
-
-        // Build gallery paths array from successful results mapping by index
-        const galleryPaths: (string | undefined)[] = Array.from({ length: imageGallery.length }, (_, i) => undefined);
-        for (const r of successfulResultsVar) {
-          if (r.path) galleryPaths[r.index] = r.path;
-        }
-        imageGalleryPaths = galleryPaths.filter(Boolean) as string[];
+        // Merge uploaded images into existing gallery
+        const merged = mergeGalleryWithUploads(imageGallery, successfulResultsVar);
+        imageGallery = merged.gallery;
+        imageGalleryPaths = merged.paths;
 
         // Delete replaced images from storage for indices that were overwritten
         try {
+          const prevGalleryPaths = normalizeGalleryArray(currentProductAny?.image_gallery_paths);
+          
           for (const res of successfulResultsVar) {
-            const oldUrl = existingGallery && existingGallery[res.index];
+            const oldUrl = existingGallery?.[res.index];
             if (oldUrl && oldUrl !== res.url) {
               // best-effort delete; don't fail the update if deletion fails
-              try {
-                await ProductImageManager.deleteProductImage(oldUrl);
-              } catch (e) {
-                console.warn('Failed to delete old product image:', e);
-              }
+              const oldPath = prevGalleryPaths[res.index];
+              await deleteProductImageSafely(oldUrl, oldPath);
             }
-          }
-
-          // Instead of performing inline deletes here, compute removed storage paths
-          // and enqueue them via the RPC `rpc_update_product_gallery` below so deletion
-          // happens in the background worker. We still keep a safe fallback to the
-          // previous inline deletion behavior if the RPC is not available.
-          // Additionally, if the admin removed images (e.g. decreased gallery length
-          // or cleared specific slots), delete any previously-stored gallery images
-          // that are no longer referenced in the merged gallery.
-          try {
-            const prevGallery = Array.isArray(existingGallery) ? existingGallery.filter(Boolean) as string[] : [];
-            const removed = prevGallery.filter((u) => u && !imageGallery.includes(u));
-            for (const oldUrl of removed) {
-              try {
-                await ProductImageManager.deleteProductImage(oldUrl);
-              } catch (e) {
-                console.warn('Failed to delete removed product image:', e);
-              }
-            }
-          } catch (e) {
-            console.debug('Error while deleting removed images from previous gallery:', e);
           }
         } catch (e) {
-          console.debug('Error while cleaning up old images:', e);
+          console.debug('Error while cleaning up replaced images:', e);
         }
 
         if (successfulResultsVar.length === 0 && failed.length > 0) {
@@ -427,6 +485,19 @@ export const useProductCRUD = () => {
           imageGalleryPaths = form.imageGalleryPaths.filter(Boolean) as string[];
         }
         imageUrl = imageGallery[0] || imageUrl;
+      }
+
+      // Delete removed images from storage (runs regardless of whether new uploads occurred)
+      // This handles the case where admin removes images without uploading replacements
+      // Note: The RPC call below will also handle deletion via removed_paths, but this
+      // provides a fallback in case the RPC is not available or fails
+      try {
+        const prevGallery = normalizeGalleryArray(existingGallery);
+        const prevGalleryPaths = normalizeGalleryArray(currentProductAny?.image_gallery_paths);
+        
+        await deleteRemovedImages(prevGallery, prevGalleryPaths, imageGallery);
+      } catch (e) {
+        console.debug('Error while deleting removed images from previous gallery:', e);
       }
 
         // Update product (attempt to include image path fields if available)
