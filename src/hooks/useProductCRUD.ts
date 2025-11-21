@@ -234,12 +234,15 @@ export const useProductCRUD = () => {
         // Update product with primary image_url and image_gallery
         // Try to update product including image paths if available (safe fallback)
         try {
-          const payload: Record<string, unknown> = { image_url: imageUrl, image_gallery: imageGallery };
-          if (pendingImagePath) payload.image_path = pendingImagePath;
-          if (successfulResults && successfulResults.length > 0) {
-            const galleryPaths = successfulResults.map(r => r.path).filter(Boolean) as string[];
-            if (galleryPaths.length > 0) payload.image_gallery_paths = galleryPaths;
-          }
+          const galleryPaths = (successfulResults && successfulResults.length > 0)
+            ? successfulResults.map(r => r.path).filter(Boolean) as string[]
+            : [];
+          const payload: Record<string, unknown> = {
+            image_url: imageUrl,
+            image_gallery: imageGallery,
+            image_path: pendingImagePath ?? '',
+            image_gallery_paths: galleryPaths
+          };
 
           const { data: updateData, error: updateError } = await supabase
             .from('products')
@@ -425,11 +428,9 @@ export const useProductCRUD = () => {
           sku: form.sku ?? null,
           shipping_options: form.shipping_options ?? []
         };
-        if (imageGalleryPaths && imageGalleryPaths.length > 0) payload.image_gallery_paths = imageGalleryPaths;
-        // if first gallery item was uploaded as main, set image_path too
-        if (successfulResultsVar.length > 0 && successfulResultsVar[0].path) {
-          payload.image_path = successfulResultsVar[0].path;
-        }
+        // Always send the latest gallery paths and image_path, even if empty
+        payload.image_gallery_paths = imageGalleryPaths;
+        payload.image_path = (successfulResultsVar.length > 0 && successfulResultsVar[0].path) ? successfulResultsVar[0].path : '';
 
         // Attempt to call the RPC `rpc_update_product_gallery` to atomically update
         // the product row and enqueue any removed storage paths for background deletion.
