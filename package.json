@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "backfill:dry": "node ./scripts/backfill-image-paths.cjs",
+    "backfill:apply": "node ./scripts/backfill-image-paths.cjs --apply",
+    "cleanup:dry": "node ./scripts/cleanup-orphan-images.cjs",
+    "cleanup:apply": "node ./scripts/cleanup-orphan-images.cjs --apply",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview"
