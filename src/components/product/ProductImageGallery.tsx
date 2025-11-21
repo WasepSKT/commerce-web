@@ -93,11 +93,15 @@ export const ProductImageGallery = ({
               <button
                 key={i}
                 type="button"
-                onClick={() => setMainIndex(i)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMainIndex(i);
+                }}
+                aria-pressed={selected}
                 className={`w-20 h-20 rounded-md overflow-hidden border ${selected
                   ? 'border-primary ring-2 ring-primary/30'
                   : 'border-gray-200 hover:border-primary/60'
-                  } transition-colors`}
+                  } transition-colors cursor-pointer`}
               >
                 <img
                   src={src}

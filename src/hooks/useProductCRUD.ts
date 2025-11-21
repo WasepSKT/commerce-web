@@ -163,6 +163,7 @@ export const useProductCRUD = () => {
 
       // Use a mutable record to track updates (avoid reassigning the const productData)
       let createdRecord: InsertResult = inserted;
+      let pendingImagePath: string | undefined;
 
       let imageUrl = '';
       let imageGallery: string[] = [];
@@ -172,7 +173,7 @@ export const useProductCRUD = () => {
         setUploading(true);
         const uploadResults = await ProductImageManager.uploadProductImages(inserted.id!, form.imageFiles.slice(0,4));
 
-        const successfulResults = uploadResults.filter(r => r.success && typeof r.index === 'number') as { success: true; url: string; index: number }[];
+        const successfulResults = uploadResults.filter(r => r.success && typeof r.index === 'number') as ({ success: true; url: string; index: number; path?: string })[];
         const failed = uploadResults.filter(r => !r.success);
 
         if (successfulResults.length === 0 && failed.length > 0) {
@@ -193,33 +194,59 @@ export const useProductCRUD = () => {
         // Upload a separate main image to a dedicated path if admin provided the first file
         try {
           const firstFile = form.imageFiles[0];
-          if (firstFile) {
-            const mainRes = await ProductImageManager.uploadProductImage(inserted.id!, firstFile, 0, 'main');
-            if (mainRes.success && mainRes.url) {
-              imageUrl = mainRes.url;
+            if (firstFile) {
+              const mainRes = await ProductImageManager.uploadProductImage(inserted.id!, firstFile, 0, 'main');
+              if (mainRes.success && mainRes.url) {
+                imageUrl = mainRes.url;
+              } else {
+                imageUrl = imageGallery[0] || '';
+              }
+              // store main path if available
+              const mainPath = mainRes.path;
+              if (mainPath) {
+                // attempt to include image_path in the update below
+                pendingImagePath = mainPath;
+              }
             } else {
-              // fallback to first gallery item
               imageUrl = imageGallery[0] || '';
             }
-          } else {
-            imageUrl = imageGallery[0] || '';
-          }
         } catch (err) {
           imageUrl = imageGallery[0] || '';
         }
 
         // Update product with primary image_url and image_gallery
-        const { data: updateData, error: updateError } = await supabase
-          .from('products')
-          .update({ image_url: imageUrl, image_gallery: imageGallery })
-          .eq('id', inserted.id)
-          .select()
-          .single();
+        // Try to update product including image paths if available (safe fallback)
+        try {
+          const payload: Record<string, unknown> = { image_url: imageUrl, image_gallery: imageGallery };
+          if (pendingImagePath) payload.image_path = pendingImagePath;
+          if (successfulResults && successfulResults.length > 0) {
+            const galleryPaths = successfulResults.map(r => r.path).filter(Boolean) as string[];
+            if (galleryPaths.length > 0) payload.image_gallery_paths = galleryPaths;
+          }
 
-        if (updateError) {
-          console.warn('Failed to update product with image URLs:', updateError);
-        } else if (updateData && (updateData as InsertResult).id) {
-          createdRecord = updateData as InsertResult;
+          const { data: updateData, error: updateError } = await supabase
+            .from('products')
+            .update(payload)
+            .eq('id', inserted.id)
+            .select()
+            .single();
+
+          if (updateError) {
+            // fallback: try basic update without path fields
+            console.warn('Failed to update product with image paths, retrying without paths:', updateError.message || updateError);
+            const { data: updateData2, error: updateError2 } = await supabase
+              .from('products')
+              .update({ image_url: imageUrl, image_gallery: imageGallery })
+              .eq('id', inserted.id)
+              .select()
+              .single();
+            if (!updateError2 && updateData2) createdRecord = updateData2 as InsertResult;
+            else console.warn('Retry without image paths also failed:', updateError2);
+          } else if (updateData && (updateData as InsertResult).id) {
+            createdRecord = updateData as InsertResult;
+          }
+        } catch (err) {
+          console.warn('Error while updating product image paths:', err);
         }
       }
 
@@ -273,6 +300,10 @@ export const useProductCRUD = () => {
       const existingGallery = currentProduct.image_gallery;
       let imageGallery: string[] = Array.isArray(existingGallery) ? existingGallery : [];
 
+      // Prepare holders for upload results and gallery paths
+      let successfulResultsVar: ({ success: true; url: string; index: number; path?: string })[] = [];
+      let imageGalleryPaths: string[] = [];
+
       // Handle image update: merge uploaded slots into existing gallery
       if (form.imageFiles && form.imageFiles.some(Boolean)) {
         setUploading(true);
@@ -281,23 +312,30 @@ export const useProductCRUD = () => {
         const uploadResults = await ProductImageManager.uploadProductImages(productId, form.imageFiles.slice(0,4));
 
         // Map successful uploads into the existing gallery by index
-        const successfulResults = uploadResults.filter(r => r.success && typeof r.index === 'number') as { success: true; url: string; index: number }[];
+        successfulResultsVar = uploadResults.filter(r => r.success && typeof r.index === 'number') as ({ success: true; url: string; index: number; path?: string })[];
         const failed = uploadResults.filter(r => !r.success);
 
         // Initialize gallery array up to max of existing or uploaded indices
-        const maxLen = Math.max(imageGallery.length, ...(successfulResults.map(r => r.index + 1)), 0);
+        const maxLen = Math.max(imageGallery.length, ...(successfulResultsVar.map(r => r.index + 1)), 0);
         const mergedGallery = Array.from({ length: maxLen }, (_, i) => imageGallery[i] || undefined) as (string | undefined)[];
 
-        for (const res of successfulResults) {
+        for (const res of successfulResultsVar) {
           mergedGallery[res.index] = res.url;
         }
 
         // Filter undefined and keep order
         imageGallery = mergedGallery.filter(Boolean) as string[];
 
+        // Build gallery paths array from successful results mapping by index
+        const galleryPaths: (string | undefined)[] = Array.from({ length: imageGallery.length }, (_, i) => undefined);
+        for (const r of successfulResultsVar) {
+          if (r.path) galleryPaths[r.index] = r.path;
+        }
+        imageGalleryPaths = galleryPaths.filter(Boolean) as string[];
+
         // Delete replaced images from storage for indices that were overwritten
         try {
-          for (const res of successfulResults) {
+          for (const res of successfulResultsVar) {
             const oldUrl = existingGallery && existingGallery[res.index];
             if (oldUrl && oldUrl !== res.url) {
               // best-effort delete; don't fail the update if deletion fails
@@ -308,11 +346,28 @@ export const useProductCRUD = () => {
               }
             }
           }
+
+          // Additionally, if the admin removed images (e.g. decreased gallery length
+          // or cleared specific slots), delete any previously-stored gallery images
+          // that are no longer referenced in the merged gallery.
+          try {
+            const prevGallery = Array.isArray(existingGallery) ? existingGallery.filter(Boolean) as string[] : [];
+            const removed = prevGallery.filter((u) => u && !imageGallery.includes(u));
+            for (const oldUrl of removed) {
+              try {
+                await ProductImageManager.deleteProductImage(oldUrl);
+              } catch (e) {
+                console.warn('Failed to delete removed product image:', e);
+              }
+            }
+          } catch (e) {
+            console.debug('Error while deleting removed images from previous gallery:', e);
+          }
         } catch (e) {
           console.debug('Error while cleaning up old images:', e);
         }
 
-        if (successfulResults.length === 0 && failed.length > 0) {
+        if (successfulResultsVar.length === 0 && failed.length > 0) {
           // No successful uploads; preserve existing images and surface an error to the user
           const errMsg = failed.map(f => f.error).filter(Boolean).join('; ') || 'Gagal mengunggah gambar';
           console.warn('No new images uploaded:', errMsg);
@@ -323,10 +378,9 @@ export const useProductCRUD = () => {
         imageUrl = imageGallery[0] || imageUrl;
       }
 
-      // Update product
-      const { data: updatedProduct, error: updateError } = await supabase
-        .from('products')
-        .update({
+        // Update product (attempt to include image path fields if available)
+      try {
+        const payload: Record<string, unknown> = {
           name: form.name,
           description: form.description,
           price: Number(form.price) || 0,
@@ -347,18 +401,92 @@ export const useProductCRUD = () => {
           discount_percent: form.discount_percent ?? null,
           sku: form.sku ?? null,
           shipping_options: form.shipping_options ?? []
-        })
-        .eq('id', productId)
-        .select()
-        .single();
+        };
+        if (imageGalleryPaths && imageGalleryPaths.length > 0) payload.image_gallery_paths = imageGalleryPaths;
+        // if first gallery item was uploaded as main, set image_path too
+        if (successfulResultsVar.length > 0 && successfulResultsVar[0].path) {
+          payload.image_path = successfulResultsVar[0].path;
+        }
 
-      if (updateError) throw updateError;
+        const { data: updatedProduct, error: updateError } = await supabase
+          .from('products')
+          .update(payload)
+          .eq('id', productId)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.warn('Failed to update product with image paths, retrying without paths:', updateError.message || updateError);
+          // retry without path fields
+          const { data: updatedProduct2, error: updateError2 } = await supabase
+            .from('products')
+            .update({
+              name: form.name,
+              description: form.description,
+              price: Number(form.price) || 0,
+              category: form.category,
+              stock_quantity: Number(form.stock_quantity) || 0,
+              image_url: imageUrl,
+              image_gallery: imageGallery,
+              brand: form.brand ?? null,
+              product_type: form.product_type ?? null,
+              pet_type: form.pet_type ?? null,
+              origin_country: form.origin_country ?? null,
+              expiry_date: form.expiry_date ?? null,
+              age_category: form.age_category ?? null,
+              weight_grams: form.weight_grams ?? null,
+              length_cm: form.length_cm ?? null,
+              width_cm: form.width_cm ?? null,
+              height_cm: form.height_cm ?? null,
+              discount_percent: form.discount_percent ?? null,
+              sku: form.sku ?? null,
+              shipping_options: form.shipping_options ?? []
+            })
+            .eq('id', productId)
+            .select()
+            .single();
+
+          if (updateError2) throw updateError2;
+        }
+      } catch (err) {
+        console.warn('Error while updating product with image path fields:', err);
+        // Fallback: try update without any image path fields
+        const { data: updatedProduct3, error: updateError3 } = await supabase
+          .from('products')
+          .update({
+            name: form.name,
+            description: form.description,
+            price: Number(form.price) || 0,
+            category: form.category,
+            stock_quantity: Number(form.stock_quantity) || 0,
+            image_url: imageUrl,
+            image_gallery: imageGallery,
+            brand: form.brand ?? null,
+            product_type: form.product_type ?? null,
+            pet_type: form.pet_type ?? null,
+            origin_country: form.origin_country ?? null,
+            expiry_date: form.expiry_date ?? null,
+            age_category: form.age_category ?? null,
+            weight_grams: form.weight_grams ?? null,
+            length_cm: form.length_cm ?? null,
+            width_cm: form.width_cm ?? null,
+            height_cm: form.height_cm ?? null,
+            discount_percent: form.discount_percent ?? null,
+            sku: form.sku ?? null,
+            shipping_options: form.shipping_options ?? []
+          })
+          .eq('id', productId)
+          .select()
+          .single();
+
+        if (updateError3) throw updateError3;
+      }
 
       toast({ title: 'Produk berhasil diperbarui' });
       // ensure returned product includes any gallery we set
       const fetched = await supabase.from('products').select('*').eq('id', productId).single();
       if (fetched.error) {
-        return updatedProduct as Product;
+        throw fetched.error;
       }
       return fetched.data as Product;
     } catch (error) {

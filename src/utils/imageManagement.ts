@@ -8,6 +8,7 @@ export interface ImageUploadResult {
   url?: string;
   error?: string;
   index?: number;
+  path?: string;
 }
 
 export interface ImageValidationResult {
@@ -163,7 +164,7 @@ export class ProductImageManager {
         .from(this.BUCKET_NAME)
         .getPublicUrl(data.path);
 
-      return { success: true, url: publicData.publicUrl, index };
+      return { success: true, url: publicData.publicUrl, index, path: data.path };
     } catch (error) {
       console.error('Image upload error:', error);
       return { 
