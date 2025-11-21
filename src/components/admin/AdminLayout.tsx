@@ -38,7 +38,10 @@ interface AdminLayoutProps {
 }
 
 export function AdminLayout({ active, onChange, children }: AdminLayoutProps) {
-  const { signOut, profile } = useAuth();
+  const { signOut, profile, user } = useAuth();
+  // Try to read avatar from Supabase auth user metadata (google oauth provides `picture` or `avatar_url`).
+  const _meta = (user as unknown as Record<string, unknown>)?.user_metadata as Record<string, unknown> | undefined;
+  const avatarUrl = typeof _meta?.avatar_url === 'string' ? (_meta.avatar_url as string) : typeof _meta?.picture === 'string' ? (_meta.picture as string) : undefined;
   const [logoutOpen, setLogoutOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -124,8 +127,12 @@ export function AdminLayout({ active, onChange, children }: AdminLayoutProps) {
                   <div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="inline-flex items-center rounded-full bg-muted/40 p-1 cursor-pointer hover:bg-primary/10 hover:text-primary">
-                          <User className="h-5 w-5" />
+                        <button className="inline-flex items-center rounded-full bg-muted/40 p-0.5 cursor-pointer hover:bg-primary/10 hover:text-primary overflow-hidden">
+                          {avatarUrl ? (
+                            <img src={avatarUrl} alt="avatar" className="h-8 w-8 rounded-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                          ) : (
+                            <div className="p-2"><User className="h-5 w-5" /></div>
+                          )}
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-56">
