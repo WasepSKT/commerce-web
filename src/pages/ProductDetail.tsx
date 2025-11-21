@@ -212,6 +212,7 @@ export default function ProductDetail() {
             productName={product.name}
             discountPercent={product.discount_percent ?? 0}
             isOutOfStock={isOutOfStock}
+            updatedAt={product.updated_at}
           />
 
           <div className="space-y-3 lg:space-y-4">

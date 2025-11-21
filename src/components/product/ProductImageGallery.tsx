@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { useImageGallery } from '@/hooks/useImageGallery';
+import { imageUrlWithCacheBust } from '@/utils/imageHelpers';
 
 interface ProductImageGalleryProps {
   imageUrl: string;
@@ -7,6 +8,7 @@ interface ProductImageGalleryProps {
   productName: string;
   discountPercent?: number;
   isOutOfStock: boolean;
+  updatedAt?: string | number | null;
 }
 
 export const ProductImageGallery = ({
@@ -14,8 +16,12 @@ export const ProductImageGallery = ({
   imageGallery,
   productName,
   discountPercent,
-  isOutOfStock
+  isOutOfStock,
+  updatedAt
 }: ProductImageGalleryProps) => {
+  const transformedImageUrl = imageUrlWithCacheBust(imageUrl, updatedAt);
+  const transformedGallery = Array.isArray(imageGallery) ? imageGallery.map((s) => imageUrlWithCacheBust(s, updatedAt)) : imageGallery;
+
   const {
     imgRef,
     containerRef,
@@ -28,7 +34,7 @@ export const ProductImageGallery = ({
     gallery,
     handleMouseMove,
     hasMultipleImages,
-  } = useImageGallery(imageUrl, imageGallery);
+  } = useImageGallery(transformedImageUrl, transformedGallery);
 
   const clampedIndex = Math.min(Math.max(mainIndex, 0), Math.max(gallery.length - 1, 0));
   const mainImage = gallery[clampedIndex] ?? 'https://images.unsplash.com/photo-1548681528-6a5c45b66b42?w=600';

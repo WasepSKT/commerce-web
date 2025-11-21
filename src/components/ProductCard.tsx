@@ -9,6 +9,7 @@ import { StarRating } from '@/components/ui/StarRating';
 import computePriceAfterDiscount from '@/utils/price';
 import { useProductRating } from '@/hooks/useProductRating';
 import { isProductMaintenanceMode } from '@/utils/maintenance';
+import { imageUrlWithCacheBust } from '@/utils/imageHelpers';
 import { MarketplaceModal } from '@/components/maintenance/MarketplaceModal';
 
 
@@ -21,6 +22,8 @@ interface Product {
   category: string;
   stock_quantity: number;
   discount_percent?: number | null;
+  updated_at?: string | number | null;
+  updated_at_timestamp?: string | number | null;
 }
 
 interface ProductCardProps {
@@ -88,7 +91,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
       <div className="relative bg-white rounded-t-lg overflow-hidden">
         <div className="w-full aspect-square bg-white">
           <img
-            src={product.image_url}
+            src={imageUrlWithCacheBust(product.image_url, product.updated_at ?? product.updated_at_timestamp)}
             alt={product.name}
             className="w-full h-full object-cover object-center transform transition-transform duration-300 motion-safe:group-hover:scale-105"
             onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1548681528-6a5c45b66b42?w=400'; }}

@@ -105,10 +105,22 @@ export class ProductImageManager {
    */
   static generateImagePath(productId: string, file: File, index: number = 0, target: 'gallery' | 'main' = 'gallery'): string {
     const extension = file.name.split('.').pop() || 'jpg';
+    // Use a UUID for filenames to ensure uniqueness across uploads and avoid cache issues.
+    // Prefer browser `crypto.randomUUID()` when available, fallback to timestamp+random.
+    const makeUuid = (): string => {
+      try {
+        const g = globalThis as unknown as { crypto?: { randomUUID?: () => string } };
+        if (g.crypto && typeof g.crypto.randomUUID === 'function') return g.crypto.randomUUID();
+      } catch (e) {
+        // ignore
+      }
+      return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    };
+    const uid = makeUuid();
     if (target === 'main') {
-      return `products/${productId}/main.${extension}`;
+      return `products/${productId}/main_${uid}.${extension}`;
     }
-    return `products/${productId}/gallery/image_${index + 1}.${extension}`;
+    return `products/${productId}/gallery/image_${index + 1}_${uid}.${extension}`;
   }
 
   /**
@@ -131,14 +143,15 @@ export class ProductImageManager {
       const compressedFile = await this.compressImage(file);
 
     // Generate structured path
-  const filePath = this.generateImagePath(productId, compressedFile, index, target);
+      const filePath = this.generateImagePath(productId, compressedFile, index, target); // Generate structured path
 
       // Upload to Supabase Storage
       const { data, error: uploadError } = await supabase.storage
         .from(this.BUCKET_NAME)
         .upload(filePath, compressedFile, {
-          cacheControl: '3600',
-          upsert: true
+          // avoid caching to ensure new files are immediately visible
+          cacheControl: '0',
+          upsert: false
         });
 
       if (uploadError) {

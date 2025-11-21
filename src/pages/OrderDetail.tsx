@@ -11,6 +11,7 @@ import { ArrowLeft, Package, MapPin, CreditCard, Truck } from 'lucide-react';
 import { ORDER_STATUS_CONFIG } from '@/constants/orderStatus';
 import SEOHead from '@/components/seo/SEOHead';
 import { useToast } from '@/hooks/use-toast';
+import { imageUrlWithCacheBust } from '@/utils/imageHelpers';
 
 interface OrderItem {
   id: string;
@@ -300,7 +301,7 @@ export default function OrderDetail() {
                     >
                       {item.products?.image_url && (
                         <img
-                          src={item.products.image_url}
+                          src={imageUrlWithCacheBust(item.products.image_url, order.created_at)}
                           alt={item.products.name}
                           className="w-16 h-16 object-cover rounded"
                         />

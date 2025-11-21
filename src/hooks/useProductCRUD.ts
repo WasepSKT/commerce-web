@@ -295,6 +295,23 @@ export const useProductCRUD = () => {
         // Filter undefined and keep order
         imageGallery = mergedGallery.filter(Boolean) as string[];
 
+        // Delete replaced images from storage for indices that were overwritten
+        try {
+          for (const res of successfulResults) {
+            const oldUrl = existingGallery && existingGallery[res.index];
+            if (oldUrl && oldUrl !== res.url) {
+              // best-effort delete; don't fail the update if deletion fails
+              try {
+                await ProductImageManager.deleteProductImage(oldUrl);
+              } catch (e) {
+                console.warn('Failed to delete old product image:', e);
+              }
+            }
+          }
+        } catch (e) {
+          console.debug('Error while cleaning up old images:', e);
+        }
+
         if (successfulResults.length === 0 && failed.length > 0) {
           // No successful uploads; preserve existing images and surface an error to the user
           const errMsg = failed.map(f => f.error).filter(Boolean).join('; ') || 'Gagal mengunggah gambar';
