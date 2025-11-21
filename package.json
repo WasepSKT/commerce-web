@@ -10,7 +10,6 @@
     "backfill:apply": "node ./scripts/backfill-image-paths.cjs --apply",
     "cleanup:dry": "node ./scripts/cleanup-orphan-images.cjs",
     "cleanup:apply": "node ./scripts/cleanup-orphan-images.cjs --apply",
-    "worker:run": "node ./scripts/storage-delete-worker.cjs",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview"

@@ -80,15 +80,6 @@ export interface Product {
   seo_structured_data?: Record<string, unknown>;
 }
 
-// Lightweight, safe wrapper type to call RPCs by string name without depending
-// on generated supabase RPC union types. Uses `unknown` for response shape so
-// we avoid `any` while still allowing runtime checks and fallbacks.
-type SupabaseRpcCaller = {
-  rpc: (name: string, params?: unknown) => Promise<{ data: unknown; error: unknown }>;
-};
-
-const supabaseRpc = (supabase as unknown) as SupabaseRpcCaller;
-
 // Constants
 const PRODUCT_IMAGES_BUCKET = 'product-images';
 
@@ -168,41 +159,47 @@ function extractStoragePathFromUrl(url: string): string | null {
 }
 
 // Helper function to merge uploaded images into existing gallery
+// Maintains fixed 4 slots (0-3) to preserve slot positions
 function mergeGalleryWithUploads(
   existingGallery: string[],
-  uploadResults: ({ success: true; url: string; index: number; path?: string })[]
+  uploadResults: ({ success: true; url: string; index: number; path?: string })[],
+  existingPaths: string[] = [],
+  formGallery?: string[] // Optional: desired final gallery state from form
 ): { gallery: string[]; paths: string[] } {
-  // Initialize gallery array up to max of existing or uploaded indices
-  const maxLen = Math.max(
-    existingGallery.length,
-    ...uploadResults.map((r) => r.index + 1),
-    0
-  );
+  // Initialize gallery array with fixed 4 slots
+  const mergedGallery: (string | undefined)[] = [undefined, undefined, undefined, undefined];
+  const mergedPaths: (string | undefined)[] = [undefined, undefined, undefined, undefined];
   
-  const mergedGallery = Array.from(
-    { length: maxLen },
-    (_, i) => existingGallery[i] || undefined
-  ) as (string | undefined)[];
+  // If formGallery is provided, use it as the base (it represents desired final state)
+  // Otherwise, use existingGallery
+  const baseGallery = formGallery && formGallery.length > 0 ? formGallery : existingGallery;
+  
+  // First, populate with base gallery (preserve slot positions)
+  // Map baseGallery to fixed slots (it's already in order, so index = slot)
+  baseGallery.forEach((url, idx) => {
+    if (idx < 4 && url) {
+      mergedGallery[idx] = url;
+      // Try to find corresponding path
+      if (idx < existingPaths.length && existingPaths[idx]) {
+        mergedPaths[idx] = existingPaths[idx];
+      }
+    }
+  });
 
-  // Update with new uploads
+  // Then, update with new uploads (overwrite at specific slot indices)
   for (const res of uploadResults) {
-    mergedGallery[res.index] = res.url;
+    if (res.index >= 0 && res.index < 4) {
+      mergedGallery[res.index] = res.url;
+      if (res.path) {
+        mergedPaths[res.index] = res.path;
+      }
+    }
   }
 
-  // Filter undefined and keep order
-  const gallery = mergedGallery.filter(Boolean) as string[];
-
-  // Build gallery paths array
-  const galleryPaths: (string | undefined)[] = Array.from(
-    { length: gallery.length },
-    () => undefined
-  );
-  
-  for (const r of uploadResults) {
-    if (r.path) galleryPaths[r.index] = r.path;
-  }
-  
-  const paths = galleryPaths.filter(Boolean) as string[];
+  // Return filtered arrays (remove undefined for storage)
+  // But the order represents slot positions 0, 1, 2, 3
+  const gallery = mergedGallery.filter((g): g is string => g !== undefined && g !== null);
+  const paths = mergedPaths.filter((p): p is string => p !== undefined && p !== null && p.trim() !== '');
 
   return { gallery, paths };
 }
@@ -463,25 +460,46 @@ export const useProductCRUD = () => {
         setUploading(true);
 
         // Create array with fixed 4 slots to preserve slot positions
-        // Map files to their correct slots based on imageGallery positions
-        // imageGallery maintains slot positions (even if filtered), so we use it as reference
+        // Map files to their correct slots based on imageGallery order
+        // Key: imageGallery from form represents the desired final state in order
+        // New files (from imageFiles) should be placed where they appear in imageGallery
         const filesWithSlots: (File | undefined)[] = [undefined, undefined, undefined, undefined];
         
-        // If imageGallery is provided, use it to determine slot positions
-        // Files are mapped to slots where gallery items exist or where new files are added
-        if (Array.isArray(form.imageGallery) && form.imageGallery.length > 0) {
-          // Map files to slots: for existing gallery items, preserve their positions
-          // For new files, add them to the first available slot or next slot after existing items
-          let fileIdx = 0;
-          for (let slotIdx = 0; slotIdx < 4 && fileIdx < form.imageFiles.length; slotIdx++) {
-            // If this slot has a gallery item or is empty, we can place a file here
-            if (slotIdx < form.imageGallery.length || form.imageFiles[fileIdx]) {
-              filesWithSlots[slotIdx] = form.imageFiles[fileIdx];
-              fileIdx++;
+        // Strategy: Match files to slots by comparing imagePreviews with imageGallery
+        // imagePreviews[i] corresponds to imageFiles[i]
+        // We need to find which slot in imageGallery matches each preview
+        if (Array.isArray(form.imagePreviews) && 
+            Array.isArray(form.imageGallery) && 
+            form.imagePreviews.length === form.imageFiles.length) {
+          
+          form.imageFiles.forEach((file, fileIdx) => {
+            const preview = form.imagePreviews[fileIdx];
+            if (!preview) return;
+            
+            // Check if this is a new file (blob URL) or existing (http URL)
+            const isNewFile = preview.startsWith('blob:');
+            
+            if (isNewFile) {
+              // New file: find its position in imageGallery
+              // Since imageGallery is the desired final state, the file's position
+              // in imageFiles array should correspond to its position in imageGallery
+              // But we need to account for existing items that aren't being replaced
+              
+              // Simple mapping: file at index i in imageFiles should go to slot i
+              // But only if that slot is being updated (has a new preview)
+              let targetSlot = fileIdx;
+              
+              // If imageGallery has more items than files, we need to be smarter
+              // Actually, since imageGallery is filtered, it only contains non-undefined items
+              // So we map sequentially: first file to first slot, second to second, etc.
+              if (targetSlot < 4) {
+                filesWithSlots[targetSlot] = file;
+              }
             }
-          }
+            // Existing files (http URLs) don't need to be uploaded again
+          });
         } else {
-          // No existing gallery: map files sequentially to slots
+          // Fallback: map files sequentially to slots (simple case)
           form.imageFiles.forEach((file, idx) => {
             if (idx < 4) {
               filesWithSlots[idx] = file;
@@ -499,7 +517,10 @@ export const useProductCRUD = () => {
         const failed = uploadResults.filter((r) => !r.success);
 
         // Merge uploaded images into existing gallery
-        const merged = mergeGalleryWithUploads(imageGallery, successfulResultsVar);
+        // Pass existing paths and form gallery to preserve all slots correctly
+        const existingPaths = normalizeGalleryArray(currentProductAny?.image_gallery_paths);
+        const formGallery = Array.isArray(form.imageGallery) ? form.imageGallery : undefined;
+        const merged = mergeGalleryWithUploads(imageGallery, successfulResultsVar, existingPaths, formGallery);
         imageGallery = merged.gallery;
         imageGalleryPaths = merged.paths;
 
@@ -532,24 +553,38 @@ export const useProductCRUD = () => {
         // No new uploads in this update. Respect any gallery state the UI sent
         // (this enables removing existing gallery URLs without uploading
         // replacements). Also use any provided gallery path list from the form.
-        if (Array.isArray(form.imageGallery)) {
+        if (Array.isArray(form.imageGallery) && form.imageGallery.length > 0) {
+          // Use the gallery from form (already filtered, but maintains order)
+          // This represents the desired final state after removals
           imageGallery = form.imageGallery.filter(Boolean) as string[];
-        }
-        if (Array.isArray(form.imageGalleryPaths)) {
-          imageGalleryPaths = form.imageGalleryPaths.filter(Boolean) as string[];
-        } else {
-          // If no paths provided, try to derive from current gallery paths
-          // by matching URLs to paths
-          const currentPaths = normalizeGalleryArray(currentProductAny?.image_gallery_paths);
-          const currentUrls = normalizeGalleryArray(currentProductAny?.image_gallery);
           
-          // Match URLs to paths by index
-          imageGalleryPaths = imageGallery
-            .map((url) => {
-              const urlIndex = currentUrls.indexOf(url);
-              return urlIndex >= 0 && currentPaths[urlIndex] ? currentPaths[urlIndex] : null;
-            })
-            .filter((p): p is string => p !== null && p.trim() !== '');
+          // Match paths to gallery URLs by preserving order
+          if (Array.isArray(form.imageGalleryPaths) && form.imageGalleryPaths.length > 0) {
+            // Use paths from form if provided
+            imageGalleryPaths = form.imageGalleryPaths.filter(Boolean) as string[];
+          } else {
+            // If no paths provided, try to derive from current gallery paths
+            // by matching URLs to paths (preserve order)
+            const currentPaths = normalizeGalleryArray(currentProductAny?.image_gallery_paths);
+            const currentUrls = normalizeGalleryArray(currentProductAny?.image_gallery);
+            
+            // Match URLs to paths by finding URL in current gallery
+            // Important: preserve order of imageGallery, not currentUrls
+            imageGalleryPaths = imageGallery
+              .map((url) => {
+                const urlIndex = currentUrls.indexOf(url);
+                return urlIndex >= 0 && currentPaths[urlIndex] ? currentPaths[urlIndex] : null;
+              })
+              .filter((p): p is string => p !== null && p.trim() !== '');
+          }
+        } else if (Array.isArray(form.imageGallery) && form.imageGallery.length === 0) {
+          // Explicitly empty gallery - user removed all images
+          imageGallery = [];
+          imageGalleryPaths = [];
+        } else {
+          // No gallery provided in form, keep existing
+          imageGallery = existingGallery;
+          imageGalleryPaths = normalizeGalleryArray(currentProductAny?.image_gallery_paths);
         }
         imageUrl = imageGallery[0] || imageUrl;
       }
@@ -596,83 +631,15 @@ export const useProductCRUD = () => {
         payload.image_gallery_paths = imageGalleryPaths;
         payload.image_path = (successfulResultsVar.length > 0 && successfulResultsVar[0].path) ? successfulResultsVar[0].path : null;
 
-        // Attempt to call the RPC `rpc_update_product_gallery` to atomically update
-        // the product row and enqueue any removed storage paths for background deletion.
-        const imagePathForPayload = (payload.image_path as string | undefined) || null;
-        const prevGalleryPaths: string[] = Array.isArray(currentProductAny?.image_gallery_paths) ? currentProductAny.image_gallery_paths.filter(Boolean) as string[] : [];
-        const prevGalleryUrls: string[] = Array.isArray(currentProductAny?.image_gallery) ? currentProductAny.image_gallery.filter(Boolean) as string[] : [];
-        const prevImagePath: string | null = typeof currentProductAny?.image_path === 'string' ? currentProductAny.image_path : null;
-        const removedPaths: string[] = [];
-        // Compute removed paths by comparing previous stored paths with new ones
-        if (prevImagePath && prevImagePath !== imagePathForPayload) {
-          removedPaths.push(prevImagePath);
-        }
+        // Update product directly (no queue-based deletion)
+        const { data: updatedProduct, error: updateError } = await supabase
+          .from('products')
+          .update(payload)
+          .eq('id', productId)
+          .select()
+          .single();
         
-        // Compare stored gallery paths
-        for (const p of prevGalleryPaths) {
-          if (p && p.trim() !== '' && !imageGalleryPaths.includes(p)) {
-            removedPaths.push(p);
-          }
-        }
-        
-        // Also handle case where frontend only removed URLs (no new uploads)
-        // Derive storage paths from previous URLs that are no longer in the gallery
-        const removedUrls = prevGalleryUrls.filter(u => u && !imageGallery.includes(u));
-        for (const url of removedUrls) {
-          const derivedPath = extractStoragePathFromUrl(url);
-          if (derivedPath && !removedPaths.includes(derivedPath)) {
-            removedPaths.push(derivedPath);
-          }
-        }
-        
-        // Log for debugging
-        if (removedPaths.length > 0) {
-          console.log('Removed paths to enqueue:', removedPaths);
-        }
-
-        try {
-          // Use the lightweight RPC caller wrapper to avoid strict union RPC name types
-          const rpcParams = {
-            product_id: productId,
-            new_image_url: imageUrl,
-            new_image_gallery: imageGallery,
-            new_image_path: imagePathForPayload,
-            new_image_gallery_paths: imageGalleryPaths,
-            removed_paths: removedPaths.length > 0 ? removedPaths : [] // Ensure array is never null
-          };
-          
-          console.log('Calling rpc_update_product_gallery with params:', {
-            product_id: productId,
-            gallery_count: imageGallery.length,
-            paths_count: imageGalleryPaths.length,
-            removed_paths_count: removedPaths.length
-          });
-          
-          const { data: rpcRes, error: rpcErr } = await supabaseRpc.rpc('rpc_update_product_gallery', rpcParams);
-
-          // rpcErr is unknown; treat truthy as failure and fallback to direct update
-          if (rpcErr) {
-            console.warn('rpc_update_product_gallery failed, falling back to direct update:', rpcErr as unknown);
-            const { data: updatedProduct, error: updateError } = await supabase
-              .from('products')
-              .update(payload)
-              .eq('id', productId)
-              .select()
-              .single();
-            if (updateError) throw updateError;
-          } else {
-            console.log('rpc_update_product_gallery succeeded');
-          }
-        } catch (rpcCallErr) {
-          console.warn('Error calling rpc_update_product_gallery, falling back to direct update:', rpcCallErr);
-          const { data: updatedProduct, error: updateError } = await supabase
-            .from('products')
-            .update(payload)
-            .eq('id', productId)
-            .select()
-            .single();
-          if (updateError) throw updateError;
-        }
+        if (updateError) throw updateError;
       } catch (err) {
         console.warn('Error while updating product with image path fields:', err);
         // Fallback: try update without any image path fields
@@ -743,21 +710,8 @@ export const useProductCRUD = () => {
       if (fetchError) throw fetchError;
 
       const productAny = (product as ProductImageFields) || {};
-      const prevPaths: string[] = [];
-      if (typeof productAny.image_path === 'string' && productAny.image_path) prevPaths.push(productAny.image_path);
-      if (Array.isArray(productAny.image_gallery_paths)) prevPaths.push(...productAny.image_gallery_paths.filter(Boolean));
 
-      // Try RPC to delete product and enqueue storage deletes (preferred)
-      try {
-        const { data: rpcRes, error: rpcErr } = await supabaseRpc.rpc('rpc_delete_product_enqueue', { product_id: productId, removed_paths: prevPaths });
-        if (rpcErr) throw rpcErr;
-        toast({ title: 'Produk berhasil dihapus' });
-        return;
-      } catch (rpcErr) {
-        console.warn('rpc_delete_product_enqueue not available or failed, falling back to inline delete:', rpcErr);
-      }
-
-      // Fallback: delete images inline and then delete product record
+      // Delete images inline and then delete product record
       if (productAny.image_url) {
         await ProductImageManager.deleteProductImages(productId);
       }
