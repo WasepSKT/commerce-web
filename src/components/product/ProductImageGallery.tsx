@@ -20,8 +20,11 @@ export const ProductImageGallery = ({
   isOutOfStock,
   updatedAt
 }: ProductImageGalleryProps) => {
-  const transformedImageUrl = imageUrlWithCacheBust(imageUrl, updatedAt);
-  const transformedGallery = Array.isArray(imageGallery) ? imageGallery.map((s) => imageUrlWithCacheBust(s, updatedAt)) : imageGallery;
+  // Memoize transformed URLs to prevent unnecessary re-renders and resets
+  const transformedImageUrl = useMemo(() => imageUrlWithCacheBust(imageUrl, updatedAt), [imageUrl, updatedAt]);
+  const transformedGallery = useMemo(() => {
+    return Array.isArray(imageGallery) ? imageGallery.map((s) => imageUrlWithCacheBust(s, updatedAt)) : imageGallery;
+  }, [imageGallery, updatedAt]);
 
   const {
     imgRef,

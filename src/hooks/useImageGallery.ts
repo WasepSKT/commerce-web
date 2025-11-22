@@ -6,6 +6,9 @@ export const useImageGallery = (imageUrl: string, imageGallery?: string[]) => {
   const [mainIndex, setMainIndex] = useState(0);
   const [lensVisible, setLensVisible] = useState(false);
   const [bgPos, setBgPos] = useState({ x: 50, y: 50 });
+  
+  // Track previous gallery to detect actual product changes (not just cache busting)
+  const previousGalleryRef = useRef<string>('');
 
   const ZOOM = 2;
 
@@ -14,17 +17,40 @@ export const useImageGallery = (imageUrl: string, imageGallery?: string[]) => {
     const galleryRaw = Array.isArray(imageGallery) ? imageGallery.slice() : [];
     const g = galleryRaw.filter(Boolean);
     if (imageUrl && imageUrl.trim() !== '') {
-      const idx = g.indexOf(imageUrl);
+      // Remove cache busting params for comparison (everything after ?)
+      const cleanImageUrl = imageUrl.split('?')[0];
+      const idx = g.findIndex(url => {
+        const cleanUrl = url.split('?')[0];
+        return cleanUrl === cleanImageUrl;
+      });
       if (idx !== -1) g.splice(idx, 1);
       g.unshift(imageUrl);
     }
     return g.length > 0 ? g : (imageUrl && imageUrl.trim() !== '' ? [imageUrl] : []); // Ensure at least one image if imageUrl exists
   }, [imageUrl, imageGallery]);
 
-  // Reset index when product changes (imageUrl or imageGallery changes)
+  // Create a stable hash of gallery URLs (without cache busting params) to detect actual changes
+  const galleryHash = useMemo(() => {
+    if (gallery.length === 0) return '';
+    // Remove cache busting params and sort for stable comparison
+    const cleanUrls = gallery.map(url => {
+      const clean = url.split('?')[0];
+      // Also remove any hash fragments
+      return clean.split('#')[0];
+    }).filter(Boolean).sort().join('|');
+    return cleanUrls;
+  }, [gallery]);
+
+  // Reset index only when gallery actually changes (different product), not on cache busting
   useEffect(() => {
-    setMainIndex(0);
-  }, [imageUrl, imageGallery]);
+    // Only reset if this is a different product (different gallery URLs)
+    // Skip reset on initial mount (when previousGalleryRef is empty)
+    if (previousGalleryRef.current !== '' && previousGalleryRef.current !== galleryHash) {
+      setMainIndex(0);
+    }
+    // Update ref after checking, so we track the current gallery
+    previousGalleryRef.current = galleryHash;
+  }, [galleryHash]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const img = imgRef.current;
