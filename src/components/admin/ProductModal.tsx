@@ -158,6 +158,18 @@ export default function ProductModal({
       return;
     }
 
+    // If there are blob previews coming from local selection, do not
+    // overwrite the current `imageSlots` — keep local previews visible
+    // until the user saves or explicitly changes slots. This prevents
+    // a sync cycle where `productForm` (which stores filtered arrays)
+    // would cause `imageSlots` to be rebuilt and drop blob URLs.
+    if (
+      Array.isArray(productForm.imagePreviews) &&
+      productForm.imagePreviews.some((p) => typeof p === 'string' && p.startsWith('blob:'))
+    ) {
+      setIsLoadingImages(false);
+      return;
+    }
     // When editing: use imageGallery from productForm (populated by handleEdit)
     if (editingProduct) {
       const gallery = Array.isArray(productForm.imageGallery) ? productForm.imageGallery.filter(Boolean) : [];
