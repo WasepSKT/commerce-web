@@ -6,13 +6,6 @@ on:
       - dev
       - staging
       - main
-    paths:
-      - "src/**"
-      - "public/**"
-      - "index.html"
-      - "package*.json"
-      - "vite.config.ts"
-      - ".github/workflows/deploy-cpanel.yml"
 
 jobs:
   build-and-deploy:
