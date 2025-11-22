@@ -39,10 +39,9 @@ export default function CartItemCard({ item, onUpdate, onRemove }: CartItemCardP
         />
       </Link>
 
-
-      <div className="col-span-9 sm:col-span-10 p-3 flex-1 w-full flex flex-col">
+      <div className="col-span-9 sm:col-span-10 p-3 pl-0 flex-1 w-full flex flex-col">
         <div className="flex items-start justify-between w-full">
-          <div className="pr-2 flex-1 min-w-0">
+          <div className="flex-1 min-w-0">
             <h3 className="font-medium text-primary line-clamp-2">
               <Link to={`/product/${item.id}`} className="hover:underline">{item.name}</Link>
             </h3>
