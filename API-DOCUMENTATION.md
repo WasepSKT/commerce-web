@@ -38,7 +38,7 @@ Membuat session pembayaran baru untuk order. User akan diarahkan ke halaman Xend
 
 ```javascript
 {
-  "order_id": "ORDER123",                                      // Required
+  "order_id": "ORDER1234",                                      // Required
   "return_url": "https://regalpaw.id/payment/success"         // Optional - URL redirect setelah pembayaran
 }
 ```
