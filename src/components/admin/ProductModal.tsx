@@ -97,10 +97,38 @@ export default function ProductModal({
     galleryPaths: [undefined, undefined, undefined, undefined]
   });
 
-  // Sync imageSlots with productForm when editing product or form changes
+  // Cleanup blob URLs when modal closes
   React.useEffect(() => {
+    if (!open) {
+      // Cleanup all blob URLs when modal closes
+      setImageSlots((prev) => {
+        prev.previews.forEach((preview) => {
+          if (preview && preview.startsWith('blob:')) {
+            URL.revokeObjectURL(preview);
+          }
+        });
+        return prev; // Return unchanged to avoid state update
+      });
+    }
+  }, [open]);
+
+  // Track if we've initialized slots for this modal session
+  const initializedRef = React.useRef(false);
+
+  // Sync imageSlots with productForm when modal opens or editing product changes
+  // Only initialize once when modal opens, then let imageSlots be the source of truth
+  React.useEffect(() => {
+    // Reset initialization flag when modal closes
+    if (!open) {
+      initializedRef.current = false;
+      return;
+    }
+
+    // Only initialize once when modal opens
+    if (initializedRef.current) return;
+
     // When editing: use imageGallery from productForm (populated by handleEdit)
-    if (editingProduct && open) {
+    if (editingProduct) {
       const gallery = Array.isArray(productForm.imageGallery) ? productForm.imageGallery.filter(Boolean) : [];
       const galleryPaths = Array.isArray(productForm.imageGalleryPaths) ? productForm.imageGalleryPaths.filter(Boolean) : [];
       const previews = Array.isArray(productForm.imagePreviews) ? productForm.imagePreviews.filter(Boolean) : [];
@@ -126,21 +154,9 @@ export default function ProductModal({
         }
       });
 
-      // Map any new files that were added (these override existing images)
-      if (productForm.imageFiles && productForm.imageFiles.length > 0) {
-        productForm.imageFiles.forEach((file, idx) => {
-          if (idx < 4) {
-            newSlots.files[idx] = file;
-            // If there's a preview for this file, use it
-            if (productForm.imagePreviews && productForm.imagePreviews[idx]) {
-              newSlots.previews[idx] = productForm.imagePreviews[idx];
-            }
-          }
-        });
-      }
-
       setImageSlots(newSlots);
-    } else if (!editingProduct && open) {
+      initializedRef.current = true;
+    } else {
       // Reset slots when creating new product
       const resetSlots = {
         files: [undefined, undefined, undefined, undefined] as (File | undefined)[],
@@ -149,21 +165,10 @@ export default function ProductModal({
         galleryPaths: [undefined, undefined, undefined, undefined] as (string | undefined)[]
       };
 
-      // Map any new files that were added
-      if (productForm.imageFiles && productForm.imageFiles.length > 0) {
-        productForm.imageFiles.forEach((file, idx) => {
-          if (idx < 4) {
-            resetSlots.files[idx] = file;
-            if (productForm.imagePreviews && productForm.imagePreviews[idx]) {
-              resetSlots.previews[idx] = productForm.imagePreviews[idx];
-            }
-          }
-        });
-      }
-
       setImageSlots(resetSlots);
+      initializedRef.current = true;
     }
-  }, [editingProduct, open, productForm.imageGallery, productForm.imageGalleryPaths, productForm.imagePreviews, productForm.imageFiles]);
+  }, [editingProduct, open, productForm.imageGallery, productForm.imageGalleryPaths, productForm.imagePreviews]);
 
   // Helper to select a file for a specific slot (slot position is fixed 0-3)
   const selectFileForSlot = (idx: number) => {
@@ -182,14 +187,26 @@ export default function ProductModal({
 
       // Update local slot state and productForm simultaneously
       setImageSlots(prev => {
+        // Clean up old blob URL if exists to prevent memory leak
+        if (prev.previews[idx] && prev.previews[idx]?.startsWith('blob:')) {
+          URL.revokeObjectURL(prev.previews[idx]!);
+        }
+
         const newSlots = {
           files: [...prev.files],
           previews: [...prev.previews],
           gallery: [...prev.gallery],
           galleryPaths: [...prev.galleryPaths]
         };
+
+        // Set new file and blob preview
         newSlots.files[idx] = file;
         newSlots.previews[idx] = previewUrl;
+
+        // Clear gallery URL at this slot since we're replacing with new file
+        // (gallery will be updated after upload)
+        newSlots.gallery[idx] = undefined;
+        newSlots.galleryPaths[idx] = undefined;
 
         // Update productForm with filtered arrays (for backward compatibility)
         setProductForm(prevForm => ({
@@ -212,6 +229,11 @@ export default function ProductModal({
 
     // Update local slot state and productForm simultaneously
     setImageSlots(prev => {
+      // Cleanup blob URL if exists
+      if (prev.previews[idx] && prev.previews[idx]?.startsWith('blob:')) {
+        URL.revokeObjectURL(prev.previews[idx]!);
+      }
+
       const newSlots = {
         files: [...prev.files],
         previews: [...prev.previews],
