@@ -31,7 +31,7 @@ export default function CheckoutPage() {
   const { profile, updateProfile } = useAuth();
   const { toast } = useToast();
   const { order, setOrder, items, setItems, initializing, query } = useCheckoutInitialization();
-  const { clearImmediate: clearCart } = useCart();
+  const { clearImmediate: clearCart, removeItem, map: cartMap } = useCart();
   const { rates, selectedRate, setSelectedRate, loadingRates } = useCheckoutShippingRates(profile, items);
 
   const [creatingSession, setCreatingSession] = useState(false);
@@ -209,10 +209,70 @@ export default function CheckoutPage() {
             throw new Error(msg);
           }
 
-          try {
-            await clearCart();
-          } catch (err) {
-            console.debug('Failed to clear cart after checkout:', err);
+          // If checkout was initiated for a single product (product_id in query),
+          // only remove that product from the cart. If the flow was "from cart"
+          // or no product_id is present, clear the entire cart as before.
+          const singleProductId = query.get('product_id');
+          if (singleProductId) {
+            try {
+              // Remove locally
+              // Prepare a new map snapshot representing the expected state after removal
+              const prevMap = (cartMap as Record<string, number>) || {};
+              const newMap = { ...prevMap };
+              delete newMap[singleProductId];
+              removeItem(singleProductId);
+
+              // Sync to server immediately for authenticated users
+              if (profile?.user_id) {
+                const itemsArr = Object.entries(newMap).map(([product_id, quantity]) => ({ product_id, quantity }));
+                await supabase.from('carts').upsert({ user_id: profile.user_id, items: itemsArr, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+              } else {
+                // For unauthenticated users, update legacy localStorage cart shape used elsewhere
+                try {
+                  const raw = localStorage.getItem('rp_cart_v1');
+                  if (raw) {
+                    const parsed = JSON.parse(raw);
+                    let newVal: unknown | undefined;
+                    if (Array.isArray(parsed)) {
+                      const arr = parsed as unknown[];
+                      newVal = arr.filter((it) => {
+                        if (!it || typeof it !== 'object') return true;
+                        const rec = it as Record<string, unknown>;
+                        const pid = rec['product_id'] ?? rec['id'];
+                        return String(pid) !== singleProductId;
+                      });
+                    } else if (parsed && typeof parsed === 'object') {
+                      const obj = parsed as Record<string, unknown>;
+                      if (Array.isArray(obj.items)) {
+                        const itemsArr = obj.items as unknown[];
+                        const filtered = itemsArr.filter((it) => {
+                          if (!it || typeof it !== 'object') return true;
+                          const rec = it as Record<string, unknown>;
+                          const pid = rec['product_id'] ?? rec['id'];
+                          return String(pid) !== singleProductId;
+                        });
+                        newVal = { ...obj, items: filtered };
+                      } else {
+                        const copy = { ...obj };
+                        delete copy[singleProductId];
+                        newVal = copy;
+                      }
+                    }
+                    if (typeof newVal !== 'undefined') localStorage.setItem('rp_cart_v1', JSON.stringify(newVal));
+                  }
+                } catch (e) {
+                  console.debug('Failed to sync localStorage cart after single-item checkout', e);
+                }
+              }
+            } catch (err) {
+              console.debug('Failed to remove single item from cart after checkout:', err);
+            }
+          } else {
+            try {
+              await clearCart();
+            } catch (err) {
+              console.debug('Failed to clear cart after checkout:', err);
+            }
           }
         } catch (err) {
           console.error('Failed to call secure decrement RPC:', err);
@@ -289,7 +349,7 @@ export default function CheckoutPage() {
     } finally {
       setCreatingSession(false);
     }
-  }, [items, order, profile, selectedRate, subtotal, total, toast, TURNSTILE_SITEKEY, executeTurnstile, setOrder, captchaVerified, clearCart, navigate]);
+  }, [items, order, profile, selectedRate, subtotal, total, toast, TURNSTILE_SITEKEY, executeTurnstile, setOrder, captchaVerified, clearCart, removeItem, cartMap, query, navigate]);
 
   if (initializing) return null;
 

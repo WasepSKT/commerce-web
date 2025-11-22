@@ -34,11 +34,11 @@ export default function OrderItems({ items }: { items?: OrderItem[] }) {
                 ) : (
                   <div className="w-16 h-16 bg-gray-200 rounded" />
                 )}
-                <div className="flex-1">
-                  <p className="font-medium">{item.products?.name || `Product ${item.product_id.slice(0, 8)}`}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{item.products?.name || `Product ${item.product_id.slice(0, 8)}`}</p>
                   <p className="text-sm text-muted-foreground">{item.quantity} x Rp {item.price.toLocaleString('id-ID')}</p>
                 </div>
-                <p className="font-semibold">Rp {(item.price * item.quantity).toLocaleString('id-ID')}</p>
+                <p className="font-semibold flex-shrink-0">Rp {(item.price * item.quantity).toLocaleString('id-ID')}</p>
               </div>
             ))
           ) : (

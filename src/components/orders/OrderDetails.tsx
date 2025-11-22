@@ -1,5 +1,17 @@
 import { formatPrice } from '@/utils/orderHelpers';
 import type { Order } from '@/hooks/useOrders';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
+
+// Simple courier tracking URL templates. Add more mappings as needed.
+const COURIER_TRACKING: Record<string, (resi: string) => string> = {
+  JNE: (r) => `https://www.jne.co.id/id/tracking/trace` + `?awb=${encodeURIComponent(r)}`,
+  JNT: (r) => `https://tracking.jntos.co.id/waybill/${encodeURIComponent(r)}`,
+  SICEPAT: (r) => `https://tracking.sicepat.com/track/?awb=${encodeURIComponent(r)}`,
+  SICEPAT_ID: (r) => `https://tracking.sicepat.com/track/?awb=${encodeURIComponent(r)}`,
+  TIKI: (r) => `https://www.tiki.id/track?resi=${encodeURIComponent(r)}`,
+  JANDT: (r) => `https://jeki.id/track/${encodeURIComponent(r)}`,
+};
 
 interface OrderDetailsProps {
   order: Order;
@@ -29,7 +41,7 @@ export const OrderDetails = ({ order }: OrderDetailsProps) => {
       {(order.shipping_courier || order.tracking_number) && (
         <div className="pt-2 border-t">
           <h4 className="font-medium mb-2 text-primary">Informasi Pengiriman:</h4>
-          <div className="space-y-1 text-sm">
+          <div className="space-y-2 text-sm">
             {order.shipping_courier && (
               <p>
                 <span className="font-medium">Kurir:</span> {order.shipping_courier}
@@ -43,6 +55,32 @@ export const OrderDetails = ({ order }: OrderDetailsProps) => {
                 </code>
               </p>
             )}
+
+            <div className="mt-2 flex items-center gap-2">
+              {/* Show internal track button when order is beyond pending (assumed paid/processing).
+                  Place it to the right and style like the admin "Invoice" outline button. */}
+              {order.status !== 'pending' && (
+                <Link to={`/orders/${order.id}`} className="ml-auto">
+                  <Button size="sm" variant="outline" className="border-primary text-primary hover:bg-primary hover:text-white">
+                    Lacak Pesanan
+                  </Button>
+                </Link>
+              )}
+
+              {/* External courier link if we can construct one */}
+              {order.tracking_number && order.shipping_courier && (() => {
+                const key = String(order.shipping_courier).toUpperCase().replace(/[^A-Z0-9]/g, '');
+                const fn = COURIER_TRACKING[key];
+                if (fn) {
+                  return (
+                    <a href={fn(order.tracking_number)} target="_blank" rel="noreferrer">
+                      <Button size="sm" variant="outline">Lihat di Kurir</Button>
+                    </a>
+                  );
+                }
+                return null;
+              })()}
+            </div>
           </div>
         </div>
       )}
@@ -60,8 +98,8 @@ export const OrderDetails = ({ order }: OrderDetailsProps) => {
         <div className="pt-2 border-t">
           <h4 className="font-medium mb-2 text-primary">Catatan:</h4>
           <div className={`p-3 rounded-lg text-sm ${order.status === 'cancelled'
-              ? 'bg-red-50 border border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300'
-              : 'bg-yellow-50 border border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-300'
+            ? 'bg-red-50 border border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300'
+            : 'bg-yellow-50 border border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-300'
             }`}>
             {order.notes}
           </div>

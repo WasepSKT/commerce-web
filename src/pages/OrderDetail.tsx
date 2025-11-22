@@ -12,6 +12,7 @@ import { ORDER_STATUS_CONFIG } from '@/constants/orderStatus';
 import OrderHeader from '@/components/orders/OrderHeader';
 import ShippingInfo from '@/components/orders/ShippingInfo';
 import OrderItems from '@/components/orders/OrderItems';
+import OrderProgress from '@/components/orders/OrderProgress';
 import PaymentInfo from '@/components/orders/PaymentInfo';
 import SEOHead from '@/components/seo/SEOHead';
 import { useToast } from '@/hooks/use-toast';
@@ -252,9 +253,9 @@ export default function OrderDetail() {
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Button
-          variant="ghost"
+          variant="outline"
           onClick={() => navigate('/my-orders')}
-          className="mb-6"
+          className="mb-6 border-primary text-primary hover:bg-primary hover:text-white"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Kembali ke Pesanan Saya
@@ -263,18 +264,17 @@ export default function OrderDetail() {
         <div className="space-y-6">
           <OrderHeader orderId={order.id} createdAt={order.created_at} status={order.status} />
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             <div className="space-y-4">
+              <OrderProgress status={order.status} payment_method={order.payment_method} payment_channel={order.payment_channel} shipping_cost={order.shipping_cost} tracking_number={order.tracking_number} shipping_courier={order.shipping_courier} created_at={order.created_at} />
+              <OrderItems items={order.order_items} />
               <ShippingInfo order={order} />
               <PaymentInfo payment_method={order.payment_method} payment_channel={order.payment_channel} total_amount={order.total_amount} shipping_cost={order.shipping_cost} />
-            </div>
 
-            <div className="space-y-4">
-              <OrderItems items={order.order_items} />
               {order.notes && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Catatan</CardTitle>
+                    <CardTitle className="text-primary">Catatan</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm">{order.notes}</p>
