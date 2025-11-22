@@ -460,38 +460,64 @@ export const useProductCRUD = () => {
         setUploading(true);
 
         // Create array with fixed 4 slots to preserve slot positions
-        // Map files to their correct slots based on imageGallery order
-        // Key: imageGallery from form represents the desired final state in order
-        // New files (from imageFiles) should be placed where they appear in imageGallery
+        // Use slot information from meta if available, otherwise fall back to sequential mapping
         const filesWithSlots: (File | undefined)[] = [undefined, undefined, undefined, undefined];
         
-        // Strategy: Match files to slots by comparing imagePreviews with imageGallery
-        // imagePreviews[i] corresponds to imageFiles[i]
-        // We need to find which slot in imageGallery matches each preview
-        if (Array.isArray(form.imagePreviews) && 
-            Array.isArray(form.imageGallery) && 
-            form.imagePreviews.length === form.imageFiles.length) {
-          
+        // Check if slot information is available in meta
+        const fileSlots = Array.isArray(form.meta?._imageFileSlots) ? form.meta._imageFileSlots as number[] : null;
+        const previewSlots = Array.isArray(form.meta?._imagePreviewSlots) ? form.meta._imagePreviewSlots as number[] : null;
+        
+        if (fileSlots && fileSlots.length === form.imageFiles.length) {
+          // Use slot information from meta to map files correctly
+          form.imageFiles.forEach((file, fileIdx) => {
+            const slotIndex = fileSlots[fileIdx];
+            if (slotIndex >= 0 && slotIndex < 4) {
+              filesWithSlots[slotIndex] = file;
+            }
+          });
+        } else if (Array.isArray(form.imagePreviews) && 
+                   Array.isArray(form.imageFiles) &&
+                   form.imagePreviews.length === form.imageFiles.length) {
+          // Fallback: map files to slots based on preview type and gallery position
           form.imageFiles.forEach((file, fileIdx) => {
             const preview = form.imagePreviews[fileIdx];
             if (!preview) return;
             
-            // Check if this is a new file (blob URL) or existing (http URL)
+            // Check if this is a new file (blob URL)
             const isNewFile = preview.startsWith('blob:');
             
             if (isNewFile) {
-              // New file: find its position in imageGallery
-              // Since imageGallery is the desired final state, the file's position
-              // in imageFiles array should correspond to its position in imageGallery
-              // But we need to account for existing items that aren't being replaced
-              
-              // Simple mapping: file at index i in imageFiles should go to slot i
-              // But only if that slot is being updated (has a new preview)
+              // New file: try to determine slot from gallery position
+              // If imageGallery is provided, try to match by position
+              // Otherwise, use sequential mapping
               let targetSlot = fileIdx;
               
-              // If imageGallery has more items than files, we need to be smarter
-              // Actually, since imageGallery is filtered, it only contains non-undefined items
-              // So we map sequentially: first file to first slot, second to second, etc.
+              if (Array.isArray(form.imageGallery) && form.imageGallery.length > 0) {
+                // Try to find slot by matching preview position with gallery
+                // Count how many new files (blob URLs) come before this one
+                let newFileCount = 0;
+                for (let i = 0; i < fileIdx; i++) {
+                  if (form.imagePreviews[i]?.startsWith('blob:')) {
+                    newFileCount++;
+                  }
+                }
+                
+                // Count existing gallery items that are NOT being replaced
+                let existingNotReplaced = 0;
+                if (Array.isArray(form.imageGallery)) {
+                  form.imageGallery.forEach((galleryUrl) => {
+                    // Check if this gallery URL is NOT in imagePreviews (meaning it's not being replaced)
+                    const isReplaced = form.imagePreviews.some(p => p === galleryUrl);
+                    if (!isReplaced && galleryUrl && !galleryUrl.startsWith('blob:')) {
+                      existingNotReplaced++;
+                    }
+                  });
+                }
+                
+                // Target slot = existing items not replaced + new files placed before this one
+                targetSlot = existingNotReplaced + newFileCount;
+              }
+              
               if (targetSlot < 4) {
                 filesWithSlots[targetSlot] = file;
               }
@@ -499,7 +525,7 @@ export const useProductCRUD = () => {
             // Existing files (http URLs) don't need to be uploaded again
           });
         } else {
-          // Fallback: map files sequentially to slots (simple case)
+          // Last resort: map sequentially
           form.imageFiles.forEach((file, idx) => {
             if (idx < 4) {
               filesWithSlots[idx] = file;

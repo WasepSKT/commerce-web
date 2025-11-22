@@ -669,15 +669,58 @@ export default function ProductModal({
                 const imageGalleryWithSlots: (string | undefined)[] = imageSlots.gallery;
                 const imageGalleryPathsWithSlots: (string | undefined)[] = imageSlots.galleryPaths;
 
+                // Build arrays with slot information preserved
+                // For files: create array with slot index info
+                const filesWithSlotInfo: { file: File; slotIndex: number }[] = [];
+                const previewsWithSlotInfo: { preview: string; slotIndex: number }[] = [];
+
+                for (let i = 0; i < 4; i++) {
+                  if (imageFilesWithSlots[i] !== undefined) {
+                    filesWithSlotInfo.push({ file: imageFilesWithSlots[i]!, slotIndex: i });
+                  }
+                  if (imagePreviewsWithSlots[i] !== undefined && imagePreviewsWithSlots[i]?.trim() !== '') {
+                    previewsWithSlotInfo.push({ preview: imagePreviewsWithSlots[i]!, slotIndex: i });
+                  }
+                }
+
+                // Build final gallery preserving slot positions
+                const finalGallery: (string | undefined)[] = [];
+                const finalPaths: (string | undefined)[] = [];
+
+                for (let i = 0; i < 4; i++) {
+                  const hasFile = imageFilesWithSlots[i] !== undefined;
+                  const hasGallery = imageGalleryWithSlots[i] !== undefined && imageGalleryWithSlots[i]?.trim() !== '';
+
+                  if (hasFile) {
+                    // New file: will be uploaded, gallery URL will be set after upload
+                    // For now, keep existing gallery URL if any, or use preview as placeholder
+                    finalGallery[i] = imageGalleryWithSlots[i] || imagePreviewsWithSlots[i];
+                  } else if (hasGallery) {
+                    // Existing image: use gallery URL
+                    finalGallery[i] = imageGalleryWithSlots[i];
+                    if (imageGalleryPathsWithSlots[i]) {
+                      finalPaths[i] = imageGalleryPathsWithSlots[i];
+                    }
+                  }
+                }
+
+                // Build meta with slot information
+                const metaWithSlots = {
+                  ...(productForm.meta || {}),
+                  _imageFileSlots: filesWithSlotInfo.map(item => item.slotIndex), // Slot indices for each file
+                  _imagePreviewSlots: previewsWithSlotInfo.map(item => item.slotIndex), // Slot indices for each preview
+                };
+
                 const merged: ProductForm = {
                   ...productForm,
-                  // Filter undefined for imageFiles (ProductForm expects File[])
-                  // But we preserve slot info through imageGallery
-                  imageFiles: imageFilesWithSlots.filter((f): f is File => f !== undefined),
-                  imagePreviews: imagePreviewsWithSlots.filter((p): p is string => p !== undefined),
-                  // Filter undefined but preserve order (slots are already in correct positions)
-                  imageGallery: imageGalleryWithSlots.filter((g): g is string => g !== undefined && g !== null),
-                  imageGalleryPaths: imageGalleryPathsWithSlots.filter((p): p is string => p !== undefined && p !== null && p.trim() !== ''),
+                  // Send files and previews in order, but we'll use slot info to map correctly
+                  imageFiles: filesWithSlotInfo.map(item => item.file),
+                  imagePreviews: previewsWithSlotInfo.map(item => item.preview),
+                  // Send gallery with slot positions preserved (use index as slot indicator)
+                  imageGallery: finalGallery.filter((g): g is string => g !== undefined && g !== null),
+                  imageGalleryPaths: finalPaths.filter((p): p is string => p !== undefined && p !== null && p.trim() !== ''),
+                  // Add slot mapping info to meta for useProductCRUD to use
+                  meta: metaWithSlots,
                   brand,
                   product_type: productType || productForm.product_type,
                   pet_type: petType || productForm.pet_type,
@@ -690,11 +733,7 @@ export default function ProductModal({
                   height_cm: heightVal ? Number(heightVal) : (productForm.height_cm ?? undefined),
                   discount_percent: discountPercent ? Number(discountPercent) : (productForm.discount_percent ?? undefined),
                   sku: sku || productForm.sku,
-                  shipping_options: shippingOptions.length ? shippingOptions : (productForm.shipping_options ?? []),
-                  meta: {
-                    ...(productForm.meta || {}),
-                    // Keep only non-spec metadata here; explicit spec fields are stored on top-level
-                  }
+                  shipping_options: shippingOptions.length ? shippingOptions : (productForm.shipping_options ?? [])
                 };
                 await onSave(merged);
               }}
