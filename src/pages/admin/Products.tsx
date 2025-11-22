@@ -129,26 +129,46 @@ export default function AdminProductsPage() {
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
-    // Build previews: slot1 = image_url (cover), slots 2-4 = image_gallery entries
+
+    // Build image gallery: combine image_url and image_gallery, max 4 images
+    // image_url is the cover (slot 0), then add from image_gallery
     const gallery = Array.isArray(product.image_gallery) ? product.image_gallery.filter(Boolean) as string[] : [];
-    const previews: string[] = [];
-    if (product.image_url) previews.push(product.image_url);
-    for (const g of gallery) {
-      if (previews.length >= 4) break;
-      if (g === product.image_url) continue; // avoid duplicate
-      previews.push(g);
+    const imageGallery: string[] = [];
+
+    // Add image_url as first image (cover) if it exists
+    if (product.image_url && product.image_url.trim() !== '') {
+      imageGallery.push(product.image_url);
     }
+
+    // Add remaining images from gallery (avoid duplicates)
+    for (const g of gallery) {
+      if (imageGallery.length >= 4) break;
+      if (g && g.trim() !== '' && !imageGallery.includes(g)) {
+        imageGallery.push(g);
+      }
+    }
+
+    // Build previews array (same as imageGallery for display)
+    const previews = [...imageGallery];
+
+    // Get image_gallery_paths from product (may not be in Product type, so use type assertion)
+    const productWithPaths = product as Product & { image_gallery_paths?: string[] | null };
+    const imageGalleryPaths = Array.isArray(productWithPaths.image_gallery_paths)
+      ? productWithPaths.image_gallery_paths.filter(Boolean) as string[]
+      : [];
 
     setProductForm({
       name: product.name,
       description: product.description,
       price: product.price.toString(),
-      image_url: product.image_url,
+      image_url: product.image_url || '',
       imageFiles: [],
       imagePreviews: previews,
+      // Set imageGallery and imageGalleryPaths so ProductModal can display existing images
+      imageGallery: imageGallery,
+      imageGalleryPaths: imageGalleryPaths,
       category: product.category,
-      stock_quantity: product.stock_quantity.toString()
-      ,
+      stock_quantity: product.stock_quantity.toString(),
       brand: product.brand ?? undefined,
       product_type: product.product_type ?? undefined,
       pet_type: product.pet_type ?? undefined,

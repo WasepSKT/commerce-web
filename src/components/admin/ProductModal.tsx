@@ -99,13 +99,13 @@ export default function ProductModal({
 
   // Sync imageSlots with productForm when editing product or form changes
   React.useEffect(() => {
-    if (editingProduct && productForm.imageGallery) {
-      const gallery = Array.isArray(productForm.imageGallery) ? productForm.imageGallery : [];
-      const galleryPaths = Array.isArray(productForm.imageGalleryPaths) ? productForm.imageGalleryPaths : [];
-      const previews = Array.isArray(productForm.imagePreviews) ? productForm.imagePreviews : [];
+    // When editing: use imageGallery from productForm (populated by handleEdit)
+    if (editingProduct && open) {
+      const gallery = Array.isArray(productForm.imageGallery) ? productForm.imageGallery.filter(Boolean) : [];
+      const galleryPaths = Array.isArray(productForm.imageGalleryPaths) ? productForm.imageGalleryPaths.filter(Boolean) : [];
+      const previews = Array.isArray(productForm.imagePreviews) ? productForm.imagePreviews.filter(Boolean) : [];
 
-      // Map existing gallery to fixed slots (max 4)
-      // Important: gallery array may be filtered (no undefined), so we map sequentially
+      // Initialize fixed 4 slots
       const newSlots = {
         files: [undefined, undefined, undefined, undefined] as (File | undefined)[],
         previews: [undefined, undefined, undefined, undefined] as (string | undefined)[],
@@ -113,28 +113,34 @@ export default function ProductModal({
         galleryPaths: [undefined, undefined, undefined, undefined] as (string | undefined)[]
       };
 
-      // Map gallery to slots sequentially (preserves order)
+      // Map gallery URLs to slots sequentially (preserves order, max 4)
       gallery.forEach((url, idx) => {
-        if (idx < 4) {
+        if (idx < 4 && url && url.trim() !== '') {
           newSlots.gallery[idx] = url;
+          // Use preview if available, otherwise use gallery URL
           newSlots.previews[idx] = previews[idx] || url;
-          if (galleryPaths[idx]) {
+          // Map corresponding path if available
+          if (idx < galleryPaths.length && galleryPaths[idx]) {
             newSlots.galleryPaths[idx] = galleryPaths[idx];
           }
         }
       });
 
-      // Also map any new files that were added
-      if (productForm.imageFiles) {
+      // Map any new files that were added (these override existing images)
+      if (productForm.imageFiles && productForm.imageFiles.length > 0) {
         productForm.imageFiles.forEach((file, idx) => {
           if (idx < 4) {
             newSlots.files[idx] = file;
+            // If there's a preview for this file, use it
+            if (productForm.imagePreviews && productForm.imagePreviews[idx]) {
+              newSlots.previews[idx] = productForm.imagePreviews[idx];
+            }
           }
         });
       }
 
       setImageSlots(newSlots);
-    } else if (!editingProduct) {
+    } else if (!editingProduct && open) {
       // Reset slots when creating new product
       const resetSlots = {
         files: [undefined, undefined, undefined, undefined] as (File | undefined)[],
@@ -144,7 +150,7 @@ export default function ProductModal({
       };
 
       // Map any new files that were added
-      if (productForm.imageFiles) {
+      if (productForm.imageFiles && productForm.imageFiles.length > 0) {
         productForm.imageFiles.forEach((file, idx) => {
           if (idx < 4) {
             resetSlots.files[idx] = file;
@@ -157,7 +163,7 @@ export default function ProductModal({
 
       setImageSlots(resetSlots);
     }
-  }, [editingProduct, productForm.imageGallery, productForm.imageGalleryPaths, productForm.imagePreviews, productForm.imageFiles]);
+  }, [editingProduct, open, productForm.imageGallery, productForm.imageGalleryPaths, productForm.imagePreviews, productForm.imageFiles]);
 
   // Helper to select a file for a specific slot (slot position is fixed 0-3)
   const selectFileForSlot = (idx: number) => {
@@ -204,13 +210,14 @@ export default function ProductModal({
   const removeSlot = (idx: number) => {
     if (idx < 0 || idx >= 4) return; // Ensure valid slot index
 
-    // Update local slot state
+    // Update local slot state and productForm simultaneously
     setImageSlots(prev => {
-      const newSlots = { ...prev };
-      newSlots.files = [...prev.files];
-      newSlots.previews = [...prev.previews];
-      newSlots.gallery = [...prev.gallery];
-      newSlots.galleryPaths = [...prev.galleryPaths];
+      const newSlots = {
+        files: [...prev.files],
+        previews: [...prev.previews],
+        gallery: [...prev.gallery],
+        galleryPaths: [...prev.galleryPaths]
+      };
 
       // Clear only this specific slot
       newSlots.files[idx] = undefined;
@@ -218,24 +225,16 @@ export default function ProductModal({
       newSlots.gallery[idx] = undefined;
       newSlots.galleryPaths[idx] = undefined;
 
-      return newSlots;
-    });
-
-    // Update productForm with filtered arrays
-    setProductForm(prev => {
-      const newSlots = { ...imageSlots };
-      newSlots.files[idx] = undefined;
-      newSlots.previews[idx] = undefined;
-      newSlots.gallery[idx] = undefined;
-      newSlots.galleryPaths[idx] = undefined;
-
-      return {
-        ...prev,
+      // Update productForm with filtered arrays (use newSlots, not prev)
+      setProductForm(prevForm => ({
+        ...prevForm,
         imageFiles: newSlots.files.filter((f): f is File => f !== undefined),
         imagePreviews: newSlots.previews.filter((p): p is string => p !== undefined),
         imageGallery: newSlots.gallery.filter((g): g is string => g !== undefined && g !== null),
         imageGalleryPaths: newSlots.galleryPaths.filter((p): p is string => p !== undefined && p !== null && p.trim() !== '')
-      } as ProductForm;
+      }));
+
+      return newSlots;
     });
   };
   // Derived placeholder for product type based on category/petType
@@ -290,17 +289,32 @@ export default function ProductModal({
                 <div className="mt-2 grid grid-cols-4 gap-3">
                   {Array.from({ length: 4 }).map((_, idx) => {
                     // Use imageSlots for display to maintain fixed slot positions
+                    // Priority: preview (for new files) > gallery URL (for existing images)
                     const slotPreview = imageSlots.previews[idx] || imageSlots.gallery[idx];
-                    const hasImage = slotPreview !== undefined && slotPreview !== null;
+                    const hasImage = slotPreview !== undefined && slotPreview !== null && slotPreview.trim() !== '';
 
                     return (
                       <div key={idx} className="flex flex-col items-stretch">
                         <div className="relative w-full aspect-square rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden bg-white">
                           {hasImage ? (
                             <>
-                              <img src={slotPreview} className="w-full h-full object-cover" alt={`preview-${idx}`} />
+                              <img
+                                src={slotPreview}
+                                className="w-full h-full object-cover"
+                                alt={`preview-${idx}`}
+                                onError={(e) => {
+                                  // Fallback if image fails to load
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                }}
+                              />
                               <div className="absolute top-2 right-2 flex space-x-2">
-                                <Button size="sm" variant="outline" onClick={() => removeSlot(idx)}>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => removeSlot(idx)}
+                                  className="bg-white/90 hover:bg-white"
+                                >
                                   <X className="w-4 h-4" />
                                 </Button>
                               </div>
