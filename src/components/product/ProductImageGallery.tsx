@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { useImageGallery } from '@/hooks/useImageGallery';
 import { imageUrlWithCacheBust } from '@/utils/imageHelpers';
@@ -36,8 +37,16 @@ export const ProductImageGallery = ({
     hasMultipleImages,
   } = useImageGallery(transformedImageUrl, transformedGallery);
 
+  // Ensure mainIndex is within valid range
   const clampedIndex = Math.min(Math.max(mainIndex, 0), Math.max(gallery.length - 1, 0));
-  const mainImage = gallery[clampedIndex] ?? 'https://images.unsplash.com/photo-1548681528-6a5c45b66b42?w=600';
+
+  // Get main image from gallery - use useMemo to ensure it updates when mainIndex or gallery changes
+  const mainImage = useMemo(() => {
+    if (gallery.length > 0 && gallery[clampedIndex]) {
+      return gallery[clampedIndex];
+    }
+    return gallery[0] || 'https://images.unsplash.com/photo-1548681528-6a5c45b66b42?w=600';
+  }, [gallery, clampedIndex]);
 
   return (
     <div className="space-y-4">
@@ -52,6 +61,7 @@ export const ProductImageGallery = ({
           onMouseLeave={() => setLensVisible(false)}
         >
           <img
+            key={`${mainImage}-${clampedIndex}`}
             ref={imgRef}
             src={mainImage}
             alt={productName}
@@ -91,10 +101,11 @@ export const ProductImageGallery = ({
             const selected = i === clampedIndex;
             return (
               <button
-                key={i}
+                key={`thumb-${src}-${i}`}
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
+                  e.preventDefault();
                   setMainIndex(i);
                 }}
                 aria-pressed={selected}

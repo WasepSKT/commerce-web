@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -112,20 +112,51 @@ export default function ProductModal({
     }
   }, [open]);
 
-  // Track if we've initialized slots for this modal session
-  const initializedRef = React.useRef(false);
+  // Track current product ID to detect when product changes
+  const currentProductIdRef = React.useRef<string | null>(null);
+  const [isLoadingImages, setIsLoadingImages] = React.useState(false);
+
+  // Use useLayoutEffect to clear old images synchronously before paint
+  // This prevents flicker by ensuring old images are removed before new ones render
+  useLayoutEffect(() => {
+    // Detect product change
+    const newProductId = editingProduct?.id || null;
+    const productChanged = currentProductIdRef.current !== newProductId;
+
+    if (productChanged && open) {
+      // Product changed: immediately clear old images synchronously
+      setIsLoadingImages(true);
+
+      // Cleanup blob URLs from previous product
+      setImageSlots((prev) => {
+        prev.previews.forEach((preview) => {
+          if (preview && preview.startsWith('blob:')) {
+            URL.revokeObjectURL(preview);
+          }
+        });
+        // Return empty slots immediately (synchronous)
+        return {
+          files: [undefined, undefined, undefined, undefined],
+          previews: [undefined, undefined, undefined, undefined],
+          gallery: [undefined, undefined, undefined, undefined],
+          galleryPaths: [undefined, undefined, undefined, undefined]
+        };
+      });
+
+      // Update current product ID
+      currentProductIdRef.current = newProductId;
+    }
+  }, [editingProduct?.id, open]);
 
   // Sync imageSlots with productForm when modal opens or editing product changes
-  // Only initialize once when modal opens, then let imageSlots be the source of truth
+  // Load new images after old ones are cleared
   React.useEffect(() => {
-    // Reset initialization flag when modal closes
+    // Reset when modal closes
     if (!open) {
-      initializedRef.current = false;
+      currentProductIdRef.current = null;
+      setIsLoadingImages(false);
       return;
     }
-
-    // Only initialize once when modal opens
-    if (initializedRef.current) return;
 
     // When editing: use imageGallery from productForm (populated by handleEdit)
     if (editingProduct) {
@@ -154,8 +185,10 @@ export default function ProductModal({
         }
       });
 
+      // Set new images and clear loading state
+      // Old images are already cleared in useLayoutEffect above
       setImageSlots(newSlots);
-      initializedRef.current = true;
+      setIsLoadingImages(false);
     } else {
       // Reset slots when creating new product
       const resetSlots = {
@@ -166,7 +199,7 @@ export default function ProductModal({
       };
 
       setImageSlots(resetSlots);
-      initializedRef.current = true;
+      setIsLoadingImages(false);
     }
   }, [editingProduct, open, productForm.imageGallery, productForm.imageGalleryPaths, productForm.imagePreviews]);
 
@@ -312,8 +345,9 @@ export default function ProductModal({
                   {Array.from({ length: 4 }).map((_, idx) => {
                     // Use imageSlots for display to maintain fixed slot positions
                     // Priority: preview (for new files) > gallery URL (for existing images)
-                    const slotPreview = imageSlots.previews[idx] || imageSlots.gallery[idx];
-                    const hasImage = slotPreview !== undefined && slotPreview !== null && slotPreview.trim() !== '';
+                    // Don't show images if loading (prevents flicker when switching products)
+                    const slotPreview = !isLoadingImages ? (imageSlots.previews[idx] || imageSlots.gallery[idx]) : undefined;
+                    const hasImage = !isLoadingImages && slotPreview !== undefined && slotPreview !== null && slotPreview.trim() !== '';
 
                     return (
                       <div key={idx} className="flex flex-col items-stretch">
@@ -321,6 +355,7 @@ export default function ProductModal({
                           {hasImage ? (
                             <>
                               <img
+                                key={`${editingProduct?.id || 'new'}-${idx}-${slotPreview}`}
                                 src={slotPreview}
                                 className="w-full h-full object-cover"
                                 alt={`preview-${idx}`}

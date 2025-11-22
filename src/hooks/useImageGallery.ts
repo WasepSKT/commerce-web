@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 
 export const useImageGallery = (imageUrl: string, imageGallery?: string[]) => {
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -9,21 +9,19 @@ export const useImageGallery = (imageUrl: string, imageGallery?: string[]) => {
 
   const ZOOM = 2;
 
-  // Build gallery with cover image first
-  const buildGallery = () => {
+  // Build gallery with cover image first - use useMemo to make it reactive
+  const gallery = useMemo(() => {
     const galleryRaw = Array.isArray(imageGallery) ? imageGallery.slice() : [];
     const g = galleryRaw.filter(Boolean);
-    if (imageUrl) {
+    if (imageUrl && imageUrl.trim() !== '') {
       const idx = g.indexOf(imageUrl);
       if (idx !== -1) g.splice(idx, 1);
       g.unshift(imageUrl);
     }
-    return g.length > 0 ? g : [imageUrl]; // Ensure at least one image
-  };
+    return g.length > 0 ? g : (imageUrl && imageUrl.trim() !== '' ? [imageUrl] : []); // Ensure at least one image if imageUrl exists
+  }, [imageUrl, imageGallery]);
 
-  const gallery = buildGallery();
-
-  // Reset index when product changes
+  // Reset index when product changes (imageUrl or imageGallery changes)
   useEffect(() => {
     setMainIndex(0);
   }, [imageUrl, imageGallery]);
