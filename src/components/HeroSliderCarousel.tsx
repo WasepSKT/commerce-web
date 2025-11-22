@@ -63,10 +63,22 @@ export function HeroSliderCarousel() {
   };
 
   if (loading) {
+    // Better skeleton that matches the real banner layout
     return (
-      <div className="relative h-[20vh] md:h-96 bg-gradient-to-r from-brand-primary/10 to-brand-primary/5 rounded-lg animate-pulse">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-brand-primary/40">Loading...</div>
+      <div className="relative h-[20vh] md:h-96 overflow-hidden rounded-lg bg-transparent">
+        <div className="absolute inset-0 bg-gradient-to-r from-brand-primary/10 to-brand-primary/5" />
+        <div className="relative h-full flex items-center justify-center px-4 md:px-8">
+          <div className="w-full max-w-3xl text-center">
+            <div className="mb-3">
+              <div className="animate-pulse mx-auto h-6 md:h-10 bg-gray-200 rounded w-3/4" />
+            </div>
+            <div className="hidden md:block mb-4">
+              <div className="animate-pulse mx-auto h-4 md:h-6 bg-gray-200 rounded w-5/6" />
+            </div>
+            <div className="flex items-center justify-center mt-2">
+              <div className="animate-pulse h-9 md:h-12 bg-gray-200 rounded w-36 md:w-44" />
+            </div>
+          </div>
         </div>
       </div>
     );

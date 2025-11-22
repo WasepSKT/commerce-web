@@ -32,20 +32,21 @@ export const OrderCard = ({
   const expired = isOrderExpired(order);
 
   return (
-    <Card className={expired ? 'border-red-200 bg-red-50/50' : ''}>
+    <Card className={`${expired ? 'border-red-200 bg-red-50/50' : ''} rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow`}>
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <div className="flex justify-between items-start">
+          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3 px-3 md:py-4 md:px-4">
+            <div className="flex justify-between items-start gap-3">
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <CardTitle className="text-lg text-primary">
+                  <CardTitle className="text-base md:text-lg text-primary truncate">
                     Pesanan #{order.id.slice(0, 8)}
                   </CardTitle>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-6 w-6 p-0 shrink-0"
+                    aria-label={isExpanded ? 'Collapse' : 'Expand'}
                   >
                     {isExpanded ? (
                       <ChevronUp className="h-4 w-4" />
@@ -54,12 +55,12 @@ export const OrderCard = ({
                     )}
                   </Button>
                 </div>
-                <CardDescription>
+                <CardDescription className="text-sm text-muted-foreground">
                   {formatDate(order.created_at)} • Total: {formatPrice(order.total_amount)}
                 </CardDescription>
               </div>
               <div className="text-right">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 mb-1 md:mb-2">
                   <StatusIcon className={`h-4 w-4 ${statusInfo.color}`} />
                   <Badge variant={statusInfo.variant}>
                     {statusInfo.label}
@@ -83,8 +84,8 @@ export const OrderCard = ({
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <CardContent>
-            <div className="space-y-4">
+          <CardContent className="px-3 py-3 md:px-4 md:py-4">
+            <div className="space-y-3 md:space-y-4">
               <OrderDetails order={order} />
               <OrderActions
                 order={order}

@@ -7,8 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Package, MapPin, CreditCard, Truck } from 'lucide-react';
+import { ArrowLeft, Package } from 'lucide-react';
 import { ORDER_STATUS_CONFIG } from '@/constants/orderStatus';
+import OrderHeader from '@/components/orders/OrderHeader';
+import ShippingInfo from '@/components/orders/ShippingInfo';
+import OrderItems from '@/components/orders/OrderItems';
+import PaymentInfo from '@/components/orders/PaymentInfo';
 import SEOHead from '@/components/seo/SEOHead';
 import { useToast } from '@/hooks/use-toast';
 import { imageUrlWithCacheBust } from '@/utils/imageHelpers';
@@ -157,16 +161,43 @@ export default function OrderDetail() {
       <Layout>
         <div className="container mx-auto px-4 py-8 max-w-4xl">
           <Skeleton className="h-8 w-48 mb-6" />
+
+          {/* Header skeleton */}
           <Card>
             <CardHeader>
-              <Skeleton className="h-6 w-32" />
+              <div className="flex items-center justify-between w-full">
+                <div className="flex-1">
+                  <Skeleton className="h-8 w-48" />
+                  <Skeleton className="h-4 w-32 mt-2" />
+                </div>
+                <div className="w-32">
+                  <Skeleton className="h-8 w-24 ml-auto" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </CardContent>
           </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <div className="space-y-4">
+              <Skeleton className="h-40 w-full rounded-md" />
+              <Skeleton className="h-36 w-full rounded-md" />
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-3">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <Skeleton className="w-16 h-16 rounded" />
+                    <div className="flex-1">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2 mt-2" />
+                    </div>
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </Layout>
     );
@@ -229,140 +260,28 @@ export default function OrderDetail() {
         </Button>
 
         <div className="space-y-6">
-          {/* Order Header */}
-          <Card>
-            <CardHeader>
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <CardTitle className="text-2xl text-primary">Pesanan #{order.id.slice(0, 8)}</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Dibuat pada {new Date(order.created_at).toLocaleString('id-ID')}
-                  </p>
-                </div>
-                <Badge variant={statusConfig.variant} className="w-fit">
-                  <StatusIcon className={`mr-2 h-4 w-4 ${statusConfig.color}`} />
-                  {statusConfig.label}
-                </Badge>
-              </div>
-            </CardHeader>
-          </Card>
+          <OrderHeader orderId={order.id} createdAt={order.created_at} status={order.status} />
 
-          {/* Customer Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-primary">
-                <MapPin className="h-5 w-5 text-primary" />
-                Informasi Pengiriman
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div>
-                <p className="text-sm text-muted-foreground">Nama Penerima</p>
-                <p className="font-medium">{order.customer_name}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Nomor Telepon</p>
-                <p className="font-medium">{order.customer_phone}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Alamat Lengkap</p>
-                <p className="font-medium">{order.customer_address}</p>
-              </div>
-              {order.shipping_courier && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Kurir</p>
-                  <p className="font-medium">{order.shipping_courier}</p>
-                </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <ShippingInfo order={order} />
+              <PaymentInfo payment_method={order.payment_method} payment_channel={order.payment_channel} total_amount={order.total_amount} />
+            </div>
+
+            <div className="space-y-4">
+              <OrderItems items={order.order_items} />
+              {order.notes && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Catatan</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm">{order.notes}</p>
+                  </CardContent>
+                </Card>
               )}
-              {order.tracking_number && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Nomor Resi</p>
-                  <p className="font-medium font-mono">{order.tracking_number}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Order Items */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-primary">
-                <Package className="h-5 w-5 text-primary" />
-                Produk yang Dipesan
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {order.order_items && order.order_items.length > 0 ? (
-                  order.order_items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-4 p-4 border rounded-lg"
-                    >
-                      {item.products?.image_url && (
-                        <img
-                          src={imageUrlWithCacheBust(item.products.image_url, order.created_at)}
-                          alt={item.products.name}
-                          className="w-16 h-16 object-cover rounded"
-                        />
-                      )}
-                      <div className="flex-1">
-                        <p className="font-medium">
-                          {item.products?.name || `Product ${item.product_id.slice(0, 8)}`}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {item.quantity} x {formatPrice(item.price)}
-                        </p>
-                      </div>
-                      <p className="font-semibold">
-                        {formatPrice(item.price * item.quantity)}
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">Tidak ada produk</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Payment Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-primary">
-                <CreditCard className="h-5 w-5 text-primary" />
-                Informasi Pembayaran
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Metode Pembayaran</span>
-                <span className="font-medium">{order.payment_method ?? 'Belum tersedia'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Channel</span>
-                <span className="font-medium">{order.payment_channel ?? 'Belum tersedia'}</span>
-              </div>
-              <div className="flex justify-between pt-3 border-t">
-                <span className="font-semibold">Total Pembayaran</span>
-                <span className="text-lg font-bold text-primary">
-                  {formatPrice(order.total_amount)}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Notes */}
-          {order.notes && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Catatan</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm">{order.notes}</p>
-              </CardContent>
-            </Card>
-          )}
+            </div>
+          </div>
         </div>
       </div>
     </Layout>
