@@ -45,11 +45,11 @@ export default function OrderSummary({
         </div>
         {isProfileComplete ? (
           <a href={`${CART_ROUTES.CHECKOUT}?from_cart=1`} className="inline-block w-full">
-            <Button className="w-full">{CART_MESSAGES.CHECKOUT}</Button>
+            <Button className="w-full">Checkout Semua</Button>
           </a>
         ) : (
           <Button className="w-full" onClick={onCheckout}>
-            {CART_MESSAGES.CHECKOUT}
+            Checkout Semua
           </Button>
         )}
       </CardContent>

@@ -34,6 +34,7 @@ interface Order {
   payment_channel?: string;
   created_at: string;
   order_items?: OrderItem[];
+  shipping_cost?: number | null;
 }
 
 interface PaymentStatusProps {
@@ -190,6 +191,7 @@ export function PaymentStatus({
             shippingCourier={order?.shipping_courier}
             paymentMethod={paymentMethod}
             displayAmount={displayAmount}
+            shippingCost={order?.shipping_cost}
           />
 
           {/* Actions */}

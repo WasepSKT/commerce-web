@@ -36,6 +36,7 @@ interface Order {
   customer_phone: string;
   customer_address: string;
   shipping_courier?: string;
+  shipping_cost?: number | null;
   tracking_number?: string;
   payment_method?: string;
   payment_channel?: string;
@@ -265,7 +266,7 @@ export default function OrderDetail() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-4">
               <ShippingInfo order={order} />
-              <PaymentInfo payment_method={order.payment_method} payment_channel={order.payment_channel} total_amount={order.total_amount} />
+              <PaymentInfo payment_method={order.payment_method} payment_channel={order.payment_channel} total_amount={order.total_amount} shipping_cost={order.shipping_cost} />
             </div>
 
             <div className="space-y-4">

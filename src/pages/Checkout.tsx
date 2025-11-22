@@ -13,7 +13,7 @@ import { getShippingRates, ShippingRate } from '@/services/shippingService';
 import { createPaymentSession, CreateSessionResult } from '@/services/paymentService';
 import computePriceAfterDiscount from '@/utils/price';
 import { safeJsonParse } from '@/utils/storage';
-import { Edit } from 'lucide-react';
+import { Edit, ShieldCheck, AlertTriangle, CheckCircle, Package } from 'lucide-react';
 import { CHECKOUT_MESSAGES } from '@/constants/checkout';
 import AddressBlock from '@/components/checkout/AddressBlock';
 import ShippingRateList from '@/components/checkout/ShippingRateList';
@@ -366,11 +366,12 @@ export default function CheckoutPage() {
           <div className="space-y-4">
             <OrderSummaryCard items={items} subtotal={subtotal} selectedRate={selectedRate} total={total}>
               {/* Info about payment gateway */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <p className="text-sm text-blue-900 text-center font-medium">
-                  🔒 Pembayaran aman melalui Xendit
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex flex-col items-center text-center">
+                <p className="text-sm text-blue-900 font-medium inline-flex items-center justify-center gap-2">
+                  <ShieldCheck className="h-4 w-4" />
+                  <span>Pembayaran aman melalui Xendit</span>
                 </p>
-                <p className="text-xs text-blue-700 text-center mt-1">
+                <p className="text-xs text-blue-700 mt-1">
                   Pilih metode pembayaran (QRIS, E-Wallet, Transfer Bank, Kartu Kredit) di halaman selanjutnya
                 </p>
               </div>
@@ -385,15 +386,17 @@ export default function CheckoutPage() {
                   />
                   {!captchaVerified && (
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                      <p className="text-xs text-amber-800 text-center font-medium">
-                        ⚠️ Selesaikan verifikasi keamanan di atas sebelum melanjutkan
+                      <p className="text-xs text-amber-800 text-center font-medium inline-flex items-center justify-center gap-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        <span>Selesaikan verifikasi keamanan di atas sebelum melanjutkan</span>
                       </p>
                     </div>
                   )}
                   {captchaVerified && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                      <p className="text-xs text-green-800 text-center font-medium">
-                        ✅ Verifikasi berhasil! Anda dapat melanjutkan pembayaran
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center justify-center">
+                      <p className="text-xs text-green-800 font-medium inline-flex items-center justify-center gap-2">
+                        <CheckCircle className="h-4 w-4" />
+                        <span>Verifikasi berhasil! Anda dapat melanjutkan pembayaran</span>
                       </p>
                     </div>
                   )}
@@ -410,9 +413,10 @@ export default function CheckoutPage() {
 
               {/* Helper text for disabled button */}
               {!selectedRate && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
-                  <p className="text-xs text-blue-800 text-center font-medium">
-                    📦 Pilih jasa pengiriman terlebih dahulu
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2 flex items-center justify-center">
+                  <p className="text-xs text-blue-800 font-medium inline-flex items-center justify-center gap-2">
+                    <Package className="h-4 w-4" />
+                    <span>Pilih jasa pengiriman terlebih dahulu</span>
                   </p>
                 </div>
               )}

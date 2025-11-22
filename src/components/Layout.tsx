@@ -42,7 +42,7 @@ export function Layout({ children }: LayoutProps) {
   const avatarUrl = typeof _meta?.avatar_url === 'string' ? (_meta.avatar_url as string) : typeof _meta?.picture === 'string' ? (_meta.picture as string) : undefined;
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
-  const { totalItems } = useCart();
+  const { items } = useCart();
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -108,7 +108,7 @@ export function Layout({ children }: LayoutProps) {
                         <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
                           <ShoppingCart className="h-4 w-4" />
                         </Button>
-                        <span className="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full bg-primary text-xs text-primary-foreground w-5 h-5">{totalItems}</span>
+                        <span className="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full bg-primary text-xs text-primary-foreground w-5 h-5">{items.length}</span>
                       </div>
                     </Link>
                     <DropdownMenu>

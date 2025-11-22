@@ -112,15 +112,21 @@ export default function CartPage() {
       />
 
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-primary">{CART_MESSAGES.CART_TITLE}</h1>
-          <div className="space-x-2">
-            <Button variant="ghost" asChild>
-              <Link to={CART_ROUTES.PRODUCTS}>{CART_MESSAGES.CONTINUE_SHOPPING}</Link>
-            </Button>
-            <Button variant="destructive" onClick={handleClearCart}>
-              {CART_MESSAGES.CLEAR_BUTTON}
-            </Button>
+        <div className="mb-6">
+          <div className="flex flex-col items-center lg:flex-row lg:items-center lg:justify-between">
+            <h1 className="text-2xl font-bold text-primary text-center lg:text-left">{CART_MESSAGES.CART_TITLE}</h1>
+
+            <div className="mt-3 w-full max-w-md lg:w-auto lg:mt-0">
+              <div className="flex justify-between lg:justify-end items-center gap-2">
+                <Button variant="outline" asChild className="text-primary border-primary hover:bg-primary/10 hover:text-primary">
+                  <Link to={CART_ROUTES.PRODUCTS}>{CART_MESSAGES.CONTINUE_SHOPPING}</Link>
+                </Button>
+
+                <Button variant="destructive" onClick={handleClearCart}>
+                  {CART_MESSAGES.CLEAR_BUTTON}
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
 

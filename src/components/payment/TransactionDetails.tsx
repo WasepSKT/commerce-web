@@ -6,13 +6,19 @@ export default function TransactionDetails({
   shippingCourier,
   paymentMethod,
   displayAmount,
+  shippingCost,
 }: {
   orderId?: string;
   transactionId?: string;
   shippingCourier?: string;
   paymentMethod?: string;
   displayAmount?: number;
+  shippingCost?: number | null;
 }) {
+  const formatPrice = (p?: number) => {
+    if (p == null) return 'Rp 0';
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(p);
+  };
   return (
     <div className="bg-gray-50 rounded-lg p-4 space-y-3 mb-6">
       {orderId && (
@@ -37,6 +43,12 @@ export default function TransactionDetails({
         <span className="text-sm text-gray-600">Metode Pembayaran</span>
         <span className="text-sm font-semibold text-gray-900">{paymentMethod}</span>
       </div>
+      {shippingCost != null && (
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-gray-600">Biaya Pengiriman</span>
+          <span className="text-sm font-semibold text-gray-900">{shippingCost === 0 ? 'Gratis' : formatPrice(shippingCost)}</span>
+        </div>
+      )}
       <div className="flex justify-between items-center pt-3 border-t border-gray-200">
         <span className="text-sm font-medium text-gray-600">Total Pembayaran</span>
         <span className="text-lg font-bold text-primary">Rp {(displayAmount || 0).toLocaleString('id-ID')}</span>
