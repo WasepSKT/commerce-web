@@ -47,7 +47,22 @@ export const isProduction = import.meta.env.PROD;
 export const currentEnv = import.meta.env.MODE; // 'development' atau 'production'
 
 // Payment API Configuration
-export const PAYMENT_API_URL = import.meta.env.VITE_PAYMENT_API_URL || 'https://api-payment.regalpaw.id';
+const _env = import.meta.env as Record<string, string | boolean | undefined>;
+
+// Resolve service base URL preference order:
+// 1. VITE_SERVICE_API_URL (explicit)
+// 2. VITE_SERVICE_API_URL_PROD / _STG / _DEV (per-env secrets)
+// 3. fallback to known production host
+const rawServiceUrl = (_env.VITE_SERVICE_API_URL as string)
+  || (_env.VITE_SERVICE_API_URL_PROD as string)
+  || (_env.VITE_SERVICE_API_URL_STG as string)
+  || (_env.VITE_SERVICE_API_URL_DEV as string)
+  || '';
+
+export const SERVICE_BASE_URL = (rawServiceUrl || 'https://api.regalpaw.id').replace(/\/+$/, '');
+
+// For backward compatibility, keep PAYMENT_API_URL but point it at the unified service base
+export const PAYMENT_API_URL = SERVICE_BASE_URL;
 export const SERVICE_API_KEY = import.meta.env.VITE_SERVICE_API_KEY || '';
 
 // Supabase + API config (shared antara client-side services)

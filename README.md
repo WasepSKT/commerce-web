@@ -90,7 +90,7 @@ Regal Paw is a comprehensive e-commerce solution for cat owners who want the bes
    ```env
    VITE_SUPABASE_URL=your_supabase_url
    VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
-   VITE_PAYMENT_API_URL=http://localhost:3001
+   VITE_SERVICE_API_URL=http://localhost:3001
    ```
 
 4. **Database Setup**

@@ -46,6 +46,7 @@ jobs:
             echo "VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY_DEV }}" >> $GITHUB_OUTPUT
             echo "VITE_SUPABASE_PROJECT_ID=${{ secrets.VITE_SUPABASE_PROJECT_ID_DEV }}" >> $GITHUB_OUTPUT
             echo "VITE_TURNSTILE_SITE_KEY=${{ secrets.VITE_TURNSTILE_SITE_KEY_DEV }}" >> $GITHUB_OUTPUT
+            echo "VITE_SERVICE_API_URL=${{ secrets.VITE_SERVICE_API_URL_DEV }}" >> $GITHUB_OUTPUT
             echo "VITE_MAINTENANCE_AUTH=${{ secrets.VITE_MAINTENANCE_AUTH_DEV || 'false' }}" >> $GITHUB_OUTPUT
             echo "VITE_MAINTENANCE_PRODUCT=${{ secrets.VITE_MAINTENANCE_PRODUCT_DEV || 'false' }}" >> $GITHUB_OUTPUT
             echo "VITE_SHOPEE_URL=${{ secrets.VITE_SHOPEE_URL || 'https://shopee.co.id' }}" >> $GITHUB_OUTPUT
@@ -63,6 +64,7 @@ jobs:
             echo "VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY_STG }}" >> $GITHUB_OUTPUT
             echo "VITE_SUPABASE_PROJECT_ID=${{ secrets.VITE_SUPABASE_PROJECT_ID_STG }}" >> $GITHUB_OUTPUT
             echo "VITE_TURNSTILE_SITE_KEY=${{ secrets.VITE_TURNSTILE_SITE_KEY_STG }}" >> $GITHUB_OUTPUT
+            echo "VITE_SERVICE_API_URL=${{ secrets.VITE_SERVICE_API_URL_STG }}" >> $GITHUB_OUTPUT
             echo "VITE_MAINTENANCE_AUTH=${{ secrets.VITE_MAINTENANCE_AUTH_STG || 'false' }}" >> $GITHUB_OUTPUT
             echo "VITE_MAINTENANCE_PRODUCT=${{ secrets.VITE_MAINTENANCE_PRODUCT_STG || 'false' }}" >> $GITHUB_OUTPUT
             echo "VITE_SHOPEE_URL=${{ secrets.VITE_SHOPEE_URL || 'https://shopee.co.id' }}" >> $GITHUB_OUTPUT
@@ -80,6 +82,7 @@ jobs:
             echo "VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY_PROD }}" >> $GITHUB_OUTPUT
             echo "VITE_SUPABASE_PROJECT_ID=${{ secrets.VITE_SUPABASE_PROJECT_ID_PROD }}" >> $GITHUB_OUTPUT
             echo "VITE_TURNSTILE_SITE_KEY=${{ secrets.VITE_TURNSTILE_SITE_KEY_PROD }}" >> $GITHUB_OUTPUT
+            echo "VITE_SERVICE_API_URL=${{ secrets.VITE_SERVICE_API_URL_PROD }}" >> $GITHUB_OUTPUT
             echo "VITE_MAINTENANCE_AUTH=${{ secrets.VITE_MAINTENANCE_AUTH_PROD || 'false' }}" >> $GITHUB_OUTPUT
             echo "VITE_MAINTENANCE_PRODUCT=${{ secrets.VITE_MAINTENANCE_PRODUCT_PROD || 'false' }}" >> $GITHUB_OUTPUT
             echo "VITE_SHOPEE_URL=${{ secrets.VITE_SHOPEE_URL || 'https://shopee.co.id' }}" >> $GITHUB_OUTPUT
@@ -115,6 +118,7 @@ jobs:
           VITE_MAINTENANCE_PRODUCT: ${{ steps.sel.outputs.VITE_MAINTENANCE_PRODUCT }}
           VITE_SHOPEE_URL: ${{ steps.sel.outputs.VITE_SHOPEE_URL }}
           VITE_TIKTOK_SHOP_URL: ${{ steps.sel.outputs.VITE_TIKTOK_SHOP_URL }}
+          VITE_SERVICE_API_URL: ${{ steps.sel.outputs.VITE_SERVICE_API_URL }}
         run: npm run build
 
       - name: Deploy via FTPS to cPanel
