@@ -2,7 +2,7 @@
 // Serverless endpoint to decrement stock for an order using Supabase service role.
 // Expects: POST { order_id: string } with Authorization: Bearer <access_token>
 
-import { getRequestIp, isRateLimited } from '../_lib/rateLimit';
+import { getRequestIp, isRateLimited } from '../_lib/rateLimit.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
 const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
