@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Serverless endpoint to manage authenticated user's cart in Supabase
 // Expects the client to send Authorization: Bearer <access_token>
-import { isRateLimited, getRequestIp } from './_lib/rateLimit';
+import { isRateLimited, getRequestIp } from './_lib/rateLimit.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
 const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;

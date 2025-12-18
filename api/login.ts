@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Vercel serverless function to verify Turnstile token and proxy login to Supabase
-import { isRateLimited, getRequestIp } from './_lib/rateLimit';
+import { isRateLimited, getRequestIp } from './_lib/rateLimit.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
