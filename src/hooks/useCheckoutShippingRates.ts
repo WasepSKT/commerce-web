@@ -44,10 +44,10 @@ export function useCheckoutShippingRates(profile: ProfileLike | null, items: Ord
           const productIds = Array.from(new Set(items.map(it => it.product_id).filter(Boolean) as string[]));
           if (productIds.length === 1) {
             const pid = productIds[0];
-            const prodRes = await supabase.from('products').select('id,shipping_services,available_shipping_services,shipping_options').eq('id', pid).single();
+            const prodRes = await supabase.from('products').select('id,available_shipping_services,shipping_options').eq('id', pid).single();
             const prod = (prodRes as { data?: Record<string, unknown> | null }).data ?? null;
             if (prod) {
-              const raw = (prod['shipping_services'] ?? prod['available_shipping_services'] ?? prod['shipping_options']) as unknown;
+              const raw = (prod['available_shipping_services'] ?? prod['shipping_options']) as unknown;
               if (Array.isArray(raw)) allowedServices = raw.map(String).map(s => s.trim()).filter(Boolean);
               else if (typeof raw === 'string' && raw.trim() !== '') allowedServices = raw.split(',').map(s => s.trim()).filter(Boolean);
             }
@@ -88,10 +88,10 @@ export function useCheckoutShippingRates(profile: ProfileLike | null, items: Ord
             const productIds = Array.from(new Set(items.map(it => it.product_id).filter(Boolean) as string[]));
             if (productIds.length === 1) {
               const pid = productIds[0];
-              const prodRes = await supabase.from('products').select('id,shipping_services,available_shipping_services,shipping_options').eq('id', pid).single();
+              const prodRes = await supabase.from('products').select('id,available_shipping_services,shipping_options').eq('id', pid).single();
               const prod = (prodRes as { data?: Record<string, unknown> | null }).data ?? null;
               if (prod) {
-                const raw = (prod['shipping_services'] ?? prod['available_shipping_services'] ?? prod['shipping_options']) as unknown;
+                const raw = (prod['available_shipping_services'] ?? prod['shipping_options']) as unknown;
                 if (Array.isArray(raw)) allowedServicesFallback = raw.map(String).map(s => s.trim()).filter(Boolean);
                 else if (typeof raw === 'string' && raw.trim() !== '') allowedServicesFallback = raw.split(',').map(s => s.trim()).filter(Boolean);
               }

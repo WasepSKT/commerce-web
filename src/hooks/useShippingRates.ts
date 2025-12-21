@@ -66,13 +66,13 @@ export function useShippingRates(profile: any, items: OrderItem[]) {
         const pid = productIds[0];
         const prodRes = await supabase
           .from('products')
-          .select('id,shipping_services,available_shipping_services,shipping_options')
+          .select('id,available_shipping_services,shipping_options')
           .eq('id', pid)
           .single();
         
         const prod = (prodRes as { data?: Record<string, unknown> | null }).data ?? null;
         if (prod) {
-          const raw = (prod['shipping_services'] ?? prod['available_shipping_services'] ?? prod['shipping_options']) as unknown;
+          const raw = (prod['available_shipping_services'] ?? prod['shipping_options']) as unknown;
           if (Array.isArray(raw)) {
             return raw.map(String).map(s => s.trim()).filter(Boolean);
           } else if (typeof raw === 'string' && raw.trim() !== '') {
