@@ -29,7 +29,6 @@
   ],
   "rewrites": [
     {
-      "#": "Only rewrite requests that are not for static files (contain a dot) and not under /assets or /api",
       "source": "/((?!assets/|api/|.*\\.).*)",
       "destination": "/index.html"
     }
